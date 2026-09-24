@@ -22,6 +22,8 @@ from docfill.config import Settings, get_settings
 from docfill.errors import (
     DocFillError,
     DocumentReadError,
+    KnowledgeError,
+    KnowledgeNotFoundError,
     MissingFieldsError,
     OCRUnavailableError,
     TemplateIntegrityError,
@@ -33,9 +35,12 @@ from docfill.pipeline import DocumentAnalysis
 from docfill.readers.ocr import tesseract_available
 from docfill.templates import StandardDocumentSpec, TemplateRepository
 from docfill.web import read_upload, register_wizard
+from docfill.web.knowledge import register_knowledge
 
 _ERROR_STATUS: list[tuple[type[DocFillError], int]] = [
     (TemplateNotFoundError, 404),
+    (KnowledgeNotFoundError, 404),
+    (KnowledgeError, 422),
     (MissingFieldsError, 422),
     (UnsupportedDocumentError, 415),
     (TemplateIntegrityError, 409),
@@ -75,7 +80,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="docfill",
         version=__version__,
-        description="Scan documents, extract personal data and fill standard documents as PDF.",
+        description=(
+            "Scan documents, extract personal data and fill standard documents as PDF, with "
+            "a knowledge base of Romanian trade register procedures (SRL, SRL-D, SA, PFA, II, "
+            "IF)."
+        ),
     )
 
     def repository() -> Iterator[TemplateRepository]:
@@ -193,4 +202,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return context.learning.stats()
 
     register_wizard(app, context, repository)
+    register_knowledge(app, context)
     return app

@@ -26,6 +26,7 @@ from docfill.export.pdf_form import blank_form, inspect_form, read_form_values
 from docfill.extraction import field_labels
 from docfill.learning import Review, ReviewedDocument, reviewed_fields_from_rows
 from docfill.models import ExtractionResult
+from docfill.readers import read_document
 from docfill.templates import (
     TemplateRepository,
     bundled_specs_dir,
@@ -755,6 +756,330 @@ def evaluate(
     for field_name, problem in report["differences"]:
         table.add_row(escape(field_name), problem)
     console.print(table)
+
+
+# ----------------------------------------------------------------------------- knowledge
+
+
+knowledge_app = typer.Typer(
+    help="Romanian legal knowledge: legal forms, procedures, rules, document types and laws.",
+    no_args_is_help=True,
+)
+app.add_typer(knowledge_app, name="knowledge")
+
+_STATUS_STYLE = {"verified": "green", "draft": "yellow", "retired": "dim"}
+
+
+def _knowledge_app(ctx: typer.Context):
+    return build_app(_settings(ctx), use_ner=False)
+
+
+def _print_results(results: list) -> None:
+    counts: dict[str, int] = {}
+    for result in results:
+        counts[result.action] = counts.get(result.action, 0) + 1
+        if result.action != "unchanged":
+            console.print(
+                f"  {result.kind}/{result.key}: {result.action} "
+                f"(v{result.version}, {result.status})"
+            )
+    console.print(", ".join(f"{n} {action}" for action, n in sorted(counts.items())) or "nothing")
+
+
+@knowledge_app.command("seed")
+def knowledge_seed(
+    ctx: typer.Context,
+    directory: Annotated[
+        Path | None, typer.Argument(help="Directory of YAML files (default: bundled).")
+    ] = None,
+) -> None:
+    """Load the knowledge shipped with docfill. Entries you changed or retired are kept;
+    bundled entries that changed come back as draft (to verify again)."""
+    try:
+        _print_results(_knowledge_app(ctx).knowledge.seed(directory))
+    except DocFillError as exc:
+        _fail(str(exc))
+
+
+@knowledge_app.command("list")
+def knowledge_list(
+    ctx: typer.Context,
+    kind: Annotated[str | None, typer.Option(help="entity | procedure | rule | doc_type")] = None,
+    status: Annotated[str | None, typer.Option(help="draft | verified | retired")] = None,
+) -> None:
+    """List the knowledge entries with their status."""
+    entries = _knowledge_app(ctx).knowledge.entries(kind, include_retired=True)
+    table = Table(title="Knowledge")
+    table.add_column("Entry", no_wrap=True)
+    for column in ("Title", "Status", "Version", "Verified by"):
+        table.add_column(column, overflow="fold")
+    for entry in entries:
+        if status and entry.status != status:
+            continue
+        style = _STATUS_STYLE.get(entry.status, "")
+        table.add_row(
+            f"{entry.kind}/{entry.key}",
+            escape(entry.title),
+            f"[{style}]{entry.status}[/]",
+            f"v{entry.version}" + (" (changed here)" if entry.origin == "local" else ""),
+            escape(entry.verified_by or "-"),
+        )
+    console.print(table)
+
+
+@knowledge_app.command("show")
+def knowledge_show(
+    ctx: typer.Context,
+    reference: Annotated[str, typer.Argument(help="KEY or KIND/KEY, e.g. rule/sa-capital-minim")],
+    history: Annotated[bool, typer.Option(help="Also print every change.")] = False,
+) -> None:
+    """Print an entry as YAML (edit it and add it back with `docfill knowledge add`)."""
+    from docfill.knowledge import dump_yaml
+
+    knowledge = _knowledge_app(ctx).knowledge
+    try:
+        entry = knowledge.resolve(reference)
+    except DocFillError as exc:
+        _fail(str(exc))
+    verified = f", verified by {entry.verified_by}" if entry.verified_by else ""
+    console.print(f"[bold]{entry.kind}/{entry.key}[/] v{entry.version} · {entry.status}{verified}")
+    typer.echo(dump_yaml([entry.spec]))
+    if history:
+        for change in knowledge.history(entry.kind, entry.key):
+            console.print(
+                f"  v{change['version']} {change['action']} ({change['status']}) "
+                f"{change['at'][:16]} {escape(change['actor'] or '')} {escape(change['note'])}"
+            )
+
+
+@knowledge_app.command("add")
+def knowledge_add(
+    ctx: typer.Context,
+    files: Annotated[list[Path], typer.Argument(help="YAML files with knowledge entries.")],
+    verified_by: Annotated[
+        str | None,
+        typer.Option("--verified-by", help="Save as verified by this person (you checked it)."),
+    ] = None,
+    note: Annotated[str, typer.Option(help="Why it changed (kept in the history).")] = "",
+) -> None:
+    """Add or correct knowledge. A changed entry gets a new version and is draft again unless
+    --verified-by is given."""
+    from docfill.knowledge import load_file
+
+    knowledge = _knowledge_app(ctx).knowledge
+    try:
+        specs = [spec for path in files for spec in load_file(path)]
+        _, warnings = knowledge.check_references(specs)
+        results = knowledge.save_all(specs, verified_by=verified_by, note=note)
+    except DocFillError as exc:
+        _fail(str(exc))
+    for warning in warnings:
+        console.print(f"[yellow]warning:[/] {escape(warning)}")
+    _print_results(results)
+
+
+def _set_status(ctx: typer.Context, reference: str, action: str, by: str, note: str) -> None:
+    knowledge = _knowledge_app(ctx).knowledge
+    try:
+        entry = knowledge.resolve(reference)
+        method = knowledge.verify if action == "verify" else knowledge.retire
+        entry = method(entry.kind, entry.key, by, note)
+    except DocFillError as exc:
+        _fail(str(exc))
+    console.print(f"{entry.kind}/{entry.key} v{entry.version}: [bold]{entry.status}[/]")
+
+
+@knowledge_app.command("verify")
+def knowledge_verify(
+    ctx: typer.Context,
+    reference: Annotated[str, typer.Argument(help="KEY or KIND/KEY")],
+    by: Annotated[str, typer.Option("--by", help="Who checked it (lawyer, notary...).")],
+    note: Annotated[str, typer.Option(help="E.g. which version of the law was checked.")] = "",
+) -> None:
+    """Confirm an entry is correct and current."""
+    _set_status(ctx, reference, "verify", by, note)
+
+
+@knowledge_app.command("retire")
+def knowledge_retire(
+    ctx: typer.Context,
+    reference: Annotated[str, typer.Argument(help="KEY or KIND/KEY")],
+    by: Annotated[str, typer.Option("--by", help="Who retires it.")],
+    note: Annotated[str, typer.Option(help="Why it no longer applies.")] = "",
+) -> None:
+    """Stop using an entry (e.g. the law changed). It stays in the history."""
+    _set_status(ctx, reference, "retire", by, note)
+
+
+@knowledge_app.command("export")
+def knowledge_export(
+    ctx: typer.Context,
+    output: Annotated[Path | None, typer.Argument(help="YAML file (default: print).")] = None,
+) -> None:
+    """Every active entry as YAML: edit, review or keep it under version control."""
+    from docfill.knowledge import dump_yaml
+
+    text = dump_yaml([entry.spec for entry in _knowledge_app(ctx).knowledge.entries()])
+    if output is None:
+        typer.echo(text)
+    else:
+        output.write_text(text, encoding="utf-8")
+        console.print(f"[green]Written[/] {output}")
+
+
+@knowledge_app.command("ingest")
+def knowledge_ingest(
+    ctx: typer.Context,
+    file: Annotated[Path, typer.Argument(help="The act as TXT, HTML, PDF or DOCX.")],
+    citation: Annotated[str, typer.Option(help="How rules cite it, e.g. 'Legea nr. 31/1990'.")],
+    title: Annotated[str, typer.Option(help="Title of the act.")] = "",
+    url: Annotated[str | None, typer.Option(help="Where the text comes from.")] = None,
+) -> None:
+    """Feed a law or an ONRC guide: split into articles, searchable, and shown next to the
+    rules that cite it. The same citation replaces the previous text."""
+    from docfill.knowledge.ingest import extract_text
+
+    context = _knowledge_app(ctx)
+    try:
+        text = extract_text(file.read_bytes(), file.name, context.settings)
+        result = context.knowledge.ingest_text(text, citation, title, file.name, url)
+    except (DocFillError, OSError) as exc:
+        _fail(str(exc))
+    console.print(
+        f"[green]{escape(result['citation'])}[/]: {result['passages']} passages "
+        f"({result['articles']} articles)"
+    )
+
+
+@knowledge_app.command("texts")
+def knowledge_texts(ctx: typer.Context) -> None:
+    """The laws and guides fed to docfill."""
+    table = Table(title="Legal texts")
+    for column in ("Citation", "Title", "Passages", "File"):
+        table.add_column(column, overflow="fold")
+    for source in _knowledge_app(ctx).knowledge.sources():
+        table.add_row(
+            escape(source["citation"]),
+            escape(source["title"]),
+            str(source["passages"]),
+            escape(source["filename"]),
+        )
+    console.print(table)
+
+
+@knowledge_app.command("search")
+def knowledge_search(
+    ctx: typer.Context,
+    query: Annotated[list[str], typer.Argument(help="Words to look for.")],
+    limit: Annotated[int, typer.Option("--limit", "-n")] = 5,
+) -> None:
+    """Search the fed laws and the knowledge entries."""
+    hits = _knowledge_app(ctx).knowledge.search(" ".join(query), limit)
+    if not hits:
+        console.print("Nothing found. Feed the relevant law (docfill knowledge ingest).")
+    for hit in hits:
+        console.print(
+            f"[bold]{escape(hit['title'])}[/] [dim]{escape(hit['subtitle'])} · "
+            f"{hit['kind']} · {hit['score']:.2f}[/]"
+        )
+        console.print(escape(hit["text"]), highlight=False)
+        console.print()
+
+
+@knowledge_app.command("teach")
+def knowledge_teach(
+    ctx: typer.Context,
+    doc_type: Annotated[str, typer.Argument(help="Document type, e.g. act_constitutiv.")],
+    files: Annotated[list[Path], typer.Argument(help="Example documents of that type.")],
+) -> None:
+    """Teach the document classifier with examples of a document type (numbers are removed;
+    prefer blank or sample documents)."""
+    context = _knowledge_app(ctx)
+    if doc_type not in context.docfill.classifier.types():
+        known = ", ".join(sorted(context.docfill.classifier.types()))
+        _fail(f"unknown document type '{doc_type}'. Known: {known}")
+    texts = []
+    for path in files:
+        try:
+            raw = read_document(path, context.settings)
+        except DocFillError as exc:
+            _fail(str(exc))
+        texts.append(context.docfill.sanitizer.sanitize(raw).text)
+    added = context.learning.add_doc_examples(doc_type, texts)
+    console.print(f"{added} example(s) of {doc_type} learned.")
+
+
+@knowledge_app.command("check")
+def knowledge_check(
+    ctx: typer.Context,
+    procedure: Annotated[str, typer.Argument(help="Procedure, e.g. srl.infiintare.")],
+    set_values: Annotated[list[str] | None, typer.Option("--set", "-s", help="FIELD=VALUE")] = None,
+    as_json: Annotated[bool, typer.Option("--json", help="Print JSON.")] = False,
+) -> None:
+    """Run a procedure's legal checks on values (useful to test new rules)."""
+    context = _knowledge_app(ctx)
+    values, _ = context.docfill.collect_values(None, _parse_overrides(set_values or []))
+    try:
+        results = context.knowledge.evaluate(procedure, values)
+    except DocFillError as exc:
+        _fail(str(exc))
+    failed = any(r.status == "failed" and r.severity == "error" for r in results)
+    if as_json:
+        typer.echo(json.dumps([r.as_dict() for r in results], indent=2, ensure_ascii=False))
+        raise typer.Exit(code=1 if failed else 0)
+    colors = {"failed": "red", "passed": "green", "skipped": "dim"}
+    for result in results:
+        basis = "; ".join(
+            ", ".join(part for part in (ref.get("citation"), ref.get("article")) if part)
+            for ref in result.legal_basis
+        )
+        unverified = "" if result.knowledge_status == "verified" else " [dim](unverified)[/]"
+        console.print(
+            f"[{colors[result.status]}]{result.status:7}[/] {result.severity:7} "
+            f"{escape(result.title)}{unverified}"
+        )
+        if result.status == "failed":
+            console.print(f"         {escape(result.message)} [dim]{escape(result.detail)}[/]")
+        console.print(f"         [dim]{escape(basis)}[/]")
+    if failed:  # usable in scripts: a failed error-level check is a failure
+        raise typer.Exit(code=1)
+
+
+@knowledge_app.command("stats")
+def knowledge_stats(
+    ctx: typer.Context,
+    as_json: Annotated[bool, typer.Option("--json", help="Print JSON.")] = False,
+) -> None:
+    """Knowledge status, fed laws and what saved files taught (rules to review...)."""
+    stats = _knowledge_app(ctx).knowledge.stats()
+    if as_json:
+        typer.echo(json.dumps(stats, indent=2, ensure_ascii=False))
+        return
+    for kind, counts in stats["entries"].items():
+        console.print(f"{kind}: " + ", ".join(f"{n} {status}" for status, n in counts.items()))
+    texts = stats["legal_texts"]
+    console.print(f"Legal texts: {texts['sources']} ({texts['passages']} passages)")
+    for problem in stats["integrity_problems"]:
+        console.print(f"[red]damaged:[/] {problem['entry']}: {escape(problem['problem'])}")
+    if stats["rules"]:
+        table = Table(title="Rules on saved files")
+        for column in ("Rule", "Passed", "Failed", "Overridden", "Review?"):
+            table.add_column(column)
+        for rule in stats["rules"]:
+            table.add_row(
+                rule["rule"],
+                str(rule["passed"]),
+                str(rule["failed"]),
+                str(rule["overridden"]),
+                "[red]yes[/]" if rule["needs_review"] else "",
+            )
+        console.print(table)
+    for procedure in stats["procedures"]:
+        for doc in procedure["suggested_documents"]:
+            console.print(
+                f"Suggestion: {procedure['procedure']} files often include {doc['doc_type']} "
+                f"({doc['cases']} of {doc['of']}); add it to the procedure's documents?"
+            )
 
 
 @app.command()

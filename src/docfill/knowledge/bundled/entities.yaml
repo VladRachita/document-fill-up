@@ -1,0 +1,79 @@
+# Formele juridice acceptate de docfill (registrul comerțului, România).
+#
+# Tot ce este livrat cu docfill intră în baza de cunoștințe ca "draft": trebuie verificat de un
+# jurist (docfill knowledge verify ... --by "Nume") înainte de a fi considerat sigur. Corecturile
+# locale nu sunt suprascrise la actualizarea docfill.
+entities:
+  - key: srl
+    title: Societate cu răspundere limitată
+    abbreviation: SRL
+    category: legal_person
+    order: 10
+    description: >
+      Societate ale cărei obligații sociale sunt garantate cu patrimoniul social; asociații
+      răspund în limita aportului la capitalul social.
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+
+  - key: srl-d
+    title: Societate cu răspundere limitată - debutant
+    abbreviation: SRL-D
+    category: legal_person
+    order: 20
+    description: >
+      SRL înființat în regimul întreprinzătorilor debutanți în afaceri.
+    legal_basis:
+      - citation: OUG nr. 6/2011 pentru stimularea înființării și dezvoltării microîntreprinderilor de către întreprinzătorii debutanți în afaceri
+      - citation: Legea nr. 31/1990 privind societățile
+    notes:
+      - >
+        Regimul SRL-D a fost modificat de mai multe ori. Verificați dacă (și în ce condiții)
+        mai poate fi folosit la data depunerii înainte de a marca aceste cunoștințe ca verificate.
+
+  - key: sa
+    title: Societate pe acțiuni
+    abbreviation: SA
+    category: legal_person
+    order: 30
+    description: >
+      Societate al cărei capital social este împărțit în acțiuni; acționarii răspund în limita
+      capitalului subscris.
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+
+  - key: pfa
+    title: Persoană fizică autorizată
+    abbreviation: PFA
+    category: natural_person
+    order: 40
+    description: >
+      Persoană fizică autorizată să desfășoare o activitate economică, folosindu-și în principal
+      forța de muncă proprie.
+    legal_basis:
+      - citation: OUG nr. 44/2008 privind desfășurarea activităților economice de către persoanele fizice autorizate, întreprinderile individuale și întreprinderile familiale
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+
+  - key: ii
+    title: Întreprindere individuală
+    abbreviation: II
+    category: natural_person
+    order: 50
+    description: >
+      Întreprindere economică fără personalitate juridică, organizată de un întreprinzător
+      persoană fizică.
+    legal_basis:
+      - citation: OUG nr. 44/2008 privind desfășurarea activităților economice de către persoanele fizice autorizate, întreprinderile individuale și întreprinderile familiale
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+
+  - key: if
+    title: Întreprindere familială
+    abbreviation: IF
+    category: natural_person
+    order: 60
+    description: >
+      Întreprindere economică fără personalitate juridică, organizată de membrii unei familii.
+    legal_basis:
+      - citation: OUG nr. 44/2008 privind desfășurarea activităților economice de către persoanele fizice autorizate, întreprinderile individuale și întreprinderile familiale
+      - citation: Legea nr. 265/2022 privind registrul comerțului

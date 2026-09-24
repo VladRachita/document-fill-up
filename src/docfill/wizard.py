@@ -82,15 +82,20 @@ def field_rows(
     extraction: ExtractionResult | None,
     min_confidence: float,
     memory: Mapping[str, str] | None = None,
+    extra_fields: Sequence[str] = (),
+    extra_required: Sequence[str] = (),
 ) -> list[FieldRow]:
     """The fields of the reference documents in document order, each prefilled with, in this
     order: a confident extracted value, a remembered value (``remember`` fields), the
-    document's default. A best candidate under ``min_confidence`` is only proposed."""
+    document's default. A best candidate under ``min_confidence`` is only proposed.
+
+    ``extra_fields`` / ``extra_required`` are asked for by the procedure (e.g. the share
+    capital, needed by its legal checks) even when no form prints them."""
     templates = _templates(templates)
     extraction = extraction or ExtractionResult()
     memory = memory or {}
     names: list[str] = []
-    required: set[str] = set()
+    required: set[str] = set(extra_required)
     defaults: dict[str, str] = {}
     remember: set[str] = set()
     choices: dict[str, list[str]] = {}
@@ -103,6 +108,7 @@ def field_rows(
         for pdf_field, options in template.choices.items():
             expression = template.field_map.get(pdf_field, "")
             choices[expression.split("|")[0].strip()] = list(options)
+    names += [n for n in [*extra_fields, *extra_required] if n not in names]
 
     rows: list[FieldRow] = []
     for name in names:

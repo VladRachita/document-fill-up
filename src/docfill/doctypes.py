@@ -175,10 +175,12 @@ def _ocr_noise(text: str, rng: random.Random, rate: float) -> str:
     return "".join(out)
 
 
-def seed_examples(augment: int = 6, seed: int = 7) -> list[tuple[str, str]]:
+def seed_examples(
+    augment: int = 6, seed: int = 7, types: Iterable[DocType] | None = None
+) -> list[tuple[str, str]]:
     rng = random.Random(seed)
     examples: list[tuple[str, str]] = []
-    for doc in DOC_TYPES.values():
+    for doc in types if types is not None else DOC_TYPES.values():
         for text in doc.seeds:
             examples.append((text, doc.name))
             for _ in range(augment):
@@ -201,13 +203,13 @@ class Prediction:
         return DOC_TYPES[self.doc_type].label if self.doc_type in DOC_TYPES else self.doc_type
 
 
-def _train(learned: tuple[tuple[str, str], ...]):
+def _train(learned: tuple[tuple[str, str], ...], types: tuple[DocType, ...]):
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import make_pipeline
 
     # Confirmed real documents count more than the synthetic seeds.
-    data = seed_examples() + list(learned) * 3
+    data = seed_examples(types=types) + list(learned) * 3
     model = make_pipeline(
         TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True),
         LogisticRegression(C=8.0, max_iter=2000, class_weight="balanced"),
@@ -216,32 +218,54 @@ def _train(learned: tuple[tuple[str, str], ...]):
     return model
 
 
-@lru_cache(maxsize=1)
-def _seed_model():
-    """The model trained on seeds only is the same for everyone: train it once."""
-    return _train(())
+BUILT_IN: tuple[DocType, ...] = tuple(DOC_TYPES.values())
+
+
+@lru_cache(maxsize=8)
+def _seed_model(types: tuple[DocType, ...] = BUILT_IN):
+    """The model trained on seeds only is the same for everyone: train it once per set of
+    document types."""
+    return _train((), types)
 
 
 class DocTypeClassifier:
-    """Trained on seed texts plus confirmed examples provided by ``examples``."""
+    """Trained on seed texts plus confirmed examples provided by ``examples``.
 
-    def __init__(self, examples: Callable[[], list[tuple[str, str]]] | None = None):
+    ``extra_types`` adds document types taught through the knowledge base (act constitutiv,
+    proof of the registered office...); the model is retrained when they change."""
+
+    def __init__(
+        self,
+        examples: Callable[[], list[tuple[str, str]]] | None = None,
+        extra_types: Callable[[], list[DocType]] | None = None,
+    ):
         self._examples = examples
+        self._extra_types = extra_types
         self._model = None
-        self._trained_on = -1
+        self._trained_on: tuple[int, tuple[DocType, ...]] | None = None
         self._lock = threading.Lock()
 
+    def types(self) -> dict[str, DocType]:
+        """Every type the classifier knows: built-in first, then the taught ones."""
+        known = dict(DOC_TYPES)
+        for doc in self._extra_types() if self._extra_types else []:
+            known.setdefault(doc.name, doc)
+        return known
+
     def _fit(self) -> None:
+        types = tuple(self.types().values())
         learned = self._examples() if self._examples else []
-        learned = [(text, label) for text, label in learned if label in DOC_TYPES]
-        if len(learned) == self._trained_on and self._model is not None:
+        names = {doc.name for doc in types}
+        learned = [(text, label) for text, label in learned if label in names]
+        signature = (len(learned), types)
+        if signature == self._trained_on and self._model is not None:
             return
-        self._model = _train(tuple(learned)) if learned else _seed_model()
-        self._trained_on = len(learned)
+        self._model = _train(tuple(learned), types) if learned else _seed_model(types)
+        self._trained_on = signature
 
     def retrain(self) -> None:
         with self._lock:
-            self._trained_on = -1
+            self._trained_on = None
             self._fit()
 
     def predict(self, text: str) -> Prediction:

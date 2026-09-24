@@ -1,0 +1,247 @@
+# Proceduri pentru societăți: SRL, SRL-D, SA x înființare, modificare, radiere.
+#
+# "forms": formularele oficiale; "template" este documentul standard docfill care le completează
+# (lipsește = formularul nu a fost încă adăugat în docfill: `docfill forms inspect` +
+# `docfill templates add`, apoi completați aici "template").
+# "documents": actele doveditoare ale dosarului; "doc_type" permite bifarea automată când un
+# fișier încărcat este recunoscut ca acel tip de document.
+#
+# Livrate ca "draft": lista actelor doveditoare trebuie confirmată de un jurist cu cerințele
+# ONRC în vigoare la data depunerii.
+procedures:
+  # ------------------------------------------------------------------ SRL
+  - key: srl.infiintare
+    entity: srl
+    operation: infiintare
+    title: Înființare SRL (înmatriculare)
+    description: Înmatricularea unei societăți cu răspundere limitată în registrul comerțului.
+    forms: &forms_infiintare_societate
+      - title: Cerere de înregistrare - persoane juridice (Anexa 2a, înmatriculare)
+        template: onrc-anexa-2a
+      - title: Declarație privind îndeplinirea condițiilor de funcționare (Anexa 4)
+        template: onrc-anexa-4
+    documents: &documents_infiintare_srl
+      - title: Actul constitutiv
+        doc_type: act_constitutiv
+        note: Semnat de toți asociații.
+      - title: Dovada sediului social
+        doc_type: dovada_sediu
+        note: Contract de comodat / închiriere sau act de proprietate, cu acordul proprietarului.
+      - title: Actele de identitate ale asociaților și administratorilor
+        doc_type: id_card
+      - title: Declarația privind beneficiarul real
+        doc_type: declaratie_beneficiar_real
+        legal_basis:
+          - citation: Legea nr. 129/2019 pentru prevenirea și combaterea spălării banilor și finanțării terorismului
+      - title: Specimenul de semnătură al administratorului
+        doc_type: specimen_semnatura
+        required: false
+        note: Dacă este cerut (verificați cerințele ORC în vigoare).
+      - title: Dovada vărsării capitalului social
+        required: false
+        note: Dacă este cazul, conform actului constitutiv.
+    fields: &fields_infiintare_societate [share_capital, associates, caen_activities]
+    required_fields: [share_capital, associates]
+    legal_basis: &basis_societati
+      - citation: Legea nr. 31/1990 privind societățile
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+    notes: &notes_forms
+      - >
+        Formularele sunt cele aprobate în aplicarea Legii nr. 265/2022; verificați pe onrc.ro
+        versiunea în vigoare la data depunerii.
+
+  - key: srl.modificare
+    entity: srl
+    operation: modificare
+    title: Modificare SRL (înscriere mențiuni)
+    description: >
+      Înscrierea în registrul comerțului a modificărilor unui SRL (sediu, asociați,
+      administratori, obiect de activitate, capital, denumire...).
+    forms: &forms_modificare_societate
+      - title: Cerere de înregistrare - persoane juridice (Anexa 2a, înscriere mențiuni)
+        note: >
+          Același formular ca la înmatriculare, completat la "înscriere mențiuni". docfill are
+          configurată doar varianta de înmatriculare; adăugați documentul standard pentru
+          mențiuni.
+    documents: &documents_modificare_societate
+      - title: Hotărârea adunării generale / decizia asociatului unic
+        doc_type: hotarare_aga
+      - title: Actul constitutiv actualizat
+        doc_type: act_constitutiv
+        required: false
+        note: Când modificarea schimbă actul constitutiv.
+      - title: Dovada noului sediu
+        doc_type: dovada_sediu
+        required: false
+        note: La schimbarea sediului social sau deschiderea unui punct de lucru.
+      - title: Declarația privind beneficiarul real
+        doc_type: declaratie_beneficiar_real
+        required: false
+        note: Când se schimbă beneficiarii reali.
+      - title: Actele justificative ale fiecărei mențiuni
+        note: De exemplu actele de identitate ale noilor asociați sau administratori.
+    fields: &fields_modificare [company_name, company_registration_number, company_cui, requested_changes]
+    required_fields: &required_modificare [company_registration_number, company_cui, requested_changes]
+    legal_basis: *basis_societati
+    notes: *notes_forms
+
+  - key: srl.radiere
+    entity: srl
+    operation: radiere
+    title: Radiere SRL
+    description: Radierea unui SRL din registrul comerțului, după dizolvare și lichidare.
+    forms: &forms_radiere_societate
+      - title: Cerere de înregistrare - persoane juridice (Anexa 2a, radiere)
+        note: >
+          Același formular, completat la "radiere". docfill are configurată doar varianta de
+          înmatriculare; adăugați documentul standard pentru radiere.
+    documents: &documents_radiere_societate
+      - title: Hotărârea de dizolvare (și lichidare) a societății
+        doc_type: hotarare_aga
+      - title: Situațiile financiare / bilanțul de lichidare
+        note: Conform procedurii de lichidare aplicate.
+      - title: Certificatul de înregistrare
+        doc_type: certificat_inregistrare
+        required: false
+        note: În original, dacă este cerut.
+    fields: &fields_radiere [company_name, company_registration_number, company_cui, closure_basis]
+    required_fields: &required_radiere [company_registration_number, company_cui, closure_basis]
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+        article: art. 235
+        note: dizolvarea și lichidarea simultană (una dintre căile posibile)
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+    notes:
+      - >
+        Radierea presupune dizolvarea și lichidarea societății; procedura diferă (dizolvare cu
+        lichidare simultană, lichidare prin lichidator, dizolvare judiciară...). Verificați calea
+        aplicabilă și actele cerute pentru ea.
+
+  # ------------------------------------------------------------------ SRL-D
+  - key: srl-d.infiintare
+    entity: srl-d
+    operation: infiintare
+    title: Înființare SRL-D (înmatriculare)
+    description: Înmatricularea unui SRL în regimul întreprinzătorilor debutanți.
+    forms: *forms_infiintare_societate
+    documents:
+      - title: Actul constitutiv
+        doc_type: act_constitutiv
+      - title: Dovada sediului social
+        doc_type: dovada_sediu
+      - title: Actele de identitate ale asociaților și administratorilor
+        doc_type: id_card
+      - title: Declarația privind beneficiarul real
+        doc_type: declaratie_beneficiar_real
+      - title: Declarațiile privind îndeplinirea condițiilor de întreprinzător debutant
+        note: Conform OUG nr. 6/2011 (verificați regimul în vigoare).
+      - title: Specimenul de semnătură al administratorului
+        doc_type: specimen_semnatura
+        required: false
+    fields: *fields_infiintare_societate
+    required_fields: [share_capital, associates]
+    legal_basis:
+      - citation: OUG nr. 6/2011 pentru stimularea înființării și dezvoltării microîntreprinderilor de către întreprinzătorii debutanți în afaceri
+      - citation: Legea nr. 31/1990 privind societățile
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+    notes:
+      - Verificați dacă regimul SRL-D mai poate fi folosit și în ce condiții la data depunerii.
+      - >
+        Formularele sunt cele aprobate în aplicarea Legii nr. 265/2022; verificați pe onrc.ro
+        versiunea în vigoare la data depunerii.
+
+  - key: srl-d.modificare
+    entity: srl-d
+    operation: modificare
+    title: Modificare SRL-D (înscriere mențiuni)
+    description: Înscrierea modificărilor unui SRL-D.
+    forms: *forms_modificare_societate
+    documents: *documents_modificare_societate
+    fields: *fields_modificare
+    required_fields: *required_modificare
+    legal_basis:
+      - citation: OUG nr. 6/2011 pentru stimularea înființării și dezvoltării microîntreprinderilor de către întreprinzătorii debutanți în afaceri
+      - citation: Legea nr. 31/1990 privind societățile
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+    notes: *notes_forms
+
+  - key: srl-d.radiere
+    entity: srl-d
+    operation: radiere
+    title: Radiere SRL-D
+    description: Radierea unui SRL-D din registrul comerțului.
+    forms: *forms_radiere_societate
+    documents: *documents_radiere_societate
+    fields: *fields_radiere
+    required_fields: *required_radiere
+    legal_basis: *basis_societati
+    notes:
+      - Radierea presupune dizolvarea și lichidarea; verificați calea aplicabilă.
+
+  # ------------------------------------------------------------------ SA
+  - key: sa.infiintare
+    entity: sa
+    operation: infiintare
+    title: Înființare SA (înmatriculare)
+    description: Înmatricularea unei societăți pe acțiuni în registrul comerțului.
+    forms: *forms_infiintare_societate
+    documents:
+      - title: Actul constitutiv (contract de societate și / sau statut)
+        doc_type: act_constitutiv
+      - title: Dovada sediului social
+        doc_type: dovada_sediu
+      - title: Actele de identitate ale acționarilor fondatori și administratorilor
+        doc_type: id_card
+      - title: Declarația privind beneficiarul real
+        doc_type: declaratie_beneficiar_real
+        legal_basis:
+          - citation: Legea nr. 129/2019 pentru prevenirea și combaterea spălării banilor și finanțării terorismului
+      - title: Dovada vărsării capitalului social
+        note: În condițiile Legii nr. 31/1990 pentru capitalul subscris la constituire.
+      - title: Raportul de evaluare a aporturilor în natură
+        required: false
+        note: Numai dacă există aporturi în natură.
+      - title: Specimenele de semnătură ale administratorilor
+        doc_type: specimen_semnatura
+        required: false
+    fields: *fields_infiintare_societate
+    required_fields: [share_capital, associates]
+    legal_basis: *basis_societati
+    notes: *notes_forms
+
+  - key: sa.modificare
+    entity: sa
+    operation: modificare
+    title: Modificare SA (înscriere mențiuni)
+    description: Înscrierea modificărilor unei societăți pe acțiuni.
+    forms: *forms_modificare_societate
+    documents:
+      - title: Hotărârea adunării generale a acționarilor / a consiliului de administrație
+        doc_type: hotarare_aga
+      - title: Actul constitutiv actualizat
+        doc_type: act_constitutiv
+        required: false
+      - title: Dovada publicării convocatorului / a hotărârii
+        required: false
+        note: Dacă este cazul.
+      - title: Declarația privind beneficiarul real
+        doc_type: declaratie_beneficiar_real
+        required: false
+      - title: Actele justificative ale fiecărei mențiuni
+    fields: *fields_modificare
+    required_fields: *required_modificare
+    legal_basis: *basis_societati
+    notes: *notes_forms
+
+  - key: sa.radiere
+    entity: sa
+    operation: radiere
+    title: Radiere SA
+    description: Radierea unei societăți pe acțiuni, după dizolvare și lichidare.
+    forms: *forms_radiere_societate
+    documents: *documents_radiere_societate
+    fields: *fields_radiere
+    required_fields: *required_radiere
+    legal_basis: *basis_societati
+    notes:
+      - Radierea presupune dizolvarea și lichidarea; verificați calea aplicabilă.

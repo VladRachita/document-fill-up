@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from docfill.config import Settings, get_settings
 from docfill.doctypes import DocTypeClassifier
 from docfill.extraction import FieldExtractor
+from docfill.knowledge import KnowledgeBase
 from docfill.learning import LearningStore
 from docfill.pipeline import DocFill
 from docfill.templates import TemplateRepository, make_session_factory
@@ -21,6 +22,7 @@ class App:
     sessions: sessionmaker[Session]
     learning: LearningStore
     docfill: DocFill
+    knowledge: KnowledgeBase
 
     def templates(self) -> list[StandardDocument]:
         with self.sessions() as session:
@@ -46,11 +48,12 @@ def build_app(settings: Settings | None = None, use_ner: bool = True) -> App:
         with sessions() as session:
             return TemplateRepository(session).list()
 
+    knowledge = KnowledgeBase(sessions, templates=lambda: [t.name for t in templates()])
     docfill = DocFill(
         settings,
         extractor,
-        classifier=DocTypeClassifier(learning.doc_examples),
+        classifier=DocTypeClassifier(learning.doc_examples, knowledge.doc_types),
         templates=templates,
         memory=learning.remembered,
     )
-    return App(settings, sessions, learning, docfill)
+    return App(settings, sessions, learning, docfill, knowledge)

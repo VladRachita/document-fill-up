@@ -477,6 +477,21 @@ class LearningStore:
         if stale:
             session.execute(delete(DocExample).where(DocExample.id.in_(stale)))
 
+    def add_doc_examples(self, doc_type: str, texts: Iterable[str]) -> int:
+        """Teach the document classifier with example documents of ``doc_type`` (digits are
+        masked, as for reviewed documents)."""
+        added = 0
+        with self._sessions() as session:
+            for text in texts:
+                if text.strip():
+                    session.add(DocExample(doc_type=doc_type, text=mask_text(text, [])[:20000]))
+                    added += 1
+            if added:
+                self._trim_examples(session, doc_type)
+            session.commit()
+        self.invalidate()
+        return added
+
     def remember_values(self, values: dict[str, str]) -> int:
         with self._sessions() as session:
             for name, value in values.items():

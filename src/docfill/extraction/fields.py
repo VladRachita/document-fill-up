@@ -541,6 +541,31 @@ _SPECS = [
         (),
         4000,
     ),
+    # Used by the legal checks of the procedures (see docfill.knowledge).
+    _f(
+        "share_capital",
+        "Share capital (capital social, lei)",
+        "short",
+        "company",
+        ("capital social", "capitalul social", "capital social subscris"),
+        30,
+    ),
+    _f(
+        "associates",
+        "Associates / shareholders (one per line: name | CNP/CUI | share)",
+        "list",
+        "company",
+        (),
+        4000,
+    ),
+    _f(
+        "family_members",
+        "Family members of the IF (one per line: name | CNP)",
+        "list",
+        "company",
+        (),
+        2000,
+    ),
     # ---------------------------------------------------------------- request / filing
     _f(
         "orc_office",
@@ -601,6 +626,15 @@ _SPECS = [
         4000,
     ),
     _f("attached_pages_total", "Total pages submitted", "short", "filing", (), 10),
+    _f(
+        "requested_changes",
+        "Requested changes (mențiuni, one per line)",
+        "list",
+        "filing",
+        (),
+        4000,
+    ),
+    _f("closure_basis", "Legal basis of the closure (temeiul radierii)", "text", "filing", (), 200),
     # ---------------------------------------------------------------- filed by (XII)
     _f("filer_last_name", "Filed by: last name", "name", "filer", (), 80),
     _f("filer_first_name", "Filed by: first name", "name", "filer", (), 80),

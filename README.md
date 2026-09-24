@@ -5,10 +5,16 @@ them, **detects what kind of document** each one is, **extracts the data** a sta
 needs and **fills the standard documents stored in a database**, exporting **new PDFs**. Every
 document you check in the wizard **teaches it**, so errors decrease over time.
 
-It ships ready for Romanian company registration: the source is the **Romanian identity card
-(CI)** (a birth certificate or an already filled form can be added), the results are the official
-**ONRC Anexa 2a** (cerere de înregistrare) and **ONRC Anexa 4** (declarație condiții de
-funcționare) PDF forms.
+It is built for **Romanian trade register work**: opening, changing and closing companies
+(**SRL, SRL-D, SA**) and authorised natural persons (**PFA, II, IF**). A **legal knowledge base**
+knows each procedure (forms, documents of the file, legal checks with the article they come
+from) and can be **fed and corrected over time**: laws, rules, procedures and document types,
+each versioned and verified by a named person (see [Legal knowledge](#legal-knowledge-romania)).
+
+The source is typically the **Romanian identity card (CI)** (a birth certificate, an act
+constitutiv or an already filled form can be added); the results are the official **ONRC
+Anexa 2a** (cerere de înregistrare) and **ONRC Anexa 4** (declarație condiții de funcționare)
+PDF forms.
 
 ```
  CI photo / scan, birth certificate, filled forms, PDF / DOCX / PNG / JPG
@@ -26,13 +32,13 @@ funcționare) PDF forms.
    │ 4. Extract  │   digits, address parts, spaCy NER; derivations and cross-checks
    └──────┬──────┘
    ┌──────▼──────┐   the stored standard documents, used verbatim (checksum-protected);
-   │ 5. Review   │   wizard: see and correct every value live
-   └──────┬──────┘
+   │ 5. Review   │   wizard: see and correct every value live; the procedure's legal checks
+   └──────┬──────┘   (capital, associates, firm name, age...) with the article they cite
    ┌──────▼──────┐   PDF forms filled with an embedded Unicode font (ș, ț, ă displayed in
    │ 6. Export   │   every viewer), text documents rendered with ReportLab
    └──────┬──────┘
    ┌──────▼──────┐   calibrate confidence, learn labels and spellings, retrain the document
-   │ 7. Learn    │   classifier, remember the filer's own details
+   │ 7. Learn    │   classifier, remember the filer's own details, flag rules people override
    └─────────────┘
 ```
 
@@ -42,7 +48,8 @@ funcționare) PDF forms.
 |---|---|
 | Reading | `pypdf`, `pypdfium2`, `python-docx`, `Pillow`, `pytesseract` + Tesseract OCR |
 | Cleaning | `ftfy`, regular expressions, Luhn / IBAN mod-97 checks |
-| Machine learning | `scikit-learn` (document type classifier), `spaCy` NER, `pycountry` |
+| Machine learning | `scikit-learn` (document type classifier, TF-IDF search of laws), `spaCy` NER, `pycountry` |
+| Legal knowledge | versioned YAML entries (legal forms, procedures, declarative rules, document types), fed laws split into articles |
 | Validation | CNP control digit, ICAO 9303 MRZ check digits, date/IBAN/e-mail checks |
 | Standard documents | `SQLAlchemy` 2 (SQLite by default, PostgreSQL via URL), `PyYAML`, `pydantic` |
 | PDF export | `pypdf` (AcroForm filling) + `ReportLab` (Unicode appearances, text documents) |
@@ -63,6 +70,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m spacy download en_core_web_sm       # ML model for free text
 docfill templates seed                        # load the standard documents (ONRC forms...)
+docfill knowledge seed                        # load the legal knowledge (procedures, rules...)
 ```
 
 Or with Docker (OCR, fonts and the model included; wizard and API on http://localhost:8000):
@@ -78,9 +86,12 @@ docker run -p 8000:8000 -v docfill-data:/data docfill
 docfill serve                 # open http://127.0.0.1:8000
 ```
 
-1. **Documents.** Tick the reference documents to produce (e.g. *Anexa 2a* and *Anexa 4*
-   together: they are filled from the same data) and drop the source files (identity card,
-   birth certificate, an already filled form...). *Fill in by hand* is also possible.
+1. **Documents.** Choose **what you are doing**: the legal form (SRL, SRL-D, SA, PFA, II, IF)
+   and the operation (înființare, modificare, radiere). docfill ticks the forms of that
+   procedure (e.g. *Anexa 2a* and *Anexa 4* together: they are filled from the same data), lists
+   the **documents of the file** (dosar) and its legal checks, and shows which knowledge is not
+   verified yet. Then drop the source files (identity card, birth certificate, act constitutiv,
+   an already filled form...). *Fill in by hand* is also possible.
 2. **Scan & clean.** For each file: the **detected document type** with its confidence (change
    it if wrong; the classifier learns from it), the text read from the file next to the
    cleaned text (**fix OCR mistakes there, fields are re-extracted as you type**), what was
@@ -93,12 +104,20 @@ docfill serve                 # open http://127.0.0.1:8000
    click away. **Problems are shown live** (invalid CNP, date of birth that does not match the
    CNP, expired identity card, bad IBAN...) and derivable values are filled as you type (date
    of birth and sex from the CNP, trade register office from the company county...). A **live
-   preview** of each reference document follows every keystroke.
-4. **Save PDF.** Choose the file name; one PDF per reference document is saved in the output
-   folder (`DOCFILL_OUTPUT_DIR`, never overwritten) and downloaded. The page shows what docfill
-   learned from the review.
+   preview** of each reference document follows every keystroke. The procedure's **legal
+   checks** run live too (minimum capital of an SA, number of associates, the legal form in the
+   firm name, the holder's age...), each with its legal basis and, when the law was fed to
+   docfill, the article's text.
+4. **Save PDF.** The **file checklist** shows the forms docfill created, those still to prepare
+   and the supporting documents (ticked when an uploaded file was recognised as that document).
+   A failed legal check of level *error* must be fixed or explicitly acknowledged. Choose the
+   file name; one PDF per reference document is saved in the output folder
+   (`DOCFILL_OUTPUT_DIR`, never overwritten) and downloaded. The page shows what docfill learned
+   from the review, including the checks you overrode (recorded so rules get reviewed).
 
-The same flow runs in the terminal: `docfill wizard ci.jpg -t onrc-anexa-2a -t onrc-anexa-4`.
+The same review runs in the terminal: `docfill wizard ci.jpg -t onrc-anexa-2a -t onrc-anexa-4`
+(procedures and legal checks are in the web wizard; in the terminal use
+`docfill knowledge check PROCEDURE -s FIELD=VALUE`).
 
 ## Romanian documents
 
@@ -146,6 +165,72 @@ docfill learn reset --yes               # forget everything learned
 Privacy: review outcomes store no values, learned labels store label words only, document-type
 examples have every reviewed value and every digit removed; only `remember` fields keep values
 (your own details). Everything stays in your database.
+
+## Legal knowledge (Romania)
+
+docfill is used for Romanian trade register procedures. What it knows about them lives in a
+**knowledge base** (in the database, next to the standard documents) that people feed, correct
+and verify over time. Open it at **http://127.0.0.1:8000/knowledge**, or use
+`docfill knowledge ...` and the `/knowledge/...` API.
+
+| Kind | What it holds | Bundled |
+|---|---|---|
+| `entity` | a legal form | SRL, SRL-D, SA (societăți), PFA, II, IF (persoane fizice) |
+| `procedure` | a legal form × an operation: the official forms (and which docfill fills), the documents of the file, extra fields to collect, legal basis | 18: every form × înființare / modificare / radiere |
+| `rule` | a legal check with its legal basis | 22, e.g. SA capital ≥ 90.000 lei and ≥ 2 shareholders (Legea 31/1990 art. 10), SRL ≤ 50 associates (art. 12), legal form in the firm name, PFA / II holder ≥ 18 years, IF ≥ 2 members, CAEN classes per PFA / II / IF |
+| `doc_type` | a document the classifier learns to recognise | act constitutiv, dovada sediului, hotărâre AGA / decizie asociat unic, certificat de înregistrare, declarație beneficiar real, specimen de semnătură, acord de constituire IF |
+
+**Verified by people.** Everything starts as `draft`. A lawyer, notary or expert checks an
+entry against the law in force and marks it `verified` (who and when are recorded); any later
+change makes it `draft` again. The wizard shows which knowledge behind a procedure is not
+verified yet. **The bundled knowledge is a starting point written from the laws it cites; it
+must be verified before it is relied on** (values that changed recently, such as the minimum
+share capital of an SRL or the SRL-D regime, say so in their notes).
+
+**How it improves over time:**
+
+| Fed by | Effect |
+|---|---|
+| **Knowledge (YAML)** | Add or correct legal forms, procedures, rules, document types. Every change is a new version kept in the history; `export` gives it all back as YAML (review it, keep it under version control). |
+| **Laws** | Feed the text of a law or ONRC guide (TXT, HTML saved from legislatie.just.ro, PDF, DOCX): it is split into articles, searchable (accents optional), and the cited article is shown next to each rule. |
+| **Document examples** | `teach` a document type with examples; every document type confirmed in the wizard is an example too. |
+| **Saved files** | Each file saved with a procedure records which checks passed, failed or were overridden, and which documents were provided. Rules often overridden are flagged for review; documents often provided but missing from a procedure are suggested. |
+| **docfill updates** | `docfill knowledge seed` brings new bundled knowledge; entries you changed or retired are never overwritten. |
+
+Rules are declarative (no code), so they can be written by non-programmers:
+
+```yaml
+rules:
+  - key: sa-capital-minim
+    title: Capitalul social minim al unei SA
+    applies_to: {entities: [sa], operations: [infiintare]}
+    severity: error            # error: must be fixed or acknowledged; warning; info
+    check: {type: min_amount, field: share_capital, value: 90000}
+    message: Capitalul social al unei societăți pe acțiuni nu poate fi mai mic de 90.000 lei.
+    legal_basis:
+      - {citation: Legea nr. 31/1990 privind societățile, article: art. 10 alin. (1)}
+```
+
+Checks: `required`, `min_amount` / `max_amount` (`90.000 lei`), `min_count` / `max_count` (one
+item per line), `contains_any` (`S.R.L.` == `SRL`), `contains_field`, `min_age` (from the CNP),
+`pattern`, `lines_pattern`, `one_of`. A procedure lists its forms (`template:` the docfill
+standard document, or none when docfill cannot fill it yet) and its documents (`doc_type:` to
+tick them off automatically); see `src/docfill/knowledge/bundled/` for complete examples.
+
+```bash
+docfill knowledge seed                                   # bundled knowledge (keeps your changes)
+docfill knowledge list --kind rule --status draft        # what still needs verifying
+docfill knowledge show rule/sa-capital-minim --history   # YAML + every change
+docfill knowledge verify rule/sa-capital-minim --by "Av. Maria Ionescu" --note "forma în vigoare"
+docfill knowledge add corrections.yaml                   # add / correct (draft again)
+docfill knowledge retire rule/firma-sa --by "Av. Maria Ionescu" --note "abrogat"
+docfill knowledge ingest legea31.html --citation "Legea nr. 31/1990" --url https://legislatie.just.ro/...
+docfill knowledge search capital social minim SA
+docfill knowledge teach act_constitutiv examples/*.pdf
+docfill knowledge check sa.infiintare -s share_capital="50.000 lei" -s associates="A"   # exit 1 on errors
+docfill knowledge stats                                  # rules to review, suggested documents
+docfill knowledge export knowledge.yaml
+```
 
 ## Standard documents
 
@@ -196,6 +281,7 @@ docfill extract examples/samples/ci_popescu.jpg # what was found, with confidenc
 docfill fill ci.jpg -t onrc-anexa-2a -o out/anexa2a.pdf --set company_name="Exemplu SRL"
 docfill wizard ci.jpg -t onrc-anexa-2a -t onrc-anexa-4
 docfill templates list | show NAME | add FILE.yaml | seed | remove NAME
+docfill knowledge seed | list | show | add | verify | retire | export | ingest | texts | search | teach | check | stats
 ```
 
 `fill` stops and lists required fields it could not find; provide them with `--set` or use
@@ -215,6 +301,20 @@ docfill templates list | show NAME | add FILE.yaml | seed | remove NAME
 | POST | `/wizard/preview` | Live previews, validation problems, derived values |
 | POST | `/wizard/export` | Save one PDF per reference document and learn from the review |
 | GET | `/wizard/files/{name}`, `/learning/stats` | Download a saved PDF; what was learned |
+| GET | `/knowledge` | The knowledge page (search, feed, verify, feedback) |
+| GET | `/knowledge/cases`, `/knowledge/procedures/{key}` | Legal forms, operations, procedures (forms, documents, rules) |
+| POST | `/knowledge/check` | Run a procedure's legal checks on values |
+| GET / POST | `/knowledge/entries`, `/knowledge/entries/{kind}/{key}` | List, read (YAML + history), add or correct entries |
+| POST | `/knowledge/entries/{kind}/{key}/verify`, `.../retire` | Verify (by a named person) or retire an entry |
+| GET / POST | `/knowledge/export`, `/knowledge/seed` | All knowledge as YAML; load the bundled knowledge |
+| GET / POST / DELETE | `/knowledge/texts` | Laws and guides fed to docfill |
+| GET | `/knowledge/search?q=` | Search the laws and the knowledge |
+| POST | `/knowledge/doctypes/{name}/examples` | Teach the classifier with example documents |
+| GET | `/knowledge/stats` | Status, rules to review, suggested documents |
+
+The wizard endpoints accept an optional `procedure` (e.g. `srl.infiintare`): its fields are
+asked for, its legal checks are returned by `/wizard/preview`, and `/wizard/export` refuses
+failed error-level checks unless `legal_acknowledged` is set (overrides are recorded).
 
 ## Configuration
 
@@ -238,7 +338,9 @@ Environment variables (or `.env`, see `.env.example`):
 src/docfill/
   readers/             PDF (text, form values, OCR of scans), DOCX, images; multi-variant OCR
   sanitize.py          text cleaning and redaction
-  doctypes.py          document type classifier (scikit-learn) and form matching
+  doctypes.py          document type classifier (scikit-learn), incl. types taught as knowledge
+  knowledge/           legal knowledge: specs, declarative rules, versioned store, laws + search,
+    bundled/           Romanian legal forms, procedures, rules and document types (YAML)
   extraction/          field catalog, label rules, patterns (CNP, MRZ...), NER, derivations
   ro.py, mrz.py        Romanian knowledge (counties, CNP, addresses, places) and MRZ parsing
   validation.py        cross-checks and live validation
@@ -247,7 +349,7 @@ src/docfill/
   standard_documents/  bundled standard documents (ONRC Anexa 2a / 4 blank forms + YAML)
   export/              PDF forms (fill, blank, inspect) and text rendering
   pipeline.py, app.py  read -> clean -> detect -> extract -> fill; wiring with learning
-  wizard.py, web/      review logic and the web wizard
+  wizard.py, web/      review logic, the web wizard and the knowledge page
   samples.py           synthetic documents (fictitious Romanian identity card)
   cli.py, api.py       Typer CLI and FastAPI app
 tests/                 pytest suite (fictitious data only)
@@ -261,6 +363,16 @@ ruff check src tests examples && ruff format --check src tests examples
 ```
 
 ## Limitations and next steps
+
+* **Forms not in docfill yet.** docfill fills the ONRC Anexa 2a (înmatriculare) and Anexa 4.
+  The procedures list the other official forms they need (Anexa 2a for mențiuni / radiere, the
+  forms for PFA / II / IF, the beneficial owner declaration) as "not in docfill yet"; add each
+  with `docfill forms inspect` + `docfill templates add`, then set its `template` in the
+  procedure. Until then, those procedures cannot produce PDFs.
+* **The bundled legal knowledge is draft** and must be verified by a legal professional against
+  the law in force; it has no expert opinion beyond the rules written in it. docfill does not
+  use a large language model: it checks values against the rules and searches the laws you feed
+  it, locally.
 
 * Handwriting (old birth certificates) is not readable by Tesseract; a handwriting OCR model
   (or a cloud OCR service, if sending the data out is acceptable) would be needed.

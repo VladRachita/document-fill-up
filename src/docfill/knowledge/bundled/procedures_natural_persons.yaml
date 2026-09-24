@@ -1,0 +1,193 @@
+# Proceduri pentru persoane fizice: PFA, II, IF x înființare, modificare, radiere
+# (OUG nr. 44/2008). Aceleași convenții ca în procedures_companies.yaml; livrate ca "draft".
+procedures:
+  # ------------------------------------------------------------------ PFA
+  - key: pfa.infiintare
+    entity: pfa
+    operation: infiintare
+    title: Înființare PFA (înregistrare)
+    description: Înregistrarea unei persoane fizice autorizate în registrul comerțului.
+    forms: &forms_infiintare_pf
+      - title: Cerere de înregistrare - persoane fizice (PFA, II, IF)
+        note: Nu este încă în docfill; adăugați formularul ONRC pentru persoane fizice.
+      - title: Declarație privind îndeplinirea condițiilor de funcționare (Anexa 4)
+        template: onrc-anexa-4
+        note: Pentru sediul profesional și activitățile CAEN declarate.
+    documents: &documents_infiintare_pfa
+      - title: Actul de identitate al titularului
+        doc_type: id_card
+      - title: Dovada sediului profesional
+        doc_type: dovada_sediu
+        note: Contract de comodat / închiriere sau act de proprietate.
+      - title: Specimenul de semnătură al titularului
+        doc_type: specimen_semnatura
+        required: false
+        note: Dacă este cerut (verificați cerințele ORC în vigoare).
+      - title: Dovada calificării profesionale
+        required: false
+        note: Numai pentru activitățile care cer o calificare sau o autorizare specială.
+    fields: &fields_infiintare_pf [company_name, caen_activities]
+    required_fields: &required_infiintare_pf [company_name]
+    legal_basis: &basis_pf
+      - citation: OUG nr. 44/2008 privind desfășurarea activităților economice de către persoanele fizice autorizate, întreprinderile individuale și întreprinderile familiale
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+    notes: &notes_pf
+      - >
+        Formularele sunt cele aprobate în aplicarea Legii nr. 265/2022; verificați pe onrc.ro
+        versiunea în vigoare la data depunerii.
+
+  - key: pfa.modificare
+    entity: pfa
+    operation: modificare
+    title: Modificare PFA (înscriere mențiuni)
+    description: Înscrierea modificărilor unei PFA (sediu, activități, date de identificare...).
+    forms: &forms_modificare_pf
+      - title: Cerere de înregistrare mențiuni - persoane fizice
+        note: Nu este încă în docfill; adăugați formularul ONRC pentru persoane fizice.
+    documents: &documents_modificare_pf
+      - title: Actul de identitate al titularului
+        doc_type: id_card
+      - title: Certificatul de înregistrare
+        doc_type: certificat_inregistrare
+        required: false
+      - title: Dovada noului sediu profesional
+        doc_type: dovada_sediu
+        required: false
+        note: La schimbarea sediului.
+      - title: Actele justificative ale fiecărei mențiuni
+    fields: &fields_modificare_pf [company_name, company_registration_number, company_cui, requested_changes, caen_activities]
+    required_fields: &required_modificare_pf [company_registration_number, company_cui, requested_changes]
+    legal_basis: *basis_pf
+    notes: *notes_pf
+
+  - key: pfa.radiere
+    entity: pfa
+    operation: radiere
+    title: Radiere PFA
+    description: Radierea unei PFA din registrul comerțului (încetarea activității).
+    forms: &forms_radiere_pf
+      - title: Cerere de radiere - persoane fizice
+        note: Nu este încă în docfill; adăugați formularul ONRC pentru persoane fizice.
+    documents: &documents_radiere_pf
+      - title: Actul de identitate al titularului
+        doc_type: id_card
+      - title: Certificatul de înregistrare
+        doc_type: certificat_inregistrare
+        required: false
+        note: În original, dacă este cerut.
+    fields: &fields_radiere_pf [company_name, company_registration_number, company_cui, closure_basis]
+    required_fields: &required_radiere_pf [company_registration_number, company_cui, closure_basis]
+    legal_basis: *basis_pf
+    notes: *notes_pf
+
+  # ------------------------------------------------------------------ II
+  - key: ii.infiintare
+    entity: ii
+    operation: infiintare
+    title: Înființare întreprindere individuală (înregistrare)
+    description: Înregistrarea unei întreprinderi individuale în registrul comerțului.
+    forms: *forms_infiintare_pf
+    documents:
+      - title: Actul de identitate al întreprinzătorului
+        doc_type: id_card
+      - title: Dovada sediului profesional
+        doc_type: dovada_sediu
+      - title: Specimenul de semnătură al întreprinzătorului
+        doc_type: specimen_semnatura
+        required: false
+      - title: Dovada calificării profesionale
+        required: false
+        note: Numai pentru activitățile care cer o calificare sau o autorizare specială.
+    fields: *fields_infiintare_pf
+    required_fields: *required_infiintare_pf
+    legal_basis: *basis_pf
+    notes: *notes_pf
+
+  - key: ii.modificare
+    entity: ii
+    operation: modificare
+    title: Modificare întreprindere individuală (înscriere mențiuni)
+    description: Înscrierea modificărilor unei întreprinderi individuale.
+    forms: *forms_modificare_pf
+    documents: *documents_modificare_pf
+    fields: *fields_modificare_pf
+    required_fields: *required_modificare_pf
+    legal_basis: *basis_pf
+    notes: *notes_pf
+
+  - key: ii.radiere
+    entity: ii
+    operation: radiere
+    title: Radiere întreprindere individuală
+    description: Radierea unei întreprinderi individuale (încetarea activității).
+    forms: *forms_radiere_pf
+    documents: *documents_radiere_pf
+    fields: *fields_radiere_pf
+    required_fields: *required_radiere_pf
+    legal_basis: *basis_pf
+    notes: *notes_pf
+
+  # ------------------------------------------------------------------ IF
+  - key: if.infiintare
+    entity: if
+    operation: infiintare
+    title: Înființare întreprindere familială (înregistrare)
+    description: Înregistrarea unei întreprinderi familiale în registrul comerțului.
+    forms: *forms_infiintare_pf
+    documents:
+      - title: Acordul de constituire a întreprinderii familiale
+        doc_type: acord_constituire_if
+      - title: Actele de identitate ale membrilor familiei
+        doc_type: id_card
+      - title: Dovada sediului profesional
+        doc_type: dovada_sediu
+      - title: Specimenul de semnătură al reprezentantului
+        doc_type: specimen_semnatura
+        required: false
+      - title: Dovada calificării profesionale
+        required: false
+        note: Numai pentru activitățile care cer o calificare sau o autorizare specială.
+    fields: [company_name, caen_activities, family_members]
+    required_fields: [company_name, family_members]
+    legal_basis: *basis_pf
+    notes: *notes_pf
+
+  - key: if.modificare
+    entity: if
+    operation: modificare
+    title: Modificare întreprindere familială (înscriere mențiuni)
+    description: Înscrierea modificărilor unei întreprinderi familiale (membri, sediu, activități...).
+    forms: *forms_modificare_pf
+    documents:
+      - title: Actul de identitate al reprezentantului
+        doc_type: id_card
+      - title: Acordul membrilor privind modificarea
+        doc_type: acord_constituire_if
+        required: false
+        note: De exemplu la intrarea sau retragerea unui membru.
+      - title: Dovada noului sediu profesional
+        doc_type: dovada_sediu
+        required: false
+      - title: Actele justificative ale fiecărei mențiuni
+    fields: [company_name, company_registration_number, company_cui, requested_changes, family_members]
+    required_fields: *required_modificare_pf
+    legal_basis: *basis_pf
+    notes: *notes_pf
+
+  - key: if.radiere
+    entity: if
+    operation: radiere
+    title: Radiere întreprindere familială
+    description: Radierea unei întreprinderi familiale (încetarea activității).
+    forms: *forms_radiere_pf
+    documents:
+      - title: Actul de identitate al reprezentantului
+        doc_type: id_card
+      - title: Certificatul de înregistrare
+        doc_type: certificat_inregistrare
+        required: false
+        note: În original, dacă este cerut.
+    fields: *fields_radiere_pf
+    required_fields: *required_radiere_pf
+    legal_basis: *basis_pf
+    notes: *notes_pf
