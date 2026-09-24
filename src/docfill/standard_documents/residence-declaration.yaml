@@ -1,0 +1,27 @@
+name: residence-declaration
+title: Declaration of Residence
+description: >
+  Sworn statement of a person's home address. Uses the person's name and full home address.
+kind: text
+optional_fields:
+  - region
+body: |
+  # DECLARATION OF RESIDENCE
+
+  I, the undersigned {{ first_name }} {{ last_name | upper }}, hereby declare on my own
+  responsibility that my permanent home address is:
+
+  Street: {{ street_address }}
+  Postal code: {{ postal_code }}
+  City: {{ city }}
+  County / State: {{ region }}
+  Country: {{ country }}
+
+  I confirm that the information above is true and complete, and I understand that
+  providing false information may have legal consequences.
+
+  ---
+
+  Date: {{ today }}
+
+  Signature: ____________________

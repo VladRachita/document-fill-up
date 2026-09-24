@@ -1,0 +1,28 @@
+name: personal-data-sheet
+title: Personal Data Sheet
+description: >
+  Summary sheet with a person's identity and home/place details.
+kind: text
+optional_fields:
+  - place_of_birth
+  - region
+body: |
+  # PERSONAL DATA SHEET
+
+  ## Identity
+
+  First name: {{ first_name }}
+  Last name: {{ last_name | upper }}
+  Place of birth: {{ place_of_birth }}
+
+  ## Home address
+
+  {{ full_address }}
+
+  City: {{ city }}
+  County / State: {{ region }}
+  Country: {{ country }}
+
+  ---
+
+  Generated on {{ today }}.
