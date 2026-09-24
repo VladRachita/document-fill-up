@@ -9,7 +9,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --no-cache-dir . \
+RUN pip install --no-cache-dir ".[postgres]" \
     && python -m spacy download en_core_web_sm
 
 RUN useradd --create-home docfill && mkdir /data && chown docfill /data

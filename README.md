@@ -81,6 +81,11 @@ docker build -t docfill .
 docker run -p 8000:8000 -v docfill-data:/data docfill
 ```
 
+For local development and testing, `docker compose up --build -d` starts docfill with
+PostgreSQL (and, with `--profile tools`, Adminer to browse the database).
+**[docs/LOCAL_TESTING.md](docs/LOCAL_TESTING.md)** describes the setup, test documents with known
+answers (good and bad scans) and scenarios to watch docfill learn from your corrections.
+
 ## The wizard
 
 ```bash
@@ -341,7 +346,7 @@ Environment variables (or `.env`, see `.env.example`):
 
 | Variable | Default | |
 |---|---|---|
-| `DOCFILL_DATABASE_URL` | `sqlite:///./docfill.db` | Any SQLAlchemy URL (standard documents and learning data) |
+| `DOCFILL_DATABASE_URL` | `sqlite:///./docfill.db` | Any SQLAlchemy URL (standard documents and learning data); PostgreSQL needs `pip install -e ".[postgres]"` |
 | `DOCFILL_OCR_LANGUAGES` | `auto` | Tesseract languages; `auto` = Romanian + English when installed |
 | `DOCFILL_OCR_DPI` | `300` | Resolution for rasterising scanned PDF pages |
 | `DOCFILL_TESSERACT_CMD` | – | Path to `tesseract` if it is not on `PATH` |
@@ -376,6 +381,8 @@ tests/                 pytest suite (fictitious data only)
 ```
 
 ## Development
+
+Local stack, test documents and learning scenarios: [docs/LOCAL_TESTING.md](docs/LOCAL_TESTING.md).
 
 ```bash
 pytest                                  # OCR / NER tests are skipped if Tesseract / the model are missing

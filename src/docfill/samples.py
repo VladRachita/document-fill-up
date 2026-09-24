@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import math
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -73,9 +74,14 @@ class Person:
 
     def mrz(self) -> list[str]:
         optional = self.cnp[0] + self.cnp[7:13]
+
+        def latin(name: str) -> str:  # the MRZ has no diacritics: ȘTEFĂNESCU -> STEFANESCU
+            decomposed = unicodedata.normalize("NFD", name.replace("-", " "))
+            return "".join(c for c in decomposed if unicodedata.category(c) != "Mn")
+
         return make_td2(
-            self.last_name.replace("-", " "),
-            self.first_name.replace("-", " "),
+            latin(self.last_name),
+            latin(self.first_name),
             self.series + self.number,
             "ROU",
             f"{self.birth:%y%m%d}",

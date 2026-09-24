@@ -1,0 +1,55 @@
+# Local stack: docfill (wizard, knowledge page and API) with PostgreSQL. See docs/LOCAL_TESTING.md.
+#
+#   docker compose up --build -d                  start: http://localhost:8000
+#   docker compose --profile tools up -d          + Adminer (browse the DB): http://localhost:8080
+#   docker compose exec app docfill learn stats   what docfill learned so far
+#   docker compose down                           stop (data is kept; add -v to delete it)
+#
+# Ports are published on 127.0.0.1 only: the API has no authentication.
+name: docfill
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: docfill
+      POSTGRES_USER: docfill
+      POSTGRES_PASSWORD: docfill
+    ports:
+      - "127.0.0.1:${DOCFILL_DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docfill -d docfill"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build: .
+    environment:
+      DOCFILL_DATABASE_URL: postgresql+psycopg://docfill:docfill@db:5432/docfill
+    ports:
+      - "127.0.0.1:${DOCFILL_PORT:-8000}:8000"
+    volumes:
+      - app-data:/data # the PDFs saved by the wizard (/data/output)
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  adminer:
+    image: adminer
+    profiles: [tools]
+    # IPv4: the image's default ([::]:8080) fails where Docker has IPv6 disabled
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "/var/www/html"]
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "127.0.0.1:${DOCFILL_ADMINER_PORT:-8080}:8080"
+    depends_on:
+      - db
+
+volumes:
+  db-data:
+  app-data:

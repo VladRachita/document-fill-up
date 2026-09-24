@@ -37,6 +37,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# PostgreSQL driver, for DOCFILL_DATABASE_URL=postgresql+psycopg://... (docker-compose.yml)
+postgres = ["psycopg[binary]>=3.1"]
 dev = [
     "pytest>=8.0",
     "httpx>=0.27",
