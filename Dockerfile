@@ -16,6 +16,7 @@ RUN useradd --create-home docfill && mkdir /data && chown docfill /data
 USER docfill
 
 ENV DOCFILL_DATABASE_URL=sqlite:////data/docfill.db \
+    DOCFILL_OUTPUT_DIR=/data/output \
     DOCFILL_OCR_LANGUAGES=eng+ron
 VOLUME /data
 EXPOSE 8000

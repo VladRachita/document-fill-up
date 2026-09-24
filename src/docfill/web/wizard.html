@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>docfill wizard</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f5f6f8; --surface: #ffffff; --surface-2: #f0f2f5; --text: #1b1f24; --muted: #5d6673;
+    --border: #d9dde3; --accent: #2f5bd3; --accent-text: #ffffff; --accent-weak: #e8eefc;
+    --ok: #16794a; --ok-bg: #e3f3ea; --warn: #8a5a00; --warn-bg: #fff3d4; --bad: #b8322a;
+    --bad-bg: #fcebea; --paper: #ffffff; --paper-text: #1b1f24; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.05);
+    --radius: 10px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171b; --surface: #1c2026; --surface-2: #232830; --text: #e7eaee; --muted: #9aa3ae;
+      --border: #333a44; --accent: #7c9cf5; --accent-text: #0f1320; --accent-weak: #253050;
+      --ok: #5fd39a; --ok-bg: #173627; --warn: #f0c060; --warn-bg: #3a2f14; --bad: #ff8a80;
+      --bad-bg: #3f1d1b; --paper: #fbfbf9; --paper-text: #1b1f24; --shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); }
+  header .wrap { display: flex; align-items: center; gap: 16px; padding-top: 12px; padding-bottom: 12px; flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 18px; }
+  .brand small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 14px; }
+  .health { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px;
+          font-size: 12.5px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .pill.ok { color: var(--ok); background: var(--ok-bg); border-color: transparent; }
+  .pill.warn { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+  .pill.bad { color: var(--bad); background: var(--bad-bg); border-color: transparent; }
+  .pill.accent { color: var(--accent); background: var(--accent-weak); border-color: transparent; }
+
+  nav.steps { display: flex; gap: 8px; margin: 20px 0 16px; flex-wrap: wrap; }
+  nav.steps button { flex: 1 1 180px; display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; text-align: left; }
+  nav.steps button:disabled { cursor: default; opacity: .55; }
+  nav.steps .num { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 600;
+     font-size: 13px; background: var(--surface-2); border: 1px solid var(--border); flex: none; }
+  nav.steps button[aria-current="step"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  nav.steps button[aria-current="step"] .num { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  nav.steps button.done .num { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  nav.steps .step-title { font-weight: 600; font-size: 14px; }
+  nav.steps .step-sub { color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 600px) {
+    nav.steps { display: grid; grid-template-columns: 1fr 1fr; }
+    nav.steps .step-sub { display: none; }
+    nav.steps button { padding: 8px 10px; }
+  }
+
+  .banner { display: none; padding: 10px 14px; border-radius: var(--radius); margin-bottom: 14px; }
+  .banner.show { display: block; }
+  .banner.error { background: var(--bad-bg); color: var(--bad); }
+  .banner.info { background: var(--accent-weak); color: var(--accent); }
+
+  section.step { display: none; }
+  section.step.active { display: block; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-review { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid-2, .grid-review { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; min-width: 0; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .card .hint { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
+  .sticky { position: sticky; top: 12px; }
+
+  select, input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  textarea { width: 100%; min-height: 340px; padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+             background: var(--surface); font-family: var(--mono); font-size: 13px; line-height: 1.5; resize: vertical; }
+  pre.raw { margin: 0; min-height: 340px; max-height: 520px; overflow: auto; padding: 10px; border-radius: 8px; background: var(--surface-2);
+            font-family: var(--mono); font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 2px 9px; border-radius: 999px; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface-2); }
+  .chip.req { border-color: var(--accent); color: var(--accent); background: var(--accent-weak); }
+
+  .drop { display: block; border: 2px dashed var(--border); border-radius: var(--radius); padding: 22px; text-align: center; cursor: pointer; background: var(--surface-2); }
+  .drop.over { border-color: var(--accent); background: var(--accent-weak); }
+  .drop strong { display: block; }
+  .drop input { display: none; }
+  ul.files { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+  ul.files li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
+  ul.files li span.name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  ul.files li span.size { color: var(--muted); font-size: 12.5px; }
+
+  .btn { padding: 9px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.link { border: none; background: none; color: var(--accent); padding: 4px 6px; font-weight: 500; }
+  .btn.small { padding: 3px 9px; font-size: 13px; font-weight: 500; }
+  .actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin: 16px 0 32px; flex-wrap: wrap; }
+  .actions .spacer { flex: 1; }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tabs button { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--accent-weak); color: var(--accent); border-color: var(--accent); }
+  .panel-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 6px; font-weight: 600; font-size: 14px; }
+  .panel-title .status { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+  .warnbox { background: var(--warn-bg); color: var(--warn); padding: 8px 12px; border-radius: 8px; margin: 0 0 12px; font-size: 13.5px; }
+
+  .progress { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13.5px; color: var(--muted); }
+  .bar { flex: 1; height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+  .bar div { height: 100%; background: var(--ok); width: 0; transition: width .2s; }
+
+  .field { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; background: var(--surface); }
+  .field.missing { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad) inset; }
+  .field.flash { box-shadow: 0 0 0 3px var(--accent-weak), 0 0 0 1px var(--accent) inset; }
+  .field .head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .field label { font-weight: 600; }
+  .field code { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .field .req-tag { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .field .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .field .msg { color: var(--bad); font-size: 13px; margin-top: 6px; }
+  .field blockquote { margin: 8px 0 0; padding: 6px 10px; border-left: 3px solid var(--border); background: var(--surface-2);
+                      border-radius: 0 6px 6px 0; font-size: 13px; font-family: var(--mono); white-space: pre-wrap; word-break: break-word; }
+  .alts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+  .alts button { padding: 2px 9px; border-radius: 999px; border: 1px dashed var(--border); background: var(--surface-2); cursor: pointer; font-size: 12.5px; }
+  details.other { margin-top: 12px; }
+  details.other summary { cursor: pointer; color: var(--muted); font-size: 13.5px; }
+  table.kv { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+  table.kv td, table.kv th { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+  .paper { background: var(--paper); color: var(--paper-text); border-radius: 6px; padding: 32px 36px; min-height: 420px;
+           box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.08); font-family: Georgia, "Times New Roman", serif; font-size: 14.5px; }
+  .paper .doc-h1 { text-align: center; font-size: 19px; margin: 0 0 14px; font-family: system-ui, sans-serif; }
+  .paper .doc-h2 { font-size: 15.5px; margin: 12px 0 6px; font-family: system-ui, sans-serif; }
+  .paper .doc-line { white-space: pre-wrap; word-break: break-word; }
+  .paper .doc-gap { height: 10px; }
+  .paper hr { border: none; border-top: 1px solid #9aa0a6; margin: 12px 0; }
+  .paper .fill { background: #dff3e7; color: #0f5132; border-radius: 3px; padding: 0 2px; cursor: pointer; }
+  .paper .blank { color: #6b7280; border-radius: 3px; cursor: pointer; }
+  .paper .blank.required { background: #fde2df; color: #9b2c24; }
+  .paper table { width: 100%; border-collapse: collapse; font-family: system-ui, sans-serif; font-size: 13.5px; }
+  .paper td, .paper th { border-bottom: 1px solid #dde1e6; padding: 6px; text-align: left; }
+
+  .filename { display: flex; align-items: stretch; }
+  .filename input { border-radius: 8px 0 0 8px; }
+  .filename span { padding: 8px 10px; border: 1px solid var(--border); border-left: none; border-radius: 0 8px 8px 0; background: var(--surface-2); color: var(--muted); }
+  .success { background: var(--ok-bg); color: var(--ok); border-radius: var(--radius); padding: 14px 16px; margin-top: 14px; }
+  .success strong { display: block; font-size: 15px; }
+  .success code { font-family: var(--mono); word-break: break-all; }
+  .check { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; }
+  .muted { color: var(--muted); }
+  .empty { color: var(--muted); padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">docfill<small>document fill-up wizard</small></div>
+    <div class="health" id="health" aria-live="polite"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="steps" id="steps" aria-label="Wizard steps"></nav>
+  <div class="banner" id="banner" role="alert"></div>
+
+  <!-- Step 1 -->
+  <section class="step" data-step="1">
+    <div class="grid-2">
+      <div class="card">
+        <h2>1. Reference document</h2>
+        <p class="hint">The standard document to fill. It is used exactly as stored; only its fields are filled in.</p>
+        <label for="template" class="muted" style="font-size:13px">Standard document</label>
+        <select id="template"></select>
+        <p id="template-desc" class="hint" style="margin-top:10px"></p>
+        <div class="muted" style="font-size:13px;margin-bottom:6px">Fields it needs (<span class="chip req" style="padding:0 6px">required</span> / optional):</div>
+        <div class="chips" id="template-fields"></div>
+      </div>
+      <div class="card">
+        <h2>2. Source documents</h2>
+        <p class="hint">Where the information comes from: PDF, Word (.docx), PNG or JPEG. Photos and scans are read with OCR. Add several files about the same person (e.g. ID card and utility bill).</p>
+        <label class="drop" id="drop">
+          <input type="file" id="file-input" multiple accept=".pdf,.docx,.png,.jpg,.jpeg">
+          <strong>Drop files here or click to choose</strong>
+          <span class="muted" style="font-size:13px">.pdf · .docx · .png · .jpg · .jpeg</span>
+        </label>
+        <ul class="files" id="file-list"></ul>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn link" id="manual-btn" type="button">No documents? Fill in by hand</button>
+      <button class="btn primary" id="scan-btn" type="button" disabled>Scan documents →</button>
+    </div>
+  </section>
+
+  <!-- Step 2 -->
+  <section class="step" data-step="2">
+    <div class="card">
+      <div class="tabs" id="doc-tabs" role="tablist"></div>
+      <div id="doc-badges" class="chips" style="margin-bottom:12px"></div>
+      <div id="doc-warnings"></div>
+      <div class="grid-2">
+        <div>
+          <div class="panel-title">Read from the file <span class="status">as extracted (read-only)</span></div>
+          <pre class="raw" id="raw-text"></pre>
+        </div>
+        <div>
+          <div class="panel-title"><label for="clean-text">Cleaned text: fix mistakes here</label> <span class="status" id="reextract-status"></span></div>
+          <textarea id="clean-text" spellcheck="false"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="panel-title">Found for this reference document <span class="status">updates as you edit the text</span></div>
+        <div class="chips" id="found-chips"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button" data-go="1">← Back</button>
+      <span class="spacer"></span>
+      <button class="btn primary" type="button" data-go="3">Review fields →</button>
+    </div>
+  </section>
+
+  <!-- Step 3 -->
+  <section class="step" data-step="3">
+    <div class="grid-review">
+      <div>
+        <div class="progress"><span id="progress-text"></span><div class="bar"><div id="progress-bar"></div></div></div>
+        <div id="fields"></div>
+        <details class="other" id="other-wrap">
+          <summary>Other data found in the documents (not used by this reference document)</summary>
+          <table class="kv" id="other-table"></table>
+        </details>
+      </div>
+      <div class="sticky">
+        <div class="panel-title">Live preview <span class="status">click a highlighted value to edit it</span></div>
+        <div class="paper" id="preview"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button" data-go="2">← Back</button>
+      <span class="spacer"></span>
+      <button class="btn primary" type="button" data-go="4">Continue to save →</button>
+    </div>
+  </section>
+
+  <!-- Step 4 -->
+  <section class="step" data-step="4">
+    <div class="grid-review">
+      <div class="card">
+        <h2>Save the filled document</h2>
+        <p class="hint" id="save-summary"></p>
+        <div id="save-missing"></div>
+        <label for="filename" class="muted" style="font-size:13px">New file name</label>
+        <div class="filename"><input type="text" id="filename" autocomplete="off"><span>.pdf</span></div>
+        <p class="hint" style="margin-top:6px">Saved in the server's output folder and downloaded to this computer. An existing file is never overwritten.</p>
+        <div class="actions" style="margin:12px 0 0">
+          <button class="btn primary" type="button" id="export-btn">Create PDF</button>
+        </div>
+        <div id="save-result"></div>
+      </div>
+      <div class="sticky">
+        <div class="panel-title">Final document</div>
+        <div class="paper" id="final-preview"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button" data-go="3">← Back</button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" id="restart-btn">Start a new document</button>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const STEPS = [
+  { title: "Documents", sub: "Reference + sources" },
+  { title: "Scan & clean", sub: "Check the text read" },
+  { title: "Review fields", sub: "Correct values live" },
+  { title: "Save PDF", sub: "Choose a file name" },
+];
+const SOURCE_LABELS = { label: "Label rule", pattern: "Pattern", ner: "ML model", derived: "Derived",
+                        manual: "Entered by you", system: "System" };
+
+const state = {
+  step: 1, maxStep: 1, templates: [], templateName: "",
+  files: [], filesDirty: true, documents: [], activeDoc: 0,
+  rows: [], otherFields: [], values: {}, manual: {},
+  preview: null, filename: "", filenameTouched: false, allowMissing: false, saved: null,
+};
+
+// ------------------------------------------------------------------ helpers
+
+const $ = (id) => document.getElementById(id);
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === false || value == null) continue;
+    if (key === "class") node.className = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value === true ? "" : value);
+  }
+  for (const child of children.flat()) {
+    if (child == null || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+/** Replace a node's children, skipping null/false placeholders for optional parts. */
+function put(node, ...children) {
+  node.replaceChildren(...children.flat().filter((child) => child != null && child !== false));
+}
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
+function showBanner(message, kind = "error") {
+  const banner = $("banner");
+  banner.className = `banner ${kind}` + (message ? " show" : "");
+  banner.textContent = message || "";
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
+  if (!response.ok) {
+    let message = `${response.status} ${response.statusText}`;
+    try {
+      const body = await response.json();
+      if (Array.isArray(body.detail)) message = body.detail.map((d) => d.msg || JSON.stringify(d)).join("; ");
+      else if (body.detail) message = body.detail;
+    } catch (_) { /* not JSON */ }
+    throw new Error(message);
+  }
+  return response;
+}
+
+const postJSON = (path, payload) =>
+  api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+
+function confidenceClass(confidence) {
+  if (confidence >= 0.85) return "ok";
+  if (confidence >= 0.6) return "warn";
+  return "bad";
+}
+
+function sizeLabel(bytes) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+function currentTemplate() {
+  return state.templates.find((t) => t.name === state.templateName);
+}
+
+// ------------------------------------------------------------------ stepper
+
+function renderSteps() {
+  const nav = $("steps");
+  nav.replaceChildren(...STEPS.map((step, index) => {
+    const number = index + 1;
+    const button = el("button", {
+      type: "button",
+      class: number < state.step ? "done" : "",
+      "aria-current": number === state.step ? "step" : false,
+      disabled: number > state.maxStep,
+      onclick: () => goTo(number),
+    }, el("span", { class: "num" }, number < state.step ? "✓" : number),
+       el("span", {}, el("div", { class: "step-title" }, step.title), el("div", { class: "step-sub" }, step.sub)));
+    return button;
+  }));
+  document.querySelectorAll("section.step").forEach((section) => {
+    section.classList.toggle("active", Number(section.dataset.step) === state.step);
+  });
+}
+
+function goTo(step) {
+  if (step > state.maxStep) return;
+  if (step === 2 && !state.documents.length) step = 1;  // filled in by hand: nothing scanned
+  state.step = step;
+  if (step === 2) renderDocuments();
+  if (step === 3) renderFields();
+  if (step === 4) renderSave();
+  renderSteps();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function unlock(step) {
+  state.maxStep = Math.max(state.maxStep, step);
+}
+
+// ------------------------------------------------------------------ step 1
+
+async function loadHealth() {
+  try {
+    const health = await (await api("/health")).json();
+    $("health").replaceChildren(
+      el("span", { class: `pill ${health.ocr ? "ok" : "warn"}` }, health.ocr ? "OCR ready" : "OCR not installed"),
+      el("span", { class: `pill ${health.ner ? "ok" : "warn"}` }, health.ner ? "ML model ready" : "ML model not installed"),
+      el("span", { class: "pill" }, `v${health.version}`),
+    );
+  } catch (error) { /* health is informative only */ }
+}
+
+async function loadTemplates() {
+  const templates = await (await api("/templates")).json();
+  state.templates = templates;
+  const select = $("template");
+  if (!templates.length) {
+    select.replaceChildren(el("option", { value: "" }, "No standard documents: run `docfill templates seed`"));
+    showBanner("No standard documents in the database yet. Run: docfill templates seed", "info");
+    return;
+  }
+  select.replaceChildren(...templates.map((t) => el("option", { value: t.name }, `${t.title} (v${t.version})`)));
+  state.templateName = templates[0].name;
+  renderTemplateInfo();
+}
+
+function renderTemplateInfo() {
+  const template = currentTemplate();
+  $("template-desc").textContent = template ? template.description || "" : "";
+  $("template-fields").replaceChildren(...(template ? template.fields : []).map((name) =>
+    el("span", { class: `chip ${template.required_fields.includes(name) ? "req" : ""}` }, name)));
+  updateScanButton();
+}
+
+function updateScanButton() {
+  $("scan-btn").disabled = !state.templateName || !state.files.length;
+}
+
+function addFiles(fileList) {
+  for (const file of fileList) {
+    if (!state.files.some((f) => f.name === file.name && f.size === file.size)) state.files.push(file);
+  }
+  state.filesDirty = true;
+  renderFiles();
+}
+
+function renderFiles() {
+  $("file-list").replaceChildren(...state.files.map((file, index) =>
+    el("li", {},
+      el("span", { class: "name", title: file.name }, file.name),
+      el("span", { class: "size" }, sizeLabel(file.size)),
+      el("button", { type: "button", class: "btn link small", "aria-label": `Remove ${file.name}`,
+                     onclick: () => { state.files.splice(index, 1); state.filesDirty = true; renderFiles(); } }, "Remove"))));
+  updateScanButton();
+}
+
+async function scan() {
+  showBanner("");
+  const button = $("scan-btn");
+  button.disabled = true;
+  button.textContent = "Scanning… (OCR can take a few seconds)";
+  try {
+    if (state.filesDirty || !state.documents.length) {
+      const form = new FormData();
+      form.append("template", state.templateName);
+      state.files.forEach((file) => form.append("files", file, file.name));
+      const result = await (await api("/wizard/analyze", { method: "POST", body: form })).json();
+      state.documents = result.documents;
+      state.activeDoc = 0;
+      state.filesDirty = false;
+      applyReview(result);
+    } else {
+      await reextract();
+    }
+    unlock(3);
+    goTo(2);
+  } catch (error) {
+    showBanner(error.message);
+  } finally {
+    button.textContent = "Scan documents →";
+    updateScanButton();
+  }
+}
+
+async function fillManually() {
+  showBanner("");
+  if (!state.templateName) return;
+  try {
+    state.documents = [];
+    state.filesDirty = true;
+    applyReview(await (await postJSON("/wizard/reextract", { template: state.templateName, documents: [] })).json());
+    unlock(4);
+    goTo(3);
+  } catch (error) { showBanner(error.message); }
+}
+
+// ------------------------------------------------------------------ review data
+
+function applyReview(result) {
+  state.rows = result.rows;
+  state.otherFields = result.other_fields || [];
+  for (const row of state.rows) {
+    if (!state.manual[row.name]) state.values[row.name] = row.value || "";
+  }
+  unlock(4);
+  schedulePreview();
+}
+
+let reextractSeq = 0;
+async function reextract() {
+  const seq = ++reextractSeq;
+  $("reextract-status").textContent = "re-extracting…";
+  try {
+    const result = await (await postJSON("/wizard/reextract", {
+      template: state.templateName,
+      documents: state.documents.map((d) => ({ source: d.source, text: d.text })),
+    })).json();
+    if (seq !== reextractSeq) return;  // a newer edit is in flight
+    applyReview(result);
+    renderFoundChips();
+    $("reextract-status").textContent = "fields updated ✓";
+  } catch (error) {
+    if (seq === reextractSeq) $("reextract-status").textContent = `error: ${error.message}`;
+  }
+}
+const scheduleReextract = debounce(reextract, 500);
+
+// ------------------------------------------------------------------ step 2
+
+function renderDocuments() {
+  const docs = state.documents;
+  if (!docs.length) return;
+  const doc = docs[state.activeDoc];
+  $("doc-tabs").replaceChildren(...docs.map((d, index) =>
+    el("button", { type: "button", role: "tab", "aria-selected": index === state.activeDoc ? "true" : "false",
+                   onclick: () => { state.activeDoc = index; renderDocuments(); } }, d.source)));
+  const redactions = Object.entries(doc.redactions || {}).map(([kind, count]) => `${count} ${kind.replace("_", " ")}`);
+  put($("doc-badges"),
+    el("span", { class: "pill accent" }, doc.type.toUpperCase()),
+    el("span", { class: "pill" }, `${doc.pages} page${doc.pages === 1 ? "" : "s"}`),
+    doc.ocr ? el("span", { class: "pill accent" }, "Read with OCR") : null,
+    doc.removed_lines ? el("span", { class: "pill" }, `${doc.removed_lines} noise line${doc.removed_lines === 1 ? "" : "s"} removed`) : null,
+    redactions.length ? el("span", { class: "pill warn", title: "Sensitive data not needed for filling was removed" }, `Redacted: ${redactions.join(", ")}`) : null,
+  );
+  $("doc-warnings").replaceChildren(...(doc.warnings || []).map((w) => el("div", { class: "warnbox" }, w)));
+  $("raw-text").textContent = doc.raw_text || "(no text found)";
+  const textarea = $("clean-text");
+  if (textarea.value !== doc.text) textarea.value = doc.text;
+  $("reextract-status").textContent = "";
+  renderFoundChips();
+}
+
+function renderFoundChips() {
+  $("found-chips").replaceChildren(...state.rows.map((row) => {
+    const value = state.values[row.name];
+    const cls = value ? "pill ok" : row.required ? "pill bad" : "pill";
+    return el("span", { class: cls, title: row.label }, `${row.label}: ${value || "not found"}`);
+  }));
+}
+
+// ------------------------------------------------------------------ step 3
+
+function describeSource(candidate) {
+  return `${SOURCE_LABELS[candidate.source] || candidate.source}`;
+}
+
+function renderFields() {
+  const container = $("fields");
+  if (!state.rows.length) {
+    container.replaceChildren(el("div", { class: "empty" }, "This reference document has no fields."));
+  } else {
+    container.replaceChildren(...state.rows.map(renderField));
+  }
+  renderOther();
+  renderProgress();
+  renderPreview($("preview"));
+}
+
+function renderField(row) {
+  const value = state.values[row.name] || "";
+  const manual = !!state.manual[row.name];
+  const input = el("input", { type: "text", id: `f-${row.name}`, value, autocomplete: "off",
+                              placeholder: row.required ? "Required, not found in the documents" : "Optional" });
+  input.value = value;
+  const card = el("div", { class: "field", id: `card-${row.name}` });
+  const meta = el("div", { class: "meta" });
+  const message = el("div", { class: "msg" });
+  const evidence = el("blockquote", { hidden: true });
+
+  function paintMeta() {
+    const current = state.values[row.name] || "";
+    const isManual = !!state.manual[row.name];
+    card.classList.toggle("missing", row.required && !current);
+    message.textContent = row.required && !current ? "Required: not found in the documents. Type it in or pick a candidate." : "";
+    const items = [];
+    if (isManual) {
+      items.push(el("span", { class: "pill accent" }, "Set by you"));
+      if (row.found) items.push(el("button", { type: "button", class: "btn link small",
+        onclick: () => setValue(row, row.found.value, false) }, `Undo (use found value “${row.found.value}”)`));
+      else if (row.value !== undefined) items.push(el("button", { type: "button", class: "btn link small",
+        onclick: () => setValue(row, row.value || "", false) }, "Undo"));
+    } else if (row.found) {
+      const f = row.found;
+      items.push(el("span", { class: `pill ${confidenceClass(f.confidence)}`, title: "Confidence" }, `${Math.round(f.confidence * 100)}%`));
+      items.push(el("span", { class: "pill" }, describeSource(f)));
+      if (f.document) items.push(el("span", {}, `from ${f.document}`));
+      if (f.evidence) items.push(el("button", { type: "button", class: "btn link small",
+        onclick: () => { evidence.hidden = !evidence.hidden; } }, "Show where"));
+      evidence.textContent = f.source === "derived" ? `Derived from: ${f.evidence}` : f.evidence || "";
+    } else if (current) {
+      items.push(el("span", { class: "pill" }, "Provided"));
+    }
+    put(meta, items);
+  }
+
+  input.addEventListener("input", () => {
+    state.values[row.name] = input.value;
+    state.manual[row.name] = true;
+    paintMeta();
+    renderProgress();
+    schedulePreview();
+  });
+
+  const alternatives = (row.alternatives || []).filter((a) => a.value !== value);
+  const altWrap = alternatives.length ? el("div", { class: "alts" }, "Other candidates:",
+    ...alternatives.map((alt) => el("button", { type: "button",
+      title: `${describeSource(alt)} · ${Math.round(alt.confidence * 100)}%${alt.document ? " · " + alt.document : ""}\n${alt.evidence || ""}`,
+      onclick: () => setValue(row, alt.value, true) },
+      `${alt.value} · ${describeSource(alt)} ${Math.round(alt.confidence * 100)}%`))) : null;
+
+  put(card,
+    el("div", { class: "head" },
+      el("label", { for: `f-${row.name}` }, row.label),
+      el("code", {}, row.name),
+      el("span", { class: "req-tag" }, row.required ? "Required" : "Optional")),
+    input, message, meta, evidence, altWrap);
+  paintMeta();
+  return card;
+}
+
+function setValue(row, value, manual) {
+  state.values[row.name] = value;
+  if (manual) state.manual[row.name] = true; else delete state.manual[row.name];
+  const card = $(`card-${row.name}`);
+  if (card) card.replaceWith(renderField(row));
+  renderProgress();
+  schedulePreview();
+}
+
+function renderOther() {
+  const others = state.otherFields;
+  $("other-wrap").style.display = others.length ? "" : "none";
+  $("other-table").replaceChildren(
+    el("tr", {}, el("th", {}, "Field"), el("th", {}, "Value"), el("th", {}, "Found by")),
+    ...others.map((o) => el("tr", {}, el("td", {}, o.label), el("td", {}, o.value),
+      el("td", {}, `${describeSource(o)} ${Math.round(o.confidence * 100)}%`))));
+}
+
+function missingRequired() {
+  return state.rows.filter((row) => row.required && !(state.values[row.name] || "").trim());
+}
+
+function renderProgress() {
+  const total = state.rows.length;
+  const filled = state.rows.filter((row) => (state.values[row.name] || "").trim()).length;
+  const missing = missingRequired().length;
+  $("progress-text").textContent = `${filled} of ${total} fields filled` + (missing ? ` · ${missing} required missing` : " · ready");
+  $("progress-bar").style.width = total ? `${(filled / total) * 100}%` : "0";
+}
+
+function focusField(name) {
+  if (state.step !== 3) goTo(3);
+  const card = $(`card-${name}`);
+  const input = $(`f-${name}`);
+  if (!card || !input) return;
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  input.focus();
+  card.classList.add("flash");
+  setTimeout(() => card.classList.remove("flash"), 900);
+}
+
+// ------------------------------------------------------------------ preview
+
+let previewSeq = 0;
+async function refreshPreview() {
+  if (!state.templateName) return;
+  const seq = ++previewSeq;
+  try {
+    const preview = await (await postJSON("/wizard/preview", { template: state.templateName, values: state.values })).json();
+    if (seq !== previewSeq) return;
+    state.preview = preview;
+    if (!state.filenameTouched) state.filename = preview.suggested_filename.replace(/\.pdf$/i, "");
+    if (state.step === 3) renderPreview($("preview"));
+    if (state.step === 4) renderSave();
+  } catch (error) { showBanner(error.message); }
+}
+const schedulePreview = debounce(refreshPreview, 150);
+
+function labelFor(name) {
+  const row = state.rows.find((r) => r.name === name);
+  return row ? row.label : name;
+}
+
+function renderPreview(container) {
+  const preview = state.preview;
+  if (!preview) { container.replaceChildren(el("div", { class: "empty" }, "Preview loading…")); return; }
+  if (preview.kind === "text") {
+    container.replaceChildren(...preview.lines.map((line) => {
+      const segments = line.segments.map((seg) => seg.field
+        ? el("span", { class: seg.filled ? "fill" : preview.missing.includes(seg.field) ? "blank required" : "blank",
+                       title: `${labelFor(seg.field)} (${seg.field})`,
+                       role: "button", tabindex: "0",
+                       onclick: () => focusField(seg.field),
+                       onkeydown: (event) => { if (event.key === "Enter") focusField(seg.field); } }, seg.text)
+        : seg.text);
+      if (line.kind === "h1") return el("h3", { class: "doc-h1" }, segments);
+      if (line.kind === "h2") return el("h4", { class: "doc-h2" }, segments);
+      if (line.kind === "hr") return el("hr");
+      if (line.kind === "blank") return el("div", { class: "doc-gap" });
+      return el("div", { class: "doc-line" }, segments);
+    }));
+  } else {
+    container.replaceChildren(
+      el("h3", { class: "doc-h1" }, preview.title),
+      el("p", { class: "muted" }, "PDF form: the original layout is kept; these form fields are filled."),
+      el("table", {}, el("tr", {}, el("th", {}, "PDF field"), el("th", {}, "Value")),
+        ...preview.form_fields.map((f) => el("tr", {}, el("td", {}, f.pdf_field),
+          el("td", {}, el("span", { class: f.value ? "fill" : "blank" }, f.value || "(blank)"))))));
+  }
+}
+
+// ------------------------------------------------------------------ step 4
+
+function renderSave() {
+  const preview = state.preview;
+  const template = currentTemplate();
+  if (!preview || !template) return;
+  $("save-summary").textContent =
+    `${template.title} (v${template.version}): ${preview.filled} of ${preview.total} fields filled.`;
+  const missing = preview.missing;
+  const box = $("save-missing");
+  if (missing.length) {
+    const checkbox = el("input", { type: "checkbox", id: "allow-missing", checked: state.allowMissing,
+      onchange: (event) => { state.allowMissing = event.target.checked; updateExportButton(); } });
+    box.replaceChildren(el("div", { class: "warnbox" },
+      `Still missing: ${missing.map(labelFor).join(", ")}. `,
+      el("button", { type: "button", class: "btn link small", onclick: () => focusField(missing[0]) }, "Go fill them in"),
+      el("div", { class: "check" }, checkbox, el("label", { for: "allow-missing" }, "Create anyway and leave them blank"))));
+  } else {
+    box.replaceChildren();
+  }
+  const input = $("filename");
+  if (document.activeElement !== input) input.value = state.filename;
+  updateExportButton();
+  renderPreview($("final-preview"));
+}
+
+function updateExportButton() {
+  const missing = state.preview ? state.preview.missing.length : 0;
+  $("export-btn").disabled = !state.filename.trim() || (missing > 0 && !state.allowMissing);
+}
+
+async function exportPdf() {
+  showBanner("");
+  const button = $("export-btn");
+  button.disabled = true;
+  try {
+    const response = await postJSON("/wizard/export", {
+      template: state.templateName, values: state.values, filename: state.filename, allow_missing: state.allowMissing,
+    });
+    const blob = await response.blob();
+    const filename = response.headers.get("X-Docfill-Filename") || `${state.filename}.pdf`;
+    const savedTo = response.headers.get("X-Docfill-Saved-To") || filename;
+    if (state.saved) URL.revokeObjectURL(state.saved.url);
+    state.saved = { url: URL.createObjectURL(blob), filename, savedTo };
+    download();
+    $("save-result").replaceChildren(el("div", { class: "success" },
+      el("strong", {}, "PDF created ✓"),
+      el("div", {}, "Saved on the server as ", el("code", {}, savedTo)),
+      el("button", { type: "button", class: "btn link small", onclick: download }, `Download ${filename} again`)));
+  } catch (error) {
+    showBanner(error.message);
+  } finally {
+    updateExportButton();
+  }
+}
+
+function download() {
+  if (!state.saved) return;
+  const link = el("a", { href: state.saved.url, download: state.saved.filename });
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+function restart() {
+  Object.assign(state, { step: 1, maxStep: 1, files: [], filesDirty: true, documents: [], activeDoc: 0,
+    rows: [], otherFields: [], values: {}, manual: {}, preview: null, filename: "", filenameTouched: false,
+    allowMissing: false });
+  $("save-result").replaceChildren();
+  renderFiles();
+  renderSteps();
+  showBanner("");
+}
+
+// ------------------------------------------------------------------ wiring
+
+function init() {
+  $("template").addEventListener("change", (event) => {
+    state.templateName = event.target.value;
+    state.rows = []; state.values = {}; state.manual = {}; state.preview = null;
+    state.maxStep = 1;
+    renderTemplateInfo();
+    renderSteps();
+  });
+  const drop = $("drop");
+  $("file-input").addEventListener("change", (event) => { addFiles(event.target.files); event.target.value = ""; });
+  drop.addEventListener("dragover", (event) => { event.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (event) => { event.preventDefault(); drop.classList.remove("over"); addFiles(event.dataTransfer.files); });
+  $("scan-btn").addEventListener("click", scan);
+  $("manual-btn").addEventListener("click", fillManually);
+  $("clean-text").addEventListener("input", (event) => {
+    state.documents[state.activeDoc].text = event.target.value;
+    $("reextract-status").textContent = "editing…";
+    scheduleReextract();
+  });
+  $("filename").addEventListener("input", (event) => {
+    state.filename = event.target.value;
+    state.filenameTouched = true;
+    updateExportButton();
+  });
+  $("export-btn").addEventListener("click", exportPdf);
+  $("restart-btn").addEventListener("click", restart);
+  document.querySelectorAll("[data-go]").forEach((button) =>
+    button.addEventListener("click", () => goTo(Number(button.dataset.go))));
+
+  renderSteps();
+  loadHealth();
+  loadTemplates().catch((error) => showBanner(error.message));
+}
+
+init();
+</script>
+</body>
+</html>

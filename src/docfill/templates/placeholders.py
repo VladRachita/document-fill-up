@@ -13,9 +13,11 @@ import unicodedata
 from collections.abc import Callable, Mapping
 
 from docfill.errors import TemplateError
+from docfill.templates.markup import classify_line
 
+# Placeholders stay on one line (spaces/tabs only inside the braces).
 PLACEHOLDER_RE = re.compile(
-    r"\{\{\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?:\|\s*(?P<filter>[A-Za-z_]+)\s*)?\}\}"
+    r"\{\{[ \t]*(?P<name>[A-Za-z_][A-Za-z0-9_]*)[ \t]*(?:\|[ \t]*(?P<filter>[A-Za-z_]+)[ \t]*)?\}\}"
 )
 FILTERS: dict[str, Callable[[str], str]] = {
     "upper": str.upper,
@@ -72,3 +74,23 @@ def render_body(body: str, values: Mapping[str, str], blank: str = BLANK) -> str
         return apply(match.group()[2:-2], values) or blank
 
     return PLACEHOLDER_RE.sub(replace, body)
+
+
+def preview_lines(body: str, values: Mapping[str, str], blank: str = BLANK) -> list[dict]:
+    """Structured rendering for live previews: one entry per line with its kind (see
+    :func:`classify_line`) and segments marking which text comes from which field."""
+    lines: list[dict] = []
+    for line in body.splitlines():
+        kind, text = classify_line(line)
+        segments: list[dict] = []
+        position = 0
+        for match in PLACEHOLDER_RE.finditer(text):
+            if match.start() > position:
+                segments.append({"text": text[position : match.start()]})
+            value = apply(match.group()[2:-2], values)
+            segments.append({"text": value or blank, "field": match["name"], "filled": bool(value)})
+            position = match.end()
+        if position < len(text):
+            segments.append({"text": text[position:]})
+        lines.append({"kind": kind, "segments": segments})
+    return lines

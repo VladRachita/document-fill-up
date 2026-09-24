@@ -5,14 +5,19 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated
 
+import click
 import typer
 from rich.console import Console
+from rich.markup import escape
+from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from docfill.config import Settings, get_settings
 from docfill.errors import DocFillError, MissingFieldsError
@@ -26,6 +31,9 @@ from docfill.templates import (
     load_spec,
     make_session_factory,
 )
+from docfill.templates.models import StandardDocument
+from docfill.templates.placeholders import apply, render_body
+from docfill.wizard import Candidate, FieldRow, field_rows, save_output, suggest_filename
 
 app = typer.Typer(
     help="Scan documents, extract personal data and fill standard documents as PDF.",
@@ -304,6 +312,170 @@ def fill(
         table.add_row(name, value or "[red]- blank -[/]", result.sources.get(name, ""))
     console.print(table)
     console.print(f"[green]Written[/] {output}")
+
+
+_SOURCE_NAMES = {
+    "label": "label rule",
+    "pattern": "pattern",
+    "ner": "ML model",
+    "derived": "derived",
+    "system": "system",
+}
+
+
+def _describe(candidate: Candidate) -> str:
+    return f"{_SOURCE_NAMES.get(candidate.source, candidate.source)} {candidate.confidence:.0%}"
+
+
+def _review_row(row: FieldRow) -> None:
+    """Show what was found for one field and let the user keep, correct or clear it."""
+    tag = "[red]required[/]" if row.required else "[dim]optional[/]"
+    console.print(f"\n[bold]{escape(row.label)}[/] [dim]({row.name})[/] {tag}")
+    if row.found:
+        detail = _describe(row.found)
+        if row.found.document:
+            detail += f" · from {row.found.document}"
+        console.print(f"  found: [dim]{escape(detail)}[/]")
+        if row.found.evidence:
+            console.print(f"  where: [dim]{escape(row.found.evidence)}[/]")
+    elif row.required:
+        console.print("  [red]not found in the documents[/]")
+    for number, alternative in enumerate(row.alternatives, 1):
+        console.print(
+            f"  #{number} {escape(alternative.value)} [dim]({escape(_describe(alternative))})[/]"
+        )
+    answer = typer.prompt("  value", default=row.value, show_default=bool(row.value)).strip()
+    if answer == "-":
+        row.value = ""
+    elif re.fullmatch(r"#\d+", answer) and 1 <= int(answer[1:]) <= len(row.alternatives):
+        row.value = row.alternatives[int(answer[1:]) - 1].value
+    else:
+        row.value = answer
+
+
+def _preview(standard: StandardDocument, values: dict[str, str]) -> Panel:
+    if standard.kind == "text":
+        body = Text(render_body(standard.body or "", values))
+    else:
+        body = Text(
+            "\n".join(
+                f"{pdf_field}: {apply(expression, values) or '(blank)'}"
+                for pdf_field, expression in standard.field_map.items()
+            )
+        )
+    return Panel(body, title=f"{standard.title} (v{standard.version})", expand=False)
+
+
+@app.command()
+def wizard(
+    ctx: typer.Context,
+    files: Annotated[
+        list[Path] | None, typer.Argument(help="Source documents (asked for when omitted).")
+    ] = None,
+    template: Annotated[
+        str | None, typer.Option("--template", "-t", help="Reference document name.")
+    ] = None,
+    output_dir: Annotated[
+        Path | None, typer.Option(help="Folder for the PDF (default: DOCFILL_OUTPUT_DIR).")
+    ] = None,
+    ner: Annotated[bool, typer.Option(help="Use the ML named-entity model.")] = True,
+) -> None:
+    """Step by step: pick the reference document, scan the sources, check and correct every
+    value, then save the filled document under a new file name."""
+    settings = _settings(ctx)
+    docfill = DocFill(settings, FieldExtractor(settings, use_ner=ner))
+
+    # Step 1 - reference document and sources
+    console.rule("[bold]Step 1/4 · Reference document")
+    try:
+        with _repository(ctx) as repo:
+            standards = repo.list()
+            standard = repo.get(template) if template else None
+    except DocFillError as exc:
+        _fail(str(exc))
+    if not standards:
+        _fail("No standard documents yet. Run: docfill templates seed")
+    if standard is None:
+        for number, doc in enumerate(standards, 1):
+            console.print(f"  {number}. {escape(doc.title)} [dim]({doc.name})[/]")
+        choice = typer.prompt(
+            "Reference document", default=1, type=click.IntRange(1, len(standards))
+        )
+        standard = standards[choice - 1]
+    console.print(f"Using [bold]{escape(standard.title)}[/] v{standard.version}")
+    console.print(f"[dim]Needs: {', '.join(standard.field_names())}[/]")
+
+    paths = list(files or [])
+    if not paths:
+        while True:
+            answer = typer.prompt(
+                "Source document (empty when done)", default="", show_default=False
+            ).strip()
+            if not answer:
+                break
+            path = Path(answer).expanduser()
+            if path.is_file():
+                paths.append(path)
+            else:
+                console.print(f"[red]Not found:[/] {escape(answer)}")
+
+    # Step 2 - scan and clean
+    console.rule("[bold]Step 2/4 · Scan & clean")
+    analyses = []
+    for path in paths:
+        try:
+            analysis = docfill.analyze_file(path)
+        except DocFillError as exc:
+            console.print(f"[red]{escape(str(exc))}[/] (skipped)")
+            continue
+        raw, sanitized = analysis.raw, analysis.sanitized
+        info = f"{raw.doc_type.value}, {len(raw.pages)} page(s)" + (", OCR" if raw.used_ocr else "")
+        console.print(f"[bold]{escape(raw.source)}[/] ({info})")
+        for warning in raw.warnings:
+            console.print(f"  [yellow]warning:[/] {escape(warning)}")
+        if sanitized.redactions:
+            console.print(f"  redacted: {sanitized.redactions}")
+        if typer.confirm(f"  Show the text read from {raw.source}?", default=False):
+            console.print(Panel(Text(sanitized.text or "(no text)"), expand=False))
+            if typer.confirm("  Correct the text in an editor?", default=False):
+                edited = click.edit(sanitized.text)
+                if edited is not None:
+                    sanitized.text = edited
+                    analysis.extraction = docfill.extract_texts([(raw.source, edited)])
+        analyses.append(analysis)
+    if docfill.extractor.ner and not docfill.extractor.ner_available:
+        console.print(f"[yellow]ML model disabled:[/] {escape(docfill.extractor.ner.error or '')}")
+    extraction = docfill.combine(analyses) if analyses else None
+    rows = field_rows(standard, extraction, settings.min_confidence)
+
+    # Step 3 - review every value, with a preview, until the user is happy
+    console.rule("[bold]Step 3/4 · Review fields")
+    console.print(
+        "[dim]Enter keeps a value · type to correct it · '-' clears it · #N picks candidate N[/]"
+    )
+    while True:
+        for row in rows:
+            _review_row(row)
+        values, _ = docfill.collect_values(None, {row.name: row.value for row in rows})
+        console.print(_preview(standard, values))
+        missing = [row.label for row in rows if row.required and row.name not in values]
+        if missing:
+            console.print(f"[red]Still missing:[/] {escape(', '.join(missing))}")
+        if typer.confirm("Is everything correct?", default=not missing):
+            break
+
+    # Step 4 - save under a new name
+    console.rule("[bold]Step 4/4 · Save")
+    if missing and not typer.confirm("Create the PDF with those fields left blank?"):
+        console.print("Nothing saved.")
+        raise typer.Exit(code=1)
+    filename = typer.prompt("New file name", default=suggest_filename(standard, values))
+    try:
+        result = docfill.fill(standard, None, values, allow_missing=bool(missing))
+    except DocFillError as exc:
+        _fail(str(exc))
+    path = save_output(output_dir or settings.output_dir, filename, result.pdf)
+    console.print(f"[green]Saved[/] {path}")
 
 
 @app.command()

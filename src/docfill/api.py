@@ -31,6 +31,7 @@ from docfill.extraction import FIELDS
 from docfill.pipeline import DocFill, DocumentAnalysis
 from docfill.readers.ocr import tesseract_available
 from docfill.templates import StandardDocumentSpec, TemplateRepository, make_session_factory
+from docfill.web import read_upload, register_wizard
 
 _ERROR_STATUS: list[tuple[type[DocFillError], int]] = [
     (TemplateNotFoundError, 404),
@@ -51,14 +52,6 @@ class TemplateIn(BaseModel):
     pdf_base64: str | None = Field(default=None, description="PDF form, base64 encoded.")
     field_map: dict[str, str] = Field(default_factory=dict)
     optional_fields: list[str] = Field(default_factory=list)
-
-
-def _read_upload(upload: UploadFile, limit: int) -> tuple[str, bytes]:
-    data = upload.file.read(limit + 1)
-    name = upload.filename or "upload"
-    if len(data) > limit:
-        raise HTTPException(413, f"{name} is too large")
-    return name, data
 
 
 def _analysis_json(analysis: DocumentAnalysis) -> dict[str, Any]:
@@ -152,7 +145,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/extract")
     def extract(files: Annotated[list[UploadFile], File()]) -> dict[str, Any]:
         """Scan and sanitize the uploaded documents and return the extracted fields."""
-        uploads = [_read_upload(upload, settings.max_file_size) for upload in files]
+        uploads = [read_upload(upload, settings.max_file_size) for upload in files]
         analyses = [docfill.analyze_bytes(data, name) for name, data in uploads]
         combined = docfill.combine(analyses)
         return {
@@ -180,7 +173,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ):
             raise HTTPException(422, "values must be a JSON object of strings")
         standard = repo.get(template)
-        uploads = [_read_upload(upload, settings.max_file_size) for upload in files or []]
+        uploads = [read_upload(upload, settings.max_file_size) for upload in files or []]
         result, _ = docfill.process(uploads, standard, overrides, allow_missing)
         return Response(
             content=result.pdf,
@@ -192,4 +185,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
 
+    register_wizard(app, settings, docfill, repository)
     return app

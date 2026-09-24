@@ -100,9 +100,12 @@ class NERExtractor:
                 )
             )
 
+        # In forms every line is its own field: an entity running across a line break
+        # ("John Michael⏎Place of birth") glues two fields together and is ignored.
+        entities = [ent for ent in doc.ents if "\n" not in ent.text.strip()]
         people = [
             ent
-            for ent in doc.ents
+            for ent in entities
             if ent.label_ == "PERSON"
             and looks_like_name(collapse(ent.text), strict=True)
             and collapse(fold(ent.text)) not in labels
@@ -115,7 +118,7 @@ class NERExtractor:
             confidence = PERSON_CONFIDENCE if multi else SINGLE_TOKEN_PERSON_CONFIDENCE
             emit("full_name", normalize_name(best.text), confidence, best.sent.text)
 
-        for ent in doc.ents:
+        for ent in entities:
             if ent.label_ not in ("GPE", "LOC"):
                 continue
             value = collapse(ent.text).strip(" ,.")

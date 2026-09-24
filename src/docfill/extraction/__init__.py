@@ -7,6 +7,8 @@ documents, never generated.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from docfill.config import Settings, get_settings
 from docfill.extraction.fields import FIELDS, FieldSpec, field_labels
 from docfill.extraction.ner import NERExtractor
@@ -59,9 +61,7 @@ def derive_fields(result: ExtractionResult) -> ExtractionResult:
         if current and composed != current.value and composed.startswith(current.value):
             # "Hauptstraße 5" + city/country found elsewhere -> "Hauptstraße 5, Berlin, Germany"
             conf = max(conf, current.confidence)
-            fields["full_address"] = _derived(
-                "full_address", composed, conf, composed, current.document
-            )
+            result.replace(_derived("full_address", composed, conf, composed, current.document))
         else:
             result.offer(_derived("full_address", composed, conf, composed, None))
     return result
@@ -87,6 +87,14 @@ class FieldExtractor:
         return derive_fields(result)
 
 
+def merge_extractions(results: Iterable[ExtractionResult]) -> ExtractionResult:
+    """Merge the extractions of several documents; the most confident value per field wins."""
+    merged = ExtractionResult()
+    for result in results:
+        merged = merged.merge(result)
+    return derive_fields(merged)
+
+
 __all__ = [
     "FIELDS",
     "FieldExtractor",
@@ -96,4 +104,5 @@ __all__ = [
     "extract_labeled",
     "extract_patterns",
     "field_labels",
+    "merge_extractions",
 ]

@@ -53,12 +53,48 @@ pip install -e ".[dev]"
 python -m spacy download en_core_web_sm       # the ML model used for free text
 ```
 
-Or with Docker (OCR, fonts and the model included, API on port 8000):
+Or with Docker (OCR, fonts and the model included; wizard and API on http://localhost:8000):
 
 ```bash
 docker build -t docfill .
 docker run -p 8000:8000 -v docfill-data:/data docfill
 ```
+
+## Step-by-step wizard (recommended)
+
+The wizard shows every decision the pipeline makes so errors can be corrected as they
+appear, and saves the filled reference document under a new file name.
+
+```bash
+docfill templates seed        # once: load the bundled standard documents
+docfill serve                 # then open http://127.0.0.1:8000
+```
+
+1. **Documents.** Pick the reference (standard) document and drop the source files: PDF, Word,
+   PNG or JPEG. The fields the reference document needs are listed, required ones highlighted.
+   There is also a *fill in by hand* option.
+2. **Scan & clean.** For each file, the text read from it (OCR for photos and scans) sits next
+   to the cleaned text, with what was removed or redacted. **Fix OCR mistakes directly in the
+   cleaned text:** fields are re-extracted as you type.
+3. **Review fields.** Every field of the reference document with its value, confidence, how it
+   was found (label rule, pattern, ML model, derived) and the line it came from ("Show where").
+   Other candidates can be picked with one click. Missing required fields are flagged. A
+   **live preview** of the reference document updates on every keystroke. Click a
+   highlighted value in the preview to jump to its field.
+4. **Save PDF.** Choose the new file name (a name like
+   `residence-declaration_Popescu_Ion_2026-09-24` is suggested). The PDF is saved in the
+   output folder (`DOCFILL_OUTPUT_DIR`, default `./output`) and downloaded. Existing files are
+   never overwritten.
+
+The same flow is available in the terminal:
+
+```bash
+docfill wizard examples/samples/id_card.jpg -t residence-declaration
+```
+
+For each field it shows what was found, where and how confidently. Press Enter to keep a
+value, type to correct it, `-` to clear it or `#N` to pick candidate N. It then shows the
+filled document and asks for the new file name.
 
 ## Quick start (CLI)
 
@@ -190,6 +226,11 @@ docfill serve            # http://127.0.0.1:8000/docs for the interactive OpenAP
 | GET / DELETE | `/templates/{name}` | Show / delete a standard document |
 | POST | `/extract` | Upload `files` and get the extracted fields as JSON |
 | POST | `/fill` | Upload `files` + `template` (+ `values` JSON, `allow_missing`) and get the PDF back |
+| GET | `/wizard` | The step-by-step web wizard (`/` redirects here) |
+| POST | `/wizard/analyze` | Wizard step 2: raw + cleaned text per file and the reviewed fields |
+| POST | `/wizard/reextract` | Re-extract fields from corrected text |
+| POST | `/wizard/preview` | Live preview of the filled reference document |
+| POST | `/wizard/export` | Create the PDF, save it under the chosen file name, return it |
 
 ```bash
 curl -F template=residence-declaration -F files=@id_card.jpg -F files=@bill.pdf \
@@ -212,6 +253,7 @@ Environment variables (or a `.env` file, see `.env.example`):
 | `DOCFILL_SPACY_MODEL` | `en_core_web_sm` | NER model (empty disables NER), e.g. `ro_core_news_sm` |
 | `DOCFILL_MIN_CONFIDENCE` | `0.5` | Minimum confidence for a value to be used |
 | `DOCFILL_MAX_FILE_SIZE` | `26214400` | Upload limit in bytes |
+| `DOCFILL_OUTPUT_DIR` | `output` | Folder where the wizard saves the PDFs it creates |
 | `DOCFILL_PDF_FONT_PATH` | auto | TrueType font for exported PDFs |
 
 ## Project layout
@@ -225,7 +267,9 @@ src/docfill/
   standard_documents/  bundled example standard documents (YAML)
   export/           PDF rendering (ReportLab) and PDF form filling (pypdf)
   pipeline.py       read -> sanitize -> extract -> fill -> export
-  cli.py, api.py    Typer CLI and FastAPI app
+  wizard.py         review helpers: field rows, candidates, preview, output file names
+  web/              the web wizard (routes + a single self-contained HTML page)
+  cli.py, api.py    Typer CLI (incl. `docfill wizard`) and FastAPI app
 tests/              pytest suite (sample documents are generated on the fly)
 examples/           script generating sample input documents
 ```
@@ -243,5 +287,8 @@ ruff check src tests examples && ruff format --check src tests examples
 * Label synonyms cover English and Romanian. Add others in `extraction/fields.py`.
 * The default NER model is English. For mostly Romanian free text, use `ro_core_news_sm`, or
   fine-tune a spaCy model on your own annotated documents to improve free-text extraction.
+* The ML model is pre-trained; corrections made in the wizard are not yet used to retrain it.
+  A natural next step is to store them as labelled examples and fine-tune the spaCy model on
+  your own documents.
 * Possible extensions: more fields (date of birth, ID number, phone, e-mail), checkbox fields
-  in PDF forms, API authentication, and a review UI to confirm values before export.
+  in PDF forms, and API authentication.

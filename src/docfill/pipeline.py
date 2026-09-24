@@ -10,7 +10,7 @@ from pathlib import Path
 from docfill.config import Settings, get_settings
 from docfill.errors import MissingFieldsError
 from docfill.export import fill_pdf_form, render_text_pdf
-from docfill.extraction import FieldExtractor, derive_fields
+from docfill.extraction import FieldExtractor, merge_extractions
 from docfill.models import ExtractionResult, RawDocument, SanitizedDocument
 from docfill.readers import read_bytes
 from docfill.sanitize import Sanitizer
@@ -61,10 +61,14 @@ class DocFill:
     @staticmethod
     def combine(analyses: Iterable[DocumentAnalysis]) -> ExtractionResult:
         """Merge several source documents; the most confident value per field wins."""
-        result = ExtractionResult()
-        for analysis in analyses:
-            result = result.merge(analysis.extraction)
-        return derive_fields(result)
+        return merge_extractions(analysis.extraction for analysis in analyses)
+
+    def extract_texts(self, documents: Iterable[tuple[str, str]]) -> ExtractionResult:
+        """Re-run extraction on (source, text) pairs, e.g. after a user corrected OCR text."""
+        return merge_extractions(
+            self.extractor.extract(SanitizedDocument(source=source, text=text))
+            for source, text in documents
+        )
 
     # ------------------------------------------------------------------ filling
 

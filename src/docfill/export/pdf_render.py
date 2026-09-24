@@ -22,6 +22,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Flowable, HRFlowable, Paragraph, SimpleDocTemplate, Spacer
 
 from docfill.config import Settings, get_settings
+from docfill.templates.markup import classify_line
 
 
 @lru_cache
@@ -91,22 +92,17 @@ def build_story(body: str, styles: dict[str, ParagraphStyle]) -> list[Flowable]:
             paragraph.clear()
 
     for line in body.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            flush()
-        elif stripped.startswith("## "):
-            flush()
-            story.append(Paragraph(escape(stripped[3:].strip()), styles["h2"]))
-        elif stripped.startswith("# "):
-            flush()
-            story.append(Paragraph(escape(stripped[2:].strip()), styles["h1"]))
-        elif stripped == "---":
-            flush()
+        kind, text = classify_line(line)
+        if kind == "text":
+            paragraph.append(_markup(text))
+            continue
+        flush()
+        if kind in ("h1", "h2"):
+            story.append(Paragraph(escape(text), styles[kind]))
+        elif kind == "hr":
             story.append(Spacer(1, 4))
             story.append(HRFlowable(width="100%", thickness=0.6, color=colors.grey))
             story.append(Spacer(1, 8))
-        else:
-            paragraph.append(_markup(line))
     flush()
     return story
 

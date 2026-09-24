@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # Uploads larger than this are rejected (bytes).
     max_file_size: int = 25 * 1024 * 1024
 
+    # Folder where the wizard saves the PDFs it creates.
+    output_dir: Path = Path("output")
+
     # TrueType font used for exported PDFs. Needed for non Latin-1 characters (e.g. ă, ș, ț).
     # When unset, a few common system locations are probed and Helvetica is the fallback.
     pdf_font_path: Path | None = None
