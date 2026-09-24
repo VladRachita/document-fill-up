@@ -27,6 +27,8 @@ class RawDocument(BaseModel):
     doc_type: DocumentType
     pages: list[Page]
     warnings: list[str] = Field(default_factory=list)
+    # Values stored in the fields of a filled PDF form (field name -> value).
+    form_values: dict[str, str] = Field(default_factory=dict)
 
     @property
     def text(self) -> str:
@@ -50,7 +52,9 @@ class SanitizedDocument(BaseModel):
         return [line for line in self.text.splitlines() if line.strip()]
 
 
-FieldSource = Literal["label", "pattern", "ner", "derived", "manual"]
+FieldSource = Literal[
+    "label", "learned", "pattern", "mrz", "form", "ner", "derived", "memory", "default", "manual"
+]
 
 
 class ExtractedField(BaseModel):
@@ -60,6 +64,8 @@ class ExtractedField(BaseModel):
     source: FieldSource
     evidence: str | None = None
     document: str | None = None
+    # Problems found by the validators (bad CNP checksum, mismatch with the MRZ, ...).
+    issues: list[str] = Field(default_factory=list)
 
 
 class ExtractionResult(BaseModel):
@@ -78,7 +84,10 @@ class ExtractionResult(BaseModel):
     def _record(self, candidate: ExtractedField) -> None:
         pool = self.candidates.setdefault(candidate.name, [])
         for index, existing in enumerate(pool):
-            if existing.value.casefold() == candidate.value.casefold():
+            if (existing.value.casefold(), existing.source) == (
+                candidate.value.casefold(),
+                candidate.source,
+            ):
                 if candidate.confidence > existing.confidence:
                     pool[index] = candidate
                 break

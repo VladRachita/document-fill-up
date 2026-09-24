@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Engine, create_engine, select
+from sqlalchemy import Engine, create_engine, inspect, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from docfill.errors import TemplateNotFoundError
@@ -12,8 +12,19 @@ from docfill.templates.models import Base, StandardDocument, StandardDocumentSpe
 def make_engine(database_url: str) -> Engine:
     connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
     engine = create_engine(database_url, connect_args=connect_args)
+    import docfill.learning  # noqa: F401  (registers the learning tables on the same metadata)
+
     Base.metadata.create_all(engine)
+    _migrate(engine)
     return engine
+
+
+def _migrate(engine: Engine) -> None:
+    """Add columns introduced after a database was created (tiny, additive migrations)."""
+    columns = {column["name"] for column in inspect(engine).get_columns("standard_documents")}
+    if "options" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE standard_documents ADD COLUMN options JSON"))
 
 
 def make_session_factory(database_url: str) -> sessionmaker[Session]:
@@ -60,6 +71,7 @@ class TemplateRepository:
         document.pdf_data = spec.pdf_data
         document.field_map = dict(spec.field_map)
         document.optional_fields = list(spec.optional_fields)
+        document.options = spec.options()
         document.checksum = checksum
         self.session.commit()
         return document, True

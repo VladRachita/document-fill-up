@@ -1,90 +1,76 @@
-"""Field extraction: labelled values, address patterns and ML named-entity recognition.
+"""Field extraction: labelled values, identity-document patterns (CNP, series/number, MRZ),
+address patterns and ML named-entity recognition, then derivations and cross-checks.
 
 Every candidate carries a confidence; for each field the most confident one wins
 (labelled > derived > pattern / NER). Values are only ever *copied* from the source
-documents, never generated.
+documents or derived from copied values, never generated.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Mapping
 
 from docfill.config import Settings, get_settings
-from docfill.extraction.fields import FIELDS, FieldSpec, field_labels
+from docfill.extraction.derive import complete_values, derive_fields
+from docfill.extraction.fields import FIELDS, GROUPS, FieldSpec, field_labels
 from docfill.extraction.ner import NERExtractor
-from docfill.extraction.patterns import extract_patterns
+from docfill.extraction.patterns import extract_identity, extract_patterns
 from docfill.extraction.rules import extract_labeled
-from docfill.extraction.text_utils import compose_address, parse_address, split_full_name
 from docfill.models import ExtractedField, ExtractionResult, SanitizedDocument
 
-DERIVED_FACTOR = 0.95
-_ADDRESS_PARTS = ("street_address", "postal_code", "city", "region", "country")
-
-
-def _derived(
-    name: str, value: str, confidence: float, evidence: str, document: str | None
-) -> ExtractedField:
-    return ExtractedField(
-        name=name,
-        value=value,
-        confidence=round(confidence, 4),
-        source="derived",
-        evidence=evidence,
-        document=document,
-    )
-
-
-def derive_fields(result: ExtractionResult) -> ExtractionResult:
-    """Fill gaps from related fields: full name <-> first/last, address <-> its components."""
-    fields = result.fields
-
-    if (full := fields.get("full_name")) and (split := split_full_name(full.value)):
-        first, last = split
-        conf = full.confidence * DERIVED_FACTOR
-        result.offer(_derived("first_name", first, conf, full.value, full.document))
-        result.offer(_derived("last_name", last, conf, full.value, full.document))
-
-    if (first := fields.get("first_name")) and (last := fields.get("last_name")):
-        conf = min(first.confidence, last.confidence) * DERIVED_FACTOR
-        full_value = f"{first.value} {last.value}"
-        result.offer(_derived("full_name", full_value, conf, full_value, first.document))
-
-    if address := fields.get("full_address"):
-        conf = address.confidence * DERIVED_FACTOR
-        for name, value in parse_address(address.value).items():
-            result.offer(_derived(name, value, conf, address.value, address.document))
-
-    parts = {name: fields[name] for name in _ADDRESS_PARTS if name in fields}
-    if composed := compose_address({name: field.value for name, field in parts.items()}):
-        conf = min(field.confidence for field in parts.values()) * DERIVED_FACTOR
-        current = fields.get("full_address")
-        if current and composed != current.value and composed.startswith(current.value):
-            # "Hauptstraße 5" + city/country found elsewhere -> "Hauptstraße 5, Berlin, Germany"
-            conf = max(conf, current.confidence)
-            result.replace(_derived("full_address", composed, conf, composed, current.document))
-        else:
-            result.offer(_derived("full_address", composed, conf, composed, None))
-    return result
+# (candidate, document type) -> calibrated confidence; provided by the learning store.
+Calibrator = Callable[[ExtractedField, str | None], float]
 
 
 class FieldExtractor:
-    def __init__(self, settings: Settings | None = None, use_ner: bool = True):
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        use_ner: bool = True,
+        calibrator: Calibrator | None = None,
+        learned_labels: Callable[[str | None], Mapping[str, str]] | None = None,
+        fix_spelling: Callable[[ExtractedField], ExtractedField] | None = None,
+    ):
         settings = settings or get_settings()
         self.ner = NERExtractor(settings.spacy_model) if use_ner and settings.spacy_model else None
+        self.calibrator = calibrator
+        self.learned_labels = learned_labels
+        self.fix_spelling = fix_spelling
 
     @property
     def ner_available(self) -> bool:
         return bool(self.ner and self.ner.available)
 
-    def extract(self, document: SanitizedDocument) -> ExtractionResult:
-        result = ExtractionResult()
-        candidates = extract_labeled(document.text, document.source)
-        candidates += extract_patterns(document.text, document.source)
+    def candidates(
+        self, document: SanitizedDocument, doc_type: str | None = None
+    ) -> list[ExtractedField]:
+        learned = self.learned_labels(doc_type) if self.learned_labels else None
+        found = extract_labeled(document.text, document.source, doc_type, learned)
+        found += extract_identity(document.text, document.source, doc_type)
+        found += extract_patterns(document.text, document.source)
         if self.ner:
-            candidates += self.ner.extract(document.text, document.source)
-        for candidate in candidates:
+            found += self.ner.extract(document.text, document.source)
+        if self.fix_spelling:
+            found = [self.fix_spelling(candidate) for candidate in found]
+        if self.calibrator:
+            for candidate in found:
+                candidate.confidence = round(self.calibrator(candidate, doc_type), 4)
+        return found
+
+    def extract(
+        self,
+        document: SanitizedDocument,
+        doc_type: str | None = None,
+        extra: Iterable[ExtractedField] = (),
+        use_text: bool = True,
+    ) -> ExtractionResult:
+        """``extra``: already structured candidates (e.g. a recognised filled form). For such
+        documents ``use_text=False`` skips reading the text, which would only add noise."""
+        result = ExtractionResult()
+        found = self.candidates(document, doc_type) if use_text else []
+        for candidate in [*extra, *found]:
             result.offer(candidate)
-        return derive_fields(result)
+        return _check_and_derive(result)
 
 
 def merge_extractions(results: Iterable[ExtractionResult]) -> ExtractionResult:
@@ -92,15 +78,26 @@ def merge_extractions(results: Iterable[ExtractionResult]) -> ExtractionResult:
     merged = ExtractionResult()
     for result in results:
         merged = merged.merge(result)
-    return derive_fields(merged)
+    return _check_and_derive(merged)
+
+
+def _check_and_derive(result: ExtractionResult) -> ExtractionResult:
+    """Validate, derive missing fields from validated ones, validate the derived ones."""
+    from docfill.validation import cross_check  # imports the field catalog from this package
+
+    return cross_check(derive_fields(cross_check(result)))
 
 
 __all__ = [
     "FIELDS",
+    "GROUPS",
+    "Calibrator",
     "FieldExtractor",
     "FieldSpec",
     "NERExtractor",
+    "complete_values",
     "derive_fields",
+    "extract_identity",
     "extract_labeled",
     "extract_patterns",
     "field_labels",

@@ -24,6 +24,7 @@ def compute_checksum(
     pdf_data: bytes | None,
     field_map: dict[str, str],
     optional_fields: list[str],
+    options: dict[str, Any] | None = None,
 ) -> str:
     payload = {
         "kind": kind,
@@ -33,8 +34,42 @@ def compute_checksum(
         "field_map": field_map,
         "optional_fields": sorted(optional_fields),
     }
+    if options:  # only when set, so checksums of documents saved before options existed hold
+        payload["options"] = options
     canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+class ListSpec(BaseModel):
+    """Repeated rows: ``columns`` patterns with ``{i}`` and a number of ``rows``, or explicit
+    ``cells`` (one list of PDF fields per row) when the field names follow no pattern."""
+
+    rows: int | None = Field(default=None, ge=1, le=200)
+    columns: list[str] | None = None
+    cells: list[list[str]] | None = None
+
+    @model_validator(mode="after")
+    def _check(self) -> ListSpec:
+        if self.cells is None and not (self.rows and self.columns):
+            raise ValueError("a list needs 'rows' and 'columns', or 'cells'")
+        return self
+
+
+def list_cells(spec: dict[str, Any] | ListSpec) -> list[list[str]]:
+    """The PDF fields of each row of a list, whichever way the list was declared."""
+    data = spec.model_dump() if isinstance(spec, ListSpec) else spec
+    if data.get("cells"):
+        return [list(row) for row in data["cells"]]
+    return [[column.format(i=i) for column in data["columns"]] for i in range(data["rows"])]
+
+
+def _expressions_in(value: str) -> list[str]:
+    """``last_name | upper`` or a small template ``{{ last_name }} {{ first_name }}``."""
+    from docfill.templates.placeholders import PLACEHOLDER_RE
+
+    if "{{" in value:
+        return [match.group()[2:-2] for match in PLACEHOLDER_RE.finditer(value)]
+    return [value]
 
 
 class StandardDocumentSpec(BaseModel):
@@ -55,6 +90,18 @@ class StandardDocumentSpec(BaseModel):
     pdf_data: bytes | None = Field(default=None, repr=False)
     field_map: dict[str, str] = Field(default_factory=dict)
     optional_fields: list[str] = Field(default_factory=list)
+    # The document type this standard document is (a filled copy uploaded as a source is
+    # recognised and read through the field map).
+    doc_type: str | None = None
+    # Values proposed when nothing was found, e.g. {"request_object": "Act constitutiv"}.
+    defaults: dict[str, str] = Field(default_factory=dict)
+    # Fields whose last used value is proposed next time (the filer's own details).
+    remember: list[str] = Field(default_factory=list)
+    # Repeated rows: {"caen_activities": {"rows": 18, "columns": ["clasa_caen.0.{i}", ...]}};
+    # the field value holds one row per line, columns split at the first space.
+    lists: dict[str, ListSpec] = Field(default_factory=dict)
+    # Option buttons: {"PdfRadio": {"posta": "/v1", "electronic": "/v3"}} (value -> state).
+    choices: dict[str, dict[str, str]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check(self) -> StandardDocumentSpec:
@@ -72,26 +119,52 @@ class StandardDocumentSpec(BaseModel):
                 raise ValueError("a pdf_form standard document needs 'pdf_data' (or 'pdf_file')")
             if self.body:
                 raise ValueError("'body' only applies to text documents")
-            from docfill.export.pdf_form import list_text_fields
+            from docfill.export.pdf_form import list_fields
 
-            pdf_fields = list_text_fields(self.pdf_data)
-            if not pdf_fields:
+            pdf_fields = list_fields(self.pdf_data)
+            if not any(kind == "text" for kind in pdf_fields.values()):
                 raise ValueError("the PDF has no fillable text fields")
-            if not self.field_map:
-                self.field_map = {name: name for name in pdf_fields}
-            unknown = set(self.field_map) - set(pdf_fields)
+            if not self.field_map and not self.lists:
+                self.field_map = {n: n for n, kind in pdf_fields.items() if kind == "text"}
+            listed = {
+                cell for spec in self.lists.values() for row in list_cells(spec) for cell in row
+            }
+            unknown = (set(self.field_map) | listed | set(self.choices)) - set(pdf_fields)
             if unknown:
-                raise ValueError(f"field_map references unknown PDF fields: {sorted(unknown)}")
+                raise ValueError(f"unknown PDF fields: {sorted(unknown)[:10]}")
             for expression in self.field_map.values():
                 try:
-                    parse_expression(expression)
+                    if "{{" in expression:
+                        validate_body(expression)
+                    else:
+                        parse_expression(expression)
                 except TemplateError as exc:
                     raise ValueError(str(exc)) from exc
         return self
 
+    def options(self) -> dict[str, Any]:
+        options: dict[str, Any] = {}
+        if self.doc_type:
+            options["doc_type"] = self.doc_type
+        if self.defaults:
+            options["defaults"] = dict(self.defaults)
+        if self.remember:
+            options["remember"] = list(self.remember)
+        if self.lists:
+            options["lists"] = {k: v.model_dump(exclude_none=True) for k, v in self.lists.items()}
+        if self.choices:
+            options["choices"] = {k: dict(v) for k, v in self.choices.items()}
+        return options
+
     def checksum(self) -> str:
         return compute_checksum(
-            self.kind, self.title, self.body, self.pdf_data, self.field_map, self.optional_fields
+            self.kind,
+            self.title,
+            self.body,
+            self.pdf_data,
+            self.field_map,
+            self.optional_fields,
+            self.options(),
         )
 
 
@@ -115,6 +188,7 @@ class StandardDocument(Base):
     pdf_data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     field_map: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
     optional_fields: Mapped[list[str]] = mapped_column(JSON, default=list)
+    options: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=dict, nullable=True)
     checksum: Mapped[str] = mapped_column(String(64))
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
@@ -128,7 +202,37 @@ class StandardDocument(Base):
             from docfill.templates.placeholders import PLACEHOLDER_RE
 
             return [match.group()[2:-2] for match in PLACEHOLDER_RE.finditer(self.body or "")]
-        return list(self.field_map.values())
+        return [expr for value in self.field_map.values() for expr in _expressions_in(value)]
+
+    def option(self, key: str, default: Any = None) -> Any:
+        return (self.options or {}).get(key, default)
+
+    @property
+    def doc_type(self) -> str | None:
+        return self.option("doc_type")
+
+    @property
+    def defaults(self) -> dict[str, str]:
+        return self.option("defaults", {})
+
+    @property
+    def remember(self) -> list[str]:
+        return self.option("remember", [])
+
+    @property
+    def lists(self) -> dict[str, dict[str, Any]]:
+        return self.option("lists", {})
+
+    @property
+    def choices(self) -> dict[str, dict[str, str]]:
+        return self.option("choices", {})
+
+    def pdf_field_names(self) -> list[str]:
+        """Every PDF field this document fills (mapped fields and list cells)."""
+        names = list(self.field_map)
+        for spec in self.lists.values():
+            names += [cell for row in list_cells(spec) for cell in row]
+        return names
 
     def field_names(self) -> list[str]:
         names: list[str] = []
@@ -136,6 +240,7 @@ class StandardDocument(Base):
             name, _ = parse_expression(expression)
             if name not in names:
                 names.append(name)
+        names += [name for name in self.lists if name not in names]
         return names
 
     def required_fields(self) -> list[str]:
@@ -150,6 +255,7 @@ class StandardDocument(Base):
             self.pdf_data,
             dict(self.field_map or {}),
             list(self.optional_fields or []),
+            dict(self.options or {}),
         )
 
     def verify_integrity(self) -> None:
@@ -167,6 +273,7 @@ class StandardDocument(Base):
             "description": self.description,
             "kind": self.kind,
             "version": self.version,
+            "doc_type": self.doc_type,
             "fields": self.field_names(),
             "required_fields": self.required_fields(),
             "checksum": self.checksum,

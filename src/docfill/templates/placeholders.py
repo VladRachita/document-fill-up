@@ -59,6 +59,39 @@ def clean_fill_value(value: object) -> str:
     return " ".join(text.split())[:MAX_VALUE_LENGTH]
 
 
+def clean_list_value(value: object) -> str:
+    """List values keep one row per line; each row is cleaned like any value."""
+    rows = (clean_fill_value(row) for row in str(value).splitlines())
+    return "\n".join(row for row in rows if row)
+
+
+def split_row(row: str, columns: int) -> list[str]:
+    """``6201 Activități de realizare a soft-ului`` -> ["6201", "Activități de ..."]."""
+    if columns == 1:
+        return [row]
+    if "|" in row:  # "Act constitutiv | 1/01.10.2026 | 5"
+        parts = [part.strip() for part in row.split("|", columns - 1)]
+    else:
+        parts = re.split(r"\s*[-–;]\s+|\s+", row, maxsplit=columns - 1)
+    return parts + [""] * (columns - len(parts))
+
+
+def choose(mapping: Mapping[str, str], value: str) -> str | None:
+    """Map a choice ("electronic", "poștă") to its PDF button state; states pass through."""
+    if value.startswith("/"):
+        return value
+    wanted = _fold(value)
+    for key, state in mapping.items():
+        if _fold(key) == wanted or _fold(key).startswith(wanted) and wanted:
+            return state
+    return None
+
+
+def _fold(text: str) -> str:
+    decomposed = unicodedata.normalize("NFD", text)
+    return "".join(c for c in decomposed if unicodedata.category(c) != "Mn").lower().strip()
+
+
 def apply(expression: str, values: Mapping[str, str]) -> str | None:
     name, filter_name = parse_expression(expression)
     value = values.get(name)

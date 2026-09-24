@@ -22,7 +22,8 @@ from docfill.wizard import (
 from tests.conftest import make_docx, requires_spacy_model
 from tests.test_pipeline import standard
 
-TODAY = date.today().isoformat()
+TODAY = date.today().isoformat()  # file names
+TODAY_RO = date.today().strftime("%d.%m.%Y")  # dates written in documents
 TEMPLATE = {
     "name": "hello",
     "title": "Hello",
@@ -42,11 +43,13 @@ def test_extraction_keeps_every_distinct_candidate():
     result = ExtractionResult()
     result.offer(field("city", "Paris", 0.5, "ner"))
     result.offer(field("city", "Lyon", 0.95))
-    result.offer(field("city", "PARIS", 0.6, "pattern"))  # same value, better confidence
+    result.offer(field("city", "PARIS", 0.6, "pattern"))  # same value, another source
+    result.offer(field("city", "Paris", 0.55, "ner"))  # same value and source: better one kept
     assert result.fields["city"].value == "Lyon"
-    assert [(c.value, c.confidence) for c in result.candidates["city"]] == [
-        ("Lyon", 0.95),
-        ("PARIS", 0.6),
+    assert [(c.value, c.source, c.confidence) for c in result.candidates["city"]] == [
+        ("Lyon", "label", 0.95),
+        ("PARIS", "pattern", 0.6),
+        ("Paris", "ner", 0.55),
     ]
 
 
@@ -89,12 +92,12 @@ def test_field_rows_prefill_confident_values_and_offer_alternatives(settings):
     assert rows["city"].value == "" and rows["city"].required
     assert rows["city"].alternatives[0].value == "Berlin"
     assert not rows["region"].required
-    assert rows["today"].value == TODAY and rows["today"].found.source == "system"
+    assert rows["today"].value == TODAY_RO and rows["today"].found.source == "system"
     assert [f["name"] for f in other_fields(standard(), extraction)] == ["country"]
 
 
 def test_build_preview_counts_and_missing():
-    preview = build_preview(standard(), {"first_name": "Ion", "today": TODAY})
+    preview = build_preview(standard(), {"first_name": "Ion", "today": TODAY_RO})
     assert preview["missing"] == ["last_name", "city"]
     assert (preview["filled"], preview["total"]) == (2, 5)
     assert preview["lines"][0] == {"kind": "h1", "segments": [{"text": "DECLARATION"}]}
@@ -173,30 +176,93 @@ def test_wizard_reextract_follows_text_corrections(client):
 
 
 def test_wizard_preview(client):
-    preview = client.post(
+    body = client.post(
         "/wizard/preview", json={"template": "hello", "values": {"first_name": "Ion"}}
     ).json()
+    preview = body["previews"][0]
     assert preview["missing"] == ["last_name"]
-    assert preview["suggested_filename"] == f"hello_Ion_{TODAY}.pdf"
+    assert body["suggested_filename"] == f"hello_Ion_{TODAY}"
     line = preview["lines"][2]["segments"]
     assert {"text": "Ion", "field": "first_name", "filled": True} in line
 
 
-def test_wizard_export_saves_under_new_name(client, tmp_path):
+def test_wizard_preview_reports_issues_and_derivations(client):
+    body = client.post(
+        "/wizard/preview",
+        json={
+            "template": "hello",
+            "values": {"cnp": "1871114321239", "date_of_birth": "01.01.1990"},
+        },
+    ).json()
+    assert body["issues"]["date_of_birth"] == ["Differs from the date of birth in the CNP"]
+    assert body["derived"]["sex"]["value"] == "M"
+    bad = client.post(
+        "/wizard/preview", json={"template": "hello", "values": {"cnp": "1871114321230"}}
+    )
+    assert "Invalid CNP" in bad.json()["issues"]["cnp"][0]
+
+
+def test_wizard_export_saves_under_new_name_and_learns(client, tmp_path):
+    rows = client.post(
+        "/wizard/reextract",
+        json={
+            "template": "hello",
+            "documents": [
+                {"source": "id", "text": "Surname: SMITH\nFirst name: Jon", "doc_type": "other"}
+            ],
+        },
+    ).json()["rows"]
     payload = {
         "template": "hello",
-        "values": {"first_name": "Ion", "last_name": "Popescu", "city": "Iași"},
-        "filename": "../Ion Popescu final",
+        "values": {"first_name": "John", "last_name": "Smith", "city": "Iași"},
+        "filename": "../John Smith final",
+        "rows": rows,
+        "documents": [
+            {
+                "source": "id",
+                "text": "Surname: SMITH\nFirst name: Jon",
+                "doc_type": "other",
+                "detected_type": "other",
+            }
+        ],
     }
     response = client.post("/wizard/export", json=payload)
-    assert response.status_code == 200
-    assert response.headers["x-docfill-filename"] == "Ion_Popescu_final.pdf"
-    saved = tmp_path / "output" / "Ion_Popescu_final.pdf"
-    assert saved.read_bytes() == response.content
-    text = PdfReader(io.BytesIO(response.content)).pages[0].extract_text()
-    assert "Hi Ion POPESCU from Iași" in text
-    again = client.post("/wizard/export", json=payload)
-    assert again.headers["x-docfill-filename"] == "Ion_Popescu_final-2.pdf"
+    assert response.status_code == 200, response.text
+    body = response.json()
+    saved = body["files"][0]
+    assert saved["filename"] == "John_Smith_final.pdf"
+    assert (tmp_path / "output" / "John_Smith_final.pdf").is_file()
+    download = client.get(saved["url"])
+    assert download.headers["content-type"] == "application/pdf"
+    text = PdfReader(io.BytesIO(download.content)).pages[0].extract_text()
+    assert "Hi John SMITH from Iași" in text
+    # the review was recorded: last name accepted, first name corrected, city added
+    assert body["learned"]["outcomes"] == {"accepted": 1, "corrected": 1, "added": 1}
+    stats = client.get("/learning/stats").json()
+    assert stats["reviews"] == 1 and stats["examples"] == {"other": 1}
+    again = client.post("/wizard/export", json=payload).json()
+    assert again["files"][0]["filename"] == "John_Smith_final-2.pdf"
+
+
+def test_wizard_export_several_documents(client):
+    client.post(
+        "/templates",
+        json={**TEMPLATE, "name": "bye", "title": "Bye", "body": "Bye {{ first_name }}"},
+    )
+    body = client.post(
+        "/wizard/export",
+        json={
+            "templates": ["hello", "bye"],
+            "values": {"first_name": "Ion", "last_name": "Popescu"},
+            "filename": "dosar",
+        },
+    ).json()
+    assert [f["filename"] for f in body["files"]] == ["dosar_hello.pdf", "dosar_bye.pdf"]
+
+
+def test_wizard_download_rejects_other_paths(client):
+    assert client.get("/wizard/files/..%2F..%2Fetc%2Fpasswd").status_code == 404
+    assert client.get("/wizard/files/missing.pdf").status_code == 404
 
 
 def test_wizard_export_requires_missing_fields_or_permission(client):
@@ -205,7 +271,7 @@ def test_wizard_export_requires_missing_fields_or_permission(client):
     assert refused.status_code == 422 and refused.json()["missing"] == ["last_name"]
     allowed = client.post("/wizard/export", json={**payload, "allow_missing": True})
     assert allowed.status_code == 200
-    assert allowed.headers["x-docfill-missing"] == "last_name"
+    assert allowed.json()["files"][0]["missing"] == ["last_name"]
 
 
 def test_wizard_unknown_template(client):
@@ -227,9 +293,11 @@ def test_terminal_wizard(tmp_path):
     answers = "\n".join(
         [
             "n",  # show the text read? no
-            "John",  # first_name: correct the OCR/typing mistake
-            "",  # last_name: keep "Smith"
-            "Cluj",  # city (optional): provide it
+            "1",  # change field 1 (first name)...
+            "John",  # ...correcting the OCR/typing mistake
+            "3",  # change field 3 (city, optional)...
+            "Cluj",  # ...providing it
+            "",  # no more changes
             "",  # everything correct? yes
             "John Smith hello",  # new file name
         ]
@@ -251,6 +319,8 @@ def test_terminal_wizard(tmp_path):
     assert result.exit_code == 0, result.output
     saved = tmp_path / "out" / "John_Smith_hello.pdf"
     assert "Hi John SMITH from Cluj" in PdfReader(saved).pages[0].extract_text()
+    learned = result.output.split("Learned from this review:")[1].splitlines()[0]
+    assert all(part in learned for part in ("1 accepted", "1 corrected", "1 added"))
 
 
 @requires_spacy_model

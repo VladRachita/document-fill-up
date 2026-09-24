@@ -22,7 +22,7 @@ jobs:
       - name: System dependencies (OCR, fonts)
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng fonts-dejavu-core
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-ron fonts-dejavu-core
 
       - name: Install
         run: |

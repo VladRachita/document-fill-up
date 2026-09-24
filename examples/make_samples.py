@@ -15,6 +15,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
+from docfill.samples import Person, ro_id_card_jpeg
+
 OUT = Path(__file__).parent / "samples"
 
 
@@ -45,6 +47,9 @@ def id_card_image() -> Image.Image:
 def main() -> None:
     OUT.mkdir(exist_ok=True)
 
+    # 0. A Romanian identity card of a fictitious person (CNP, MRZ, domicile...)
+    (OUT / "ci_popescu.jpg").write_bytes(ro_id_card_jpeg(Person()))
+
     # 1. A photographed / scanned ID card (JPEG) -> OCR
     id_card_image().save(OUT / "id_card.jpg", quality=90)
 
@@ -64,7 +69,7 @@ def main() -> None:
         ("Nume", "POPESCU"),
         ("Prenume", "Ion Andrei"),
         ("Domiciliu", "Str. Florilor nr. 5, 400001 Cluj-Napoca, jud. Cluj, România"),
-        ("Locul nașterii", "Brașov"),
+        ("Locul nașterii", "Făgăraș"),
         ("IBAN", "RO49 AAAA 1B31 0075 9384 0000"),
     ]:
         cells = table.add_row().cells

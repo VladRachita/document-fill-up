@@ -26,6 +26,8 @@ from docfill.models import RawDocument, SanitizedDocument
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0e-\x1f\x7f​-‏  ﻿]")
 _HSPACE = re.compile(r"[ \t  -   　]+")
 _FORM_BLANKS = re.compile(r"_{3,}|\.{4,}|…{2,}")
+# "Numele de familie ........ POPESCU" -> "Numele de familie: POPESCU"
+_LEADER_BETWEEN = re.compile(r"(?<=[^\W_]|[.)])\s*(?:_{3,}|\.{4,}|…{2,})\s*(?=[^\s._…:,;])")
 _PAGE_LABEL = re.compile(
     r"^(?:page|pagina|pag\.?)\s*\d{1,4}(?:\s*(?:/|of|din|de)\s*\d{1,4})?$", re.IGNORECASE
 )
@@ -204,6 +206,7 @@ class Sanitizer:
                         continue
                     seen_boilerplate.add(fp)
                 if opts.remove_noise_lines:
+                    line = _LEADER_BETWEEN.sub(": ", line)
                     line = _HSPACE.sub(" ", _FORM_BLANKS.sub(" ", line)).strip()
                     if not line or is_noise(line):
                         removed += 1

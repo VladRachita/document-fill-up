@@ -22,9 +22,10 @@ class Settings(BaseSettings):
     # postgresql+psycopg://user:pass@host/db
     database_url: str = "sqlite:///./docfill.db"
 
-    # OCR (Tesseract). ``ocr_languages`` uses Tesseract codes joined by '+', e.g. "eng+ron".
+    # OCR (Tesseract). ``ocr_languages`` uses Tesseract codes joined by '+', e.g. "ron+eng";
+    # "auto" uses Romanian and English when their language data is installed.
     tesseract_cmd: str | None = None
-    ocr_languages: str = "eng"
+    ocr_languages: str = "auto"
     ocr_dpi: int = 300
     # A PDF page with fewer extractable characters than this is treated as scanned and OCR'd.
     pdf_min_text_chars: int = 20

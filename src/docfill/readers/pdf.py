@@ -11,6 +11,7 @@ from pypdf.errors import PdfReadError
 
 from docfill.config import Settings
 from docfill.errors import DocumentReadError, OCRUnavailableError
+from docfill.export.pdf_form import inspect_form, read_form_values
 from docfill.models import DocumentType, Page, RawDocument
 from docfill.readers.ocr import ocr_image
 
@@ -53,4 +54,20 @@ def read_pdf(data: bytes, source: str, settings: Settings) -> RawDocument:
         if rasterized is not None:
             rasterized.close()
 
-    return RawDocument(source=source, doc_type=DocumentType.PDF, pages=pages, warnings=warnings)
+    form_values = read_form_values(data)
+    if form_values:
+        # Filled PDF forms keep their data in fields, not in the page text: expose each value
+        # with the label printed next to it so it is visible and can be extracted.
+        lines = []
+        for field in inspect_form(data):
+            value = form_values.get(field.name)
+            if value and field.kind == "text":
+                lines.append(f"{field.label or field.name}: {value}")
+        pages.append(Page(number=len(pages) + 1, text="\n".join(lines)))
+    return RawDocument(
+        source=source,
+        doc_type=DocumentType.PDF,
+        pages=pages,
+        warnings=warnings,
+        form_values=form_values,
+    )

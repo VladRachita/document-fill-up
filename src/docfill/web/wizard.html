@@ -152,6 +152,41 @@
   .check { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; }
   .muted { color: var(--muted); }
   .empty { color: var(--muted); padding: 20px; text-align: center; }
+
+  /* v2: several reference documents, document types, grouped fields */
+  .tpl-list { display: grid; gap: 8px; }
+  .tpl { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border);
+         border-radius: 8px; cursor: pointer; }
+  .tpl.on { border-color: var(--accent); background: var(--accent-weak); }
+  .tpl input { margin-top: 4px; }
+  .tpl .t-title { font-weight: 600; }
+  .tpl .t-desc { color: var(--muted); font-size: 13px; }
+  .doctype { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .doctype select { width: auto; min-width: 260px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; background: var(--surface); padding: 5px 12px; cursor: pointer; font-size: 13px; }
+  .seg button[aria-pressed="true"] { background: var(--accent-weak); color: var(--accent); font-weight: 600; }
+  details.group { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+                  margin-bottom: 10px; }
+  details.group > summary { cursor: pointer; padding: 10px 12px; display: flex; gap: 8px; align-items: center;
+                            flex-wrap: wrap; font-weight: 600; list-style: none; }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary::before { content: "▸"; color: var(--muted); }
+  details.group[open] > summary::before { content: "▾"; }
+  details.group .g-body { padding: 0 10px 2px; }
+  .field.attention { border-color: var(--warn); }
+  .field .issues { margin-top: 6px; font-size: 13px; color: var(--bad); }
+  .field .issues div::before { content: "⚠ "; }
+  .field textarea.list { min-height: 96px; font-size: 13px; }
+  .field input[type=checkbox] { width: 18px; height: 18px; margin: 0; vertical-align: middle; }
+  .files-out { display: grid; gap: 6px; margin-top: 10px; }
+  .learned { background: var(--accent-weak); color: var(--text); border-radius: var(--radius); padding: 12px 14px; margin-top: 12px;
+             font-size: 13.5px; }
+  .learned strong { color: var(--accent); }
+  .paper .form-row { cursor: pointer; }
+  .paper .form-row td:first-child { color: #4b5563; width: 48%; }
+  .paper .form-row.req-missing td:last-child { background: #fde2df; color: #9b2c24; }
 </style>
 </head>
 <body>
@@ -170,17 +205,13 @@
   <section class="step" data-step="1">
     <div class="grid-2">
       <div class="card">
-        <h2>1. Reference document</h2>
-        <p class="hint">The standard document to fill. It is used exactly as stored; only its fields are filled in.</p>
-        <label for="template" class="muted" style="font-size:13px">Standard document</label>
-        <select id="template"></select>
-        <p id="template-desc" class="hint" style="margin-top:10px"></p>
-        <div class="muted" style="font-size:13px;margin-bottom:6px">Fields it needs (<span class="chip req" style="padding:0 6px">required</span> / optional):</div>
-        <div class="chips" id="template-fields"></div>
+        <h2>1. Reference documents</h2>
+        <p class="hint">The standard documents to fill; choose several to fill them from the same data (e.g. Anexa 2a and Anexa 4). They are used exactly as stored; only their fields are filled in.</p>
+        <div class="tpl-list" id="template-list"></div>
       </div>
       <div class="card">
         <h2>2. Source documents</h2>
-        <p class="hint">Where the information comes from: PDF, Word (.docx), PNG or JPEG. Photos and scans are read with OCR. Add several files about the same person (e.g. ID card and utility bill).</p>
+        <p class="hint">Where the information comes from: identity card, birth certificate, an already filled form… PDF, Word (.docx), PNG or JPEG. Photos and scans are read with OCR.</p>
         <label class="drop" id="drop">
           <input type="file" id="file-input" multiple accept=".pdf,.docx,.png,.jpg,.jpeg">
           <strong>Drop files here or click to choose</strong>
@@ -199,6 +230,7 @@
   <section class="step" data-step="2">
     <div class="card">
       <div class="tabs" id="doc-tabs" role="tablist"></div>
+      <div class="doctype" id="doc-type"></div>
       <div id="doc-badges" class="chips" style="margin-bottom:12px"></div>
       <div id="doc-warnings"></div>
       <div class="grid-2">
@@ -212,7 +244,7 @@
         </div>
       </div>
       <div style="margin-top:14px">
-        <div class="panel-title">Found for this reference document <span class="status">updates as you edit the text</span></div>
+        <div class="panel-title">Found for the reference documents <span class="status">updates as you edit the text or the document type</span></div>
         <div class="chips" id="found-chips"></div>
       </div>
     </div>
@@ -228,14 +260,22 @@
     <div class="grid-review">
       <div>
         <div class="progress"><span id="progress-text"></span><div class="bar"><div id="progress-bar"></div></div></div>
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Show fields">
+            <button type="button" data-filter="attention" aria-pressed="true">Needs attention</button>
+            <button type="button" data-filter="all" aria-pressed="false">All fields</button>
+          </div>
+          <span class="muted" style="font-size:13px" id="filter-note"></span>
+        </div>
         <div id="fields"></div>
         <details class="other" id="other-wrap">
-          <summary>Other data found in the documents (not used by this reference document)</summary>
+          <summary>Other data found in the documents (not used by these reference documents)</summary>
           <table class="kv" id="other-table"></table>
         </details>
       </div>
       <div class="sticky">
-        <div class="panel-title">Live preview <span class="status">click a highlighted value to edit it</span></div>
+        <div class="panel-title">Live preview <span class="status">click a value to edit it</span></div>
+        <div class="tabs" id="preview-tabs"></div>
         <div class="paper" id="preview"></div>
       </div>
     </div>
@@ -250,19 +290,20 @@
   <section class="step" data-step="4">
     <div class="grid-review">
       <div class="card">
-        <h2>Save the filled document</h2>
+        <h2>Save the filled documents</h2>
         <p class="hint" id="save-summary"></p>
         <div id="save-missing"></div>
         <label for="filename" class="muted" style="font-size:13px">New file name</label>
         <div class="filename"><input type="text" id="filename" autocomplete="off"><span>.pdf</span></div>
-        <p class="hint" style="margin-top:6px">Saved in the server's output folder and downloaded to this computer. An existing file is never overwritten.</p>
+        <p class="hint" style="margin-top:6px" id="filename-hint"></p>
         <div class="actions" style="margin:12px 0 0">
           <button class="btn primary" type="button" id="export-btn">Create PDF</button>
         </div>
         <div id="save-result"></div>
       </div>
       <div class="sticky">
-        <div class="panel-title">Final document</div>
+        <div class="panel-title">Final documents</div>
+        <div class="tabs" id="final-tabs"></div>
         <div class="paper" id="final-preview"></div>
       </div>
     </div>
@@ -279,18 +320,32 @@
 
 const STEPS = [
   { title: "Documents", sub: "Reference + sources" },
-  { title: "Scan & clean", sub: "Check the text read" },
+  { title: "Scan & clean", sub: "Check text and type" },
   { title: "Review fields", sub: "Correct values live" },
   { title: "Save PDF", sub: "Choose a file name" },
 ];
-const SOURCE_LABELS = { label: "Label rule", pattern: "Pattern", ner: "ML model", derived: "Derived",
-                        manual: "Entered by you", system: "System" };
+const SOURCE_LABELS = {
+  label: "Label", learned: "Learned label", pattern: "Pattern", mrz: "Machine-readable zone",
+  form: "Filled form", ner: "ML model", derived: "Derived", memory: "Remembered",
+  default: "Default", manual: "Set by you", system: "System",
+};
+const GROUPS = [
+  ["person", "Person"], ["birth", "Birth"], ["domicile", "Domicile"], ["id_card", "Identity card"],
+  ["company", "Company"], ["filing", "Request"], ["contact", "Contact person"],
+  ["billing", "Billing"], ["filer", "Filed by"], ["parents", "Parents"], ["other", "Other"],
+];
+const LIST_HINTS = {
+  caen_activities: "6201 Activități de realizare a soft-ului la comandă",
+  caen_third_party: "4321 Lucrări de instalații electrice",
+  attached_documents: "Act constitutiv | 1/01.10.2026 | 5",
+};
 
 const state = {
-  step: 1, maxStep: 1, templates: [], templateName: "",
+  step: 1, maxStep: 1, templates: [], selected: [], docTypes: [],
   files: [], filesDirty: true, documents: [], activeDoc: 0,
-  rows: [], otherFields: [], values: {}, manual: {},
-  preview: null, filename: "", filenameTouched: false, allowMissing: false, saved: null,
+  rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {},
+  previews: [], activePreview: 0, filter: "attention",
+  filename: "", filenameTouched: false, allowMissing: false, learned: null,
 };
 
 // ------------------------------------------------------------------ helpers
@@ -345,35 +400,36 @@ async function api(path, options = {}) {
 const postJSON = (path, payload) =>
   api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 
+const storage = {
+  get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; } },
+  set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* private mode */ } },
+};
+
 function confidenceClass(confidence) {
   if (confidence >= 0.85) return "ok";
   if (confidence >= 0.6) return "warn";
   return "bad";
 }
 
-function sizeLabel(bytes) {
-  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
-}
-
-function currentTemplate() {
-  return state.templates.find((t) => t.name === state.templateName);
-}
+const pct = (value) => `${Math.round(value * 100)}%`;
+const sizeLabel = (bytes) => bytes < 1048576 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+const describeSource = (c) => SOURCE_LABELS[c.source] || c.source;
+const docTypeLabel = (name) => (state.docTypes.find((d) => d.name === name) || { label: name || "unknown" }).label;
+const rowByName = (name) => state.rows.find((r) => r.name === name);
+const labelFor = (name) => (rowByName(name) || { label: name }).label;
+const valueOf = (name) => (state.values[name] || "").trim();
 
 // ------------------------------------------------------------------ stepper
 
 function renderSteps() {
-  const nav = $("steps");
-  nav.replaceChildren(...STEPS.map((step, index) => {
+  put($("steps"), STEPS.map((step, index) => {
     const number = index + 1;
-    const button = el("button", {
-      type: "button",
-      class: number < state.step ? "done" : "",
+    return el("button", {
+      type: "button", class: number < state.step ? "done" : "",
       "aria-current": number === state.step ? "step" : false,
-      disabled: number > state.maxStep,
-      onclick: () => goTo(number),
+      disabled: number > state.maxStep, onclick: () => goTo(number),
     }, el("span", { class: "num" }, number < state.step ? "✓" : number),
        el("span", {}, el("div", { class: "step-title" }, step.title), el("div", { class: "step-sub" }, step.sub)));
-    return button;
   }));
   document.querySelectorAll("section.step").forEach((section) => {
     section.classList.toggle("active", Number(section.dataset.step) === state.step);
@@ -391,47 +447,68 @@ function goTo(step) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function unlock(step) {
-  state.maxStep = Math.max(state.maxStep, step);
+const unlock = (step) => { state.maxStep = Math.max(state.maxStep, step); };
+
+// ------------------------------------------------------------------ header
+
+async function loadHealth() {
+  const pills = [];
+  try {
+    const health = await (await api("/health")).json();
+    pills.push(el("span", { class: `pill ${health.ocr ? "ok" : "warn"}` }, health.ocr ? "OCR ready" : "OCR not installed"));
+    pills.push(el("span", { class: `pill ${health.ner ? "ok" : "warn"}` }, health.ner ? "ML model ready" : "ML model not installed"));
+  } catch (_) { /* informative only */ }
+  try {
+    const stats = await (await api("/learning/stats")).json();
+    const accuracy = stats.accuracy_last_10_reviews;
+    pills.push(el("span", { class: "pill accent", title: "Every saved review makes the next extraction better" },
+      stats.reviews ? `Learned from ${stats.reviews} review${stats.reviews === 1 ? "" : "s"}` +
+        (accuracy != null ? ` · ${pct(accuracy)} right lately` : "") : "Learning: no reviews yet"));
+  } catch (_) { /* optional */ }
+  put($("health"), pills);
 }
 
 // ------------------------------------------------------------------ step 1
 
-async function loadHealth() {
-  try {
-    const health = await (await api("/health")).json();
-    $("health").replaceChildren(
-      el("span", { class: `pill ${health.ocr ? "ok" : "warn"}` }, health.ocr ? "OCR ready" : "OCR not installed"),
-      el("span", { class: `pill ${health.ner ? "ok" : "warn"}` }, health.ner ? "ML model ready" : "ML model not installed"),
-      el("span", { class: "pill" }, `v${health.version}`),
-    );
-  } catch (error) { /* health is informative only */ }
-}
-
 async function loadTemplates() {
-  const templates = await (await api("/templates")).json();
+  const [templates, docTypes] = await Promise.all([
+    api("/templates").then((r) => r.json()), api("/doctypes").then((r) => r.json()),
+  ]);
   state.templates = templates;
-  const select = $("template");
+  state.docTypes = docTypes;
   if (!templates.length) {
-    select.replaceChildren(el("option", { value: "" }, "No standard documents: run `docfill templates seed`"));
     showBanner("No standard documents in the database yet. Run: docfill templates seed", "info");
-    return;
   }
-  select.replaceChildren(...templates.map((t) => el("option", { value: t.name }, `${t.title} (v${t.version})`)));
-  state.templateName = templates[0].name;
-  renderTemplateInfo();
+  const remembered = (storage.get("docfill.templates") || []).filter((n) => templates.some((t) => t.name === n));
+  state.selected = remembered.length ? remembered : templates.slice(0, 1).map((t) => t.name);
+  renderTemplates();
 }
 
-function renderTemplateInfo() {
-  const template = currentTemplate();
-  $("template-desc").textContent = template ? template.description || "" : "";
-  $("template-fields").replaceChildren(...(template ? template.fields : []).map((name) =>
-    el("span", { class: `chip ${template.required_fields.includes(name) ? "req" : ""}` }, name)));
+function renderTemplates() {
+  put($("template-list"), state.templates.map((t) => {
+    const on = state.selected.includes(t.name);
+    const input = el("input", { type: "checkbox", id: `tpl-${t.name}`, checked: on,
+      onchange: (event) => toggleTemplate(t.name, event.target.checked) });
+    return el("label", { class: `tpl ${on ? "on" : ""}`, for: `tpl-${t.name}` }, input,
+      el("div", {}, el("div", { class: "t-title" }, `${t.title} (v${t.version})`),
+        el("div", { class: "t-desc" }, t.description || ""),
+        el("div", { class: "t-desc" }, `${t.fields.length} fields, ${t.required_fields.length} required`)));
+  }));
   updateScanButton();
 }
 
+function toggleTemplate(name, on) {
+  state.selected = on ? [...state.selected, name] : state.selected.filter((n) => n !== name);
+  state.selected = state.templates.map((t) => t.name).filter((n) => state.selected.includes(n));
+  storage.set("docfill.templates", state.selected);
+  state.rows = []; state.previews = []; state.maxStep = 1;
+  renderTemplates();
+  renderSteps();
+}
+
 function updateScanButton() {
-  $("scan-btn").disabled = !state.templateName || !state.files.length;
+  $("scan-btn").disabled = !state.selected.length || !state.files.length;
+  $("manual-btn").disabled = !state.selected.length;
 }
 
 function addFiles(fileList) {
@@ -443,7 +520,7 @@ function addFiles(fileList) {
 }
 
 function renderFiles() {
-  $("file-list").replaceChildren(...state.files.map((file, index) =>
+  put($("file-list"), state.files.map((file, index) =>
     el("li", {},
       el("span", { class: "name", title: file.name }, file.name),
       el("span", { class: "size" }, sizeLabel(file.size)),
@@ -460,12 +537,13 @@ async function scan() {
   try {
     if (state.filesDirty || !state.documents.length) {
       const form = new FormData();
-      form.append("template", state.templateName);
+      state.selected.forEach((name) => form.append("templates", name));
       state.files.forEach((file) => form.append("files", file, file.name));
       const result = await (await api("/wizard/analyze", { method: "POST", body: form })).json();
       state.documents = result.documents;
       state.activeDoc = 0;
       state.filesDirty = false;
+      state.manual = {}; state.derivedFrom = {};
       applyReview(result);
     } else {
       await reextract();
@@ -482,11 +560,9 @@ async function scan() {
 
 async function fillManually() {
   showBanner("");
-  if (!state.templateName) return;
   try {
-    state.documents = [];
-    state.filesDirty = true;
-    applyReview(await (await postJSON("/wizard/reextract", { template: state.templateName, documents: [] })).json());
+    state.documents = []; state.filesDirty = true; state.manual = {}; state.derivedFrom = {};
+    applyReview(await (await postJSON("/wizard/reextract", { templates: state.selected, documents: [] })).json());
     unlock(4);
     goTo(3);
   } catch (error) { showBanner(error.message); }
@@ -498,10 +574,17 @@ function applyReview(result) {
   state.rows = result.rows;
   state.otherFields = result.other_fields || [];
   for (const row of state.rows) {
-    if (!state.manual[row.name]) state.values[row.name] = row.value || "";
+    if (!state.manual[row.name]) {
+      state.values[row.name] = row.value || "";
+      delete state.derivedFrom[row.name];
+    }
   }
   unlock(4);
   schedulePreview();
+}
+
+function documentsPayload() {
+  return state.documents.map((d) => ({ source: d.source, text: d.text, doc_type: d.doc_type, detected_type: d.detected_type }));
 }
 
 let reextractSeq = 0;
@@ -510,8 +593,7 @@ async function reextract() {
   $("reextract-status").textContent = "re-extracting…";
   try {
     const result = await (await postJSON("/wizard/reextract", {
-      template: state.templateName,
-      documents: state.documents.map((d) => ({ source: d.source, text: d.text })),
+      templates: state.selected, documents: documentsPayload(),
     })).json();
     if (seq !== reextractSeq) return;  // a newer edit is in flight
     applyReview(result);
@@ -529,18 +611,32 @@ function renderDocuments() {
   const docs = state.documents;
   if (!docs.length) return;
   const doc = docs[state.activeDoc];
-  $("doc-tabs").replaceChildren(...docs.map((d, index) =>
+  put($("doc-tabs"), docs.map((d, index) =>
     el("button", { type: "button", role: "tab", "aria-selected": index === state.activeDoc ? "true" : "false",
                    onclick: () => { state.activeDoc = index; renderDocuments(); } }, d.source)));
+
+  const select = el("select", { id: "doc-type-select", "aria-label": "Document type",
+    onchange: (event) => { doc.doc_type = event.target.value; renderDocuments(); scheduleReextract(); } },
+    state.docTypes.map((t) => el("option", { value: t.name, selected: t.name === doc.doc_type }, t.label)));
+  const corrected = doc.doc_type !== doc.detected_type;
+  put($("doc-type"),
+    el("label", { for: "doc-type-select", class: "muted", style: "font-size:13px" }, "Document type"),
+    select,
+    doc.type_method === "form fields"
+      ? el("span", { class: "pill ok", title: "The form's fields match a registered standard document" }, "recognised from its form fields")
+      : el("span", { class: `pill ${confidenceClass(doc.type_confidence || 0)}`, title: "Detected by the document classifier (ML)" },
+          `detected: ${docTypeLabel(doc.detected_type)} · ${pct(doc.type_confidence || 0)}`),
+    corrected ? el("span", { class: "pill accent" }, "corrected by you: the classifier will learn it") : null);
+
   const redactions = Object.entries(doc.redactions || {}).map(([kind, count]) => `${count} ${kind.replace("_", " ")}`);
   put($("doc-badges"),
     el("span", { class: "pill accent" }, doc.type.toUpperCase()),
     el("span", { class: "pill" }, `${doc.pages} page${doc.pages === 1 ? "" : "s"}`),
     doc.ocr ? el("span", { class: "pill accent" }, "Read with OCR") : null,
+    doc.form_fields ? el("span", { class: "pill ok" }, `${doc.form_fields} form fields read`) : null,
     doc.removed_lines ? el("span", { class: "pill" }, `${doc.removed_lines} noise line${doc.removed_lines === 1 ? "" : "s"} removed`) : null,
-    redactions.length ? el("span", { class: "pill warn", title: "Sensitive data not needed for filling was removed" }, `Redacted: ${redactions.join(", ")}`) : null,
-  );
-  $("doc-warnings").replaceChildren(...(doc.warnings || []).map((w) => el("div", { class: "warnbox" }, w)));
+    redactions.length ? el("span", { class: "pill warn", title: "Sensitive data not needed for filling was removed" }, `Redacted: ${redactions.join(", ")}`) : null);
+  put($("doc-warnings"), (doc.warnings || []).map((w) => el("div", { class: "warnbox" }, w)));
   $("raw-text").textContent = doc.raw_text || "(no text found)";
   const textarea = $("clean-text");
   if (textarea.value !== doc.text) textarea.value = doc.text;
@@ -549,165 +645,265 @@ function renderDocuments() {
 }
 
 function renderFoundChips() {
-  $("found-chips").replaceChildren(...state.rows.map((row) => {
-    const value = state.values[row.name];
-    const cls = value ? "pill ok" : row.required ? "pill bad" : "pill";
-    return el("span", { class: cls, title: row.label }, `${row.label}: ${value || "not found"}`);
+  const found = state.rows.filter((row) => valueOf(row.name) || row.required);
+  put($("found-chips"), found.slice(0, 60).map((row) => {
+    const value = valueOf(row.name);
+    return el("span", { class: value ? "pill ok" : "pill bad", title: row.label },
+      `${row.label}: ${value ? value.split("\n")[0] : "not found"}`);
   }));
 }
 
 // ------------------------------------------------------------------ step 3
 
-function describeSource(candidate) {
-  return `${SOURCE_LABELS[candidate.source] || candidate.source}`;
+function fieldIssues(row) {
+  const issues = [...(state.issues[row.name] || [])];
+  const found = row.found;
+  if (found && !state.manual[row.name] && valueOf(row.name) === (found.value || "").trim()) {
+    for (const issue of found.issues || []) if (!issues.includes(issue)) issues.push(issue);
+  }
+  return issues;
+}
+
+function needsAttention(row) {
+  const value = valueOf(row.name);
+  if (row.required && !value) return true;
+  if (fieldIssues(row).length) return true;
+  if (state.manual[row.name]) return false;
+  if (state.derivedFrom[row.name]) return true;
+  const found = row.found;
+  if (value && found && found.value === state.values[row.name] &&
+      !["memory", "default", "system", "form"].includes(found.source) && found.confidence < 0.85) return true;
+  return false;
 }
 
 function renderFields() {
   const container = $("fields");
+  const visible = state.rows.filter((row) => state.filter === "all" || needsAttention(row));
+  document.querySelectorAll("[data-filter]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === state.filter)));
+  $("filter-note").textContent = state.filter === "attention"
+    ? `${visible.length} of ${state.rows.length} fields need a look · the rest were found with high confidence, remembered or are defaults`
+    : "";
   if (!state.rows.length) {
-    container.replaceChildren(el("div", { class: "empty" }, "This reference document has no fields."));
+    put(container, el("div", { class: "empty" }, "These reference documents have no fields."));
+  } else if (!visible.length) {
+    put(container, el("div", { class: "empty" }, "Nothing needs attention. Switch to “All fields” to review everything."));
   } else {
-    container.replaceChildren(...state.rows.map(renderField));
+    put(container, GROUPS.map(([key, title]) => {
+      const rows = visible.filter((row) => (row.group || "other") === key);
+      if (!rows.length) return null;
+      const all = state.rows.filter((row) => (row.group || "other") === key);
+      const missing = all.filter((row) => row.required && !valueOf(row.name)).length;
+      const problems = all.filter((row) => fieldIssues(row).length).length;
+      return el("details", { class: "group", open: true, "data-group": key },
+        el("summary", {}, title,
+          el("span", { class: "pill" }, `${all.filter((r) => valueOf(r.name)).length}/${all.length} filled`),
+          missing ? el("span", { class: "pill bad" }, `${missing} missing`) : null,
+          problems ? el("span", { class: "pill warn" }, `${problems} problem${problems === 1 ? "" : "s"}`) : null),
+        el("div", { class: "g-body" }, rows.map(renderField)));
+    }));
   }
   renderOther();
   renderProgress();
-  renderPreview($("preview"));
+  renderPreviewTabs("preview-tabs", $("preview"));
+}
+
+function inputFor(row) {
+  const value = state.values[row.name] || "";
+  const id = `f-${row.name}`;
+  if (row.kind === "checkbox") {
+    return el("span", {}, el("input", { type: "checkbox", id, checked: /^(x|da|yes|1|true|on)$/i.test(value) }),
+      el("span", { class: "muted", style: "margin-left:8px;font-size:13px" }, "ticked"));
+  }
+  if (row.choices && row.choices.length) {
+    return el("select", { id }, el("option", { value: "" }, "—"),
+      row.choices.map((choice) => el("option", { value: choice, selected: choice === value }, choice)));
+  }
+  if (row.kind === "list") {
+    const area = el("textarea", { id, class: "list", placeholder: LIST_HINTS[row.name] || "one per line", spellcheck: "false" });
+    area.value = value;
+    return area;
+  }
+  const input = el("input", { type: "text", id, autocomplete: "off",
+    placeholder: row.kind === "date" ? "dd.mm.yyyy" : row.required ? "Required, not found in the documents" : "Optional" });
+  input.value = value;
+  return input;
 }
 
 function renderField(row) {
-  const value = state.values[row.name] || "";
-  const manual = !!state.manual[row.name];
-  const input = el("input", { type: "text", id: `f-${row.name}`, value, autocomplete: "off",
-                              placeholder: row.required ? "Required, not found in the documents" : "Optional" });
-  input.value = value;
   const card = el("div", { class: "field", id: `card-${row.name}` });
+  const wrapper = inputFor(row);
+  const control = row.kind === "checkbox" ? wrapper.querySelector("input") : wrapper;
   const meta = el("div", { class: "meta" });
-  const message = el("div", { class: "msg" });
+  const issues = el("div", { class: "issues" });
   const evidence = el("blockquote", { hidden: true });
 
-  function paintMeta() {
-    const current = state.values[row.name] || "";
-    const isManual = !!state.manual[row.name];
+  function paint() {
+    const current = valueOf(row.name);
+    const manual = !!state.manual[row.name];
+    const derived = state.derivedFrom[row.name];
+    const problems = fieldIssues(row);
     card.classList.toggle("missing", row.required && !current);
-    message.textContent = row.required && !current ? "Required: not found in the documents. Type it in or pick a candidate." : "";
+    card.classList.toggle("attention", !manual && needsAttention(row) && !(row.required && !current));
+    put(issues, row.required && !current ? el("div", {}, "Required: not found in the documents. Type it in or pick a candidate.") : null,
+      problems.map((p) => el("div", {}, p)));
     const items = [];
-    if (isManual) {
+    if (manual) {
       items.push(el("span", { class: "pill accent" }, "Set by you"));
       if (row.found) items.push(el("button", { type: "button", class: "btn link small",
-        onclick: () => setValue(row, row.found.value, false) }, `Undo (use found value “${row.found.value}”)`));
-      else if (row.value !== undefined) items.push(el("button", { type: "button", class: "btn link small",
-        onclick: () => setValue(row, row.value || "", false) }, "Undo"));
-    } else if (row.found) {
+        onclick: () => setValue(row, row.found.value, false) }, `Undo (use “${row.found.value.split("\n")[0]}”)`));
+    } else if (derived) {
+      items.push(el("span", { class: "pill warn" }, "Derived"), el("span", {}, derived));
+    } else if (row.found && current === (row.found.value || "").trim()) {
       const f = row.found;
-      items.push(el("span", { class: `pill ${confidenceClass(f.confidence)}`, title: "Confidence" }, `${Math.round(f.confidence * 100)}%`));
+      if (!["memory", "default", "system"].includes(f.source)) {
+        items.push(el("span", { class: `pill ${confidenceClass(f.confidence)}`, title: "Confidence" }, pct(f.confidence)));
+      }
       items.push(el("span", { class: "pill" }, describeSource(f)));
       if (f.document) items.push(el("span", {}, `from ${f.document}`));
-      if (f.evidence) items.push(el("button", { type: "button", class: "btn link small",
+      if (f.evidence && !["system"].includes(f.source)) items.push(el("button", { type: "button", class: "btn link small",
         onclick: () => { evidence.hidden = !evidence.hidden; } }, "Show where"));
       evidence.textContent = f.source === "derived" ? `Derived from: ${f.evidence}` : f.evidence || "";
-    } else if (current) {
-      items.push(el("span", { class: "pill" }, "Provided"));
     }
     put(meta, items);
   }
 
-  input.addEventListener("input", () => {
-    state.values[row.name] = input.value;
+  const onChange = () => {
+    state.values[row.name] = row.kind === "checkbox" ? (control.checked ? "x" : "") : control.value;
     state.manual[row.name] = true;
-    paintMeta();
+    delete state.derivedFrom[row.name];
+    paint();
     renderProgress();
     schedulePreview();
-  });
+  };
+  control.addEventListener(row.kind === "checkbox" || control.tagName === "SELECT" ? "change" : "input", onChange);
 
-  const alternatives = (row.alternatives || []).filter((a) => a.value !== value);
+  const alternatives = (row.alternatives || []).filter((a) => a.value !== state.values[row.name]);
   const altWrap = alternatives.length ? el("div", { class: "alts" }, "Other candidates:",
-    ...alternatives.map((alt) => el("button", { type: "button",
-      title: `${describeSource(alt)} · ${Math.round(alt.confidence * 100)}%${alt.document ? " · " + alt.document : ""}\n${alt.evidence || ""}`,
+    alternatives.map((alt) => el("button", { type: "button",
+      title: `${describeSource(alt)} · ${pct(alt.confidence)}${alt.document ? " · " + alt.document : ""}\n${alt.evidence || ""}${(alt.issues || []).length ? "\n⚠ " + alt.issues.join("; ") : ""}`,
       onclick: () => setValue(row, alt.value, true) },
-      `${alt.value} · ${describeSource(alt)} ${Math.round(alt.confidence * 100)}%`))) : null;
+      `${alt.value.split("\n")[0]} · ${describeSource(alt)} ${pct(alt.confidence)}${(alt.issues || []).length ? " ⚠" : ""}`))) : null;
 
   put(card,
     el("div", { class: "head" },
       el("label", { for: `f-${row.name}` }, row.label),
       el("code", {}, row.name),
+      row.remember ? el("span", { class: "pill", title: "Your own details: remembered for next time" }, "remembered") : null,
       el("span", { class: "req-tag" }, row.required ? "Required" : "Optional")),
-    input, message, meta, evidence, altWrap);
-  paintMeta();
+    wrapper, issues, meta, evidence, altWrap);
+  card.repaint = paint;
+  paint();
   return card;
 }
 
 function setValue(row, value, manual) {
   state.values[row.name] = value;
   if (manual) state.manual[row.name] = true; else delete state.manual[row.name];
+  delete state.derivedFrom[row.name];
   const card = $(`card-${row.name}`);
   if (card) card.replaceWith(renderField(row));
   renderProgress();
   schedulePreview();
 }
 
+function refreshCard(name) {
+  const card = $(`card-${name}`);
+  const row = rowByName(name);
+  if (!card || !row) return;
+  const input = $(`f-${name}`);
+  if (input && document.activeElement !== input) {
+    if (row.kind === "checkbox") input.checked = /^(x|da|yes|1|true|on)$/i.test(state.values[name] || "");
+    else input.value = state.values[name] || "";
+  }
+  if (card.repaint) card.repaint();
+}
+
 function renderOther() {
   const others = state.otherFields;
   $("other-wrap").style.display = others.length ? "" : "none";
-  $("other-table").replaceChildren(
+  put($("other-table"),
     el("tr", {}, el("th", {}, "Field"), el("th", {}, "Value"), el("th", {}, "Found by")),
-    ...others.map((o) => el("tr", {}, el("td", {}, o.label), el("td", {}, o.value),
-      el("td", {}, `${describeSource(o)} ${Math.round(o.confidence * 100)}%`))));
+    others.map((o) => el("tr", {}, el("td", {}, o.label), el("td", {}, o.value),
+      el("td", {}, `${describeSource(o)} ${pct(o.confidence)}`))));
 }
 
 function missingRequired() {
-  return state.rows.filter((row) => row.required && !(state.values[row.name] || "").trim());
+  return state.rows.filter((row) => row.required && !valueOf(row.name));
 }
 
 function renderProgress() {
   const total = state.rows.length;
-  const filled = state.rows.filter((row) => (state.values[row.name] || "").trim()).length;
+  const filled = state.rows.filter((row) => valueOf(row.name)).length;
   const missing = missingRequired().length;
-  $("progress-text").textContent = `${filled} of ${total} fields filled` + (missing ? ` · ${missing} required missing` : " · ready");
+  const problems = state.rows.filter((row) => fieldIssues(row).length).length;
+  $("progress-text").textContent = `${filled} of ${total} fields filled` +
+    (missing ? ` · ${missing} required missing` : "") + (problems ? ` · ${problems} with problems` : "") +
+    (!missing && !problems ? " · ready" : "");
   $("progress-bar").style.width = total ? `${(filled / total) * 100}%` : "0";
 }
 
 function focusField(name) {
   if (state.step !== 3) goTo(3);
-  const card = $(`card-${name}`);
+  let card = $(`card-${name}`);
+  if (!card && state.filter !== "all") { state.filter = "all"; renderFields(); card = $(`card-${name}`); }
   const input = $(`f-${name}`);
-  if (!card || !input) return;
+  if (!card) return;
+  const group = card.closest("details");
+  if (group) group.open = true;
   card.scrollIntoView({ behavior: "smooth", block: "center" });
-  input.focus();
+  if (input) input.focus();
   card.classList.add("flash");
   setTimeout(() => card.classList.remove("flash"), 900);
 }
 
-// ------------------------------------------------------------------ preview
+// ------------------------------------------------------------------ preview, issues, derivations
 
 let previewSeq = 0;
 async function refreshPreview() {
-  if (!state.templateName) return;
+  if (!state.selected.length) return;
   const seq = ++previewSeq;
   try {
-    const preview = await (await postJSON("/wizard/preview", { template: state.templateName, values: state.values })).json();
+    const body = await (await postJSON("/wizard/preview", { templates: state.selected, values: state.values })).json();
     if (seq !== previewSeq) return;
-    state.preview = preview;
-    if (!state.filenameTouched) state.filename = preview.suggested_filename.replace(/\.pdf$/i, "");
-    if (state.step === 3) renderPreview($("preview"));
+    state.previews = body.previews;
+    state.issues = body.issues || {};
+    let derivedChanged = false;
+    for (const [name, suggestion] of Object.entries(body.derived || {})) {
+      if (!rowByName(name) || state.manual[name] || valueOf(name)) continue;
+      state.values[name] = suggestion.value;
+      state.derivedFrom[name] = suggestion.reason;
+      derivedChanged = true;
+    }
+    if (!state.filenameTouched) state.filename = body.suggested_filename;
+    if (state.step === 3) {
+      state.rows.forEach((row) => refreshCard(row.name));
+      renderProgress();
+      renderPreviewTabs("preview-tabs", $("preview"));
+    }
+    if (state.step === 2) renderFoundChips();
     if (state.step === 4) renderSave();
+    if (derivedChanged) schedulePreview();
   } catch (error) { showBanner(error.message); }
 }
 const schedulePreview = debounce(refreshPreview, 150);
 
-function labelFor(name) {
-  const row = state.rows.find((r) => r.name === name);
-  return row ? row.label : name;
+function renderPreviewTabs(tabsId, container) {
+  const previews = state.previews;
+  if (state.activePreview >= previews.length) state.activePreview = 0;
+  put($(tabsId), previews.length > 1 ? previews.map((p, index) =>
+    el("button", { type: "button", "aria-selected": index === state.activePreview ? "true" : "false",
+      onclick: () => { state.activePreview = index; renderPreviewTabs(tabsId, container); } },
+      `${p.title} (${p.filled}/${p.total})`)) : []);
+  renderPreview(container, previews[state.activePreview]);
 }
 
-function renderPreview(container) {
-  const preview = state.preview;
-  if (!preview) { container.replaceChildren(el("div", { class: "empty" }, "Preview loading…")); return; }
+function renderPreview(container, preview) {
+  if (!preview) { put(container, el("div", { class: "empty" }, "Preview loading…")); return; }
   if (preview.kind === "text") {
-    container.replaceChildren(...preview.lines.map((line) => {
+    put(container, preview.lines.map((line) => {
       const segments = line.segments.map((seg) => seg.field
         ? el("span", { class: seg.filled ? "fill" : preview.missing.includes(seg.field) ? "blank required" : "blank",
-                       title: `${labelFor(seg.field)} (${seg.field})`,
-                       role: "button", tabindex: "0",
+                       title: `${labelFor(seg.field)} (${seg.field})`, role: "button", tabindex: "0",
                        onclick: () => focusField(seg.field),
                        onkeydown: (event) => { if (event.key === "Enter") focusField(seg.field); } }, seg.text)
         : seg.text);
@@ -717,45 +913,58 @@ function renderPreview(container) {
       if (line.kind === "blank") return el("div", { class: "doc-gap" });
       return el("div", { class: "doc-line" }, segments);
     }));
-  } else {
-    container.replaceChildren(
-      el("h3", { class: "doc-h1" }, preview.title),
-      el("p", { class: "muted" }, "PDF form: the original layout is kept; these form fields are filled."),
-      el("table", {}, el("tr", {}, el("th", {}, "PDF field"), el("th", {}, "Value")),
-        ...preview.form_fields.map((f) => el("tr", {}, el("td", {}, f.pdf_field),
-          el("td", {}, el("span", { class: f.value ? "fill" : "blank" }, f.value || "(blank)"))))));
+    return;
   }
+  const rows = preview.form_fields;
+  const filled = rows.filter((r) => r.value);
+  const missing = rows.filter((r) => !r.value && preview.missing.includes(r.field));
+  const empty = rows.filter((r) => !r.value && !preview.missing.includes(r.field));
+  const tableOf = (items) => el("table", {}, items.map((r) => el("tr", {
+    class: `form-row ${!r.value && preview.missing.includes(r.field) ? "req-missing" : ""}`,
+    title: `PDF field “${r.pdf_field}”`, onclick: () => focusField(r.field) },
+    el("td", {}, r.label), el("td", {}, r.value ? r.value.replace(/\n/g, " / ") : "—"))));
+  put(container,
+    el("h3", { class: "doc-h1" }, preview.title),
+    el("p", { style: "font-family:system-ui;font-size:13px;color:#4b5563" },
+      "PDF form: the official layout is kept; these fields are filled (names in capitals, dates dd.mm.yyyy)."),
+    missing.length ? tableOf(missing) : null,
+    tableOf(filled),
+    empty.length ? el("details", { style: "margin-top:10px;font-family:system-ui" },
+      el("summary", { style: "cursor:pointer;color:#4b5563;font-size:13px" }, `${empty.length} empty optional fields`), tableOf(empty)) : null);
 }
 
 // ------------------------------------------------------------------ step 4
 
 function renderSave() {
-  const preview = state.preview;
-  const template = currentTemplate();
-  if (!preview || !template) return;
-  $("save-summary").textContent =
-    `${template.title} (v${template.version}): ${preview.filled} of ${preview.total} fields filled.`;
-  const missing = preview.missing;
+  const previews = state.previews;
+  if (!previews.length) return;
+  const filled = previews.reduce((a, p) => a + p.filled, 0);
+  const total = previews.reduce((a, p) => a + p.total, 0);
+  $("save-summary").textContent = `${previews.map((p) => p.title).join(" + ")}: ${filled} of ${total} fields filled.`;
+  const missing = [...new Set(previews.flatMap((p) => p.missing))];
   const box = $("save-missing");
   if (missing.length) {
     const checkbox = el("input", { type: "checkbox", id: "allow-missing", checked: state.allowMissing,
       onchange: (event) => { state.allowMissing = event.target.checked; updateExportButton(); } });
-    box.replaceChildren(el("div", { class: "warnbox" },
+    put(box, el("div", { class: "warnbox" },
       `Still missing: ${missing.map(labelFor).join(", ")}. `,
       el("button", { type: "button", class: "btn link small", onclick: () => focusField(missing[0]) }, "Go fill them in"),
       el("div", { class: "check" }, checkbox, el("label", { for: "allow-missing" }, "Create anyway and leave them blank"))));
   } else {
-    box.replaceChildren();
+    put(box);
   }
   const input = $("filename");
   if (document.activeElement !== input) input.value = state.filename;
+  const names = previews.length > 1 ? previews.map((p) => `${state.filename || "document"}_${p.name}.pdf`) : [`${state.filename || "document"}.pdf`];
+  $("filename-hint").textContent = `Creates ${names.join(", ")} in the server's output folder and downloads ${names.length > 1 ? "them" : "it"}. Existing files are never overwritten.`;
+  $("export-btn").textContent = previews.length > 1 ? `Create ${previews.length} PDFs` : "Create PDF";
   updateExportButton();
-  renderPreview($("final-preview"));
+  renderPreviewTabs("final-tabs", $("final-preview"));
 }
 
 function updateExportButton() {
-  const missing = state.preview ? state.preview.missing.length : 0;
-  $("export-btn").disabled = !state.filename.trim() || (missing > 0 && !state.allowMissing);
+  const missing = state.previews.some((p) => p.missing.length);
+  $("export-btn").disabled = !state.filename.trim() || (missing && !state.allowMissing);
 }
 
 async function exportPdf() {
@@ -763,19 +972,28 @@ async function exportPdf() {
   const button = $("export-btn");
   button.disabled = true;
   try {
-    const response = await postJSON("/wizard/export", {
-      template: state.templateName, values: state.values, filename: state.filename, allow_missing: state.allowMissing,
-    });
-    const blob = await response.blob();
-    const filename = response.headers.get("X-Docfill-Filename") || `${state.filename}.pdf`;
-    const savedTo = response.headers.get("X-Docfill-Saved-To") || filename;
-    if (state.saved) URL.revokeObjectURL(state.saved.url);
-    state.saved = { url: URL.createObjectURL(blob), filename, savedTo };
-    download();
-    $("save-result").replaceChildren(el("div", { class: "success" },
-      el("strong", {}, "PDF created ✓"),
-      el("div", {}, "Saved on the server as ", el("code", {}, savedTo)),
-      el("button", { type: "button", class: "btn link small", onclick: download }, `Download ${filename} again`)));
+    const body = await (await postJSON("/wizard/export", {
+      templates: state.selected, values: state.values, filename: state.filename,
+      allow_missing: state.allowMissing, rows: state.rows, documents: documentsPayload(),
+      derived: Object.keys(state.derivedFrom),
+    })).json();
+    body.files.forEach((file, index) => setTimeout(() => download(file), index * 400));
+    const learned = body.learned || {};
+    const outcomes = Object.entries(learned.outcomes || {}).map(([k, n]) => `${n} ${k}`).join(", ");
+    put($("save-result"),
+      el("div", { class: "success" },
+        el("strong", {}, `${body.files.length} PDF${body.files.length === 1 ? "" : "s"} created ✓`),
+        el("div", { class: "files-out" }, body.files.map((file) => el("div", {},
+          el("a", { href: file.url, download: file.filename }, file.filename),
+          el("span", { class: "muted" }, ` · ${file.title} · saved as `), el("code", {}, file.saved_to))))),
+      el("div", { class: "learned" },
+        el("strong", {}, "Learned from this review: "),
+        outcomes || "nothing new",
+        (learned.new_labels || []).length ? el("div", {}, `New labels: ${learned.new_labels.join(", ")}`) : null,
+        learned.spelling_fixes ? el("div", {}, `Spelling fixes remembered: ${learned.spelling_fixes}`) : null,
+        learned.examples ? el("div", {}, `Document type examples added: ${learned.examples}`) : null,
+        learned.remembered ? el("div", {}, `Your details remembered for next time: ${learned.remembered} fields`) : null));
+    loadHealth();
   } catch (error) {
     showBanner(error.message);
   } finally {
@@ -783,9 +1001,8 @@ async function exportPdf() {
   }
 }
 
-function download() {
-  if (!state.saved) return;
-  const link = el("a", { href: state.saved.url, download: state.saved.filename });
+function download(file) {
+  const link = el("a", { href: file.url, download: file.filename });
   document.body.append(link);
   link.click();
   link.remove();
@@ -793,9 +1010,9 @@ function download() {
 
 function restart() {
   Object.assign(state, { step: 1, maxStep: 1, files: [], filesDirty: true, documents: [], activeDoc: 0,
-    rows: [], otherFields: [], values: {}, manual: {}, preview: null, filename: "", filenameTouched: false,
-    allowMissing: false });
-  $("save-result").replaceChildren();
+    rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {}, previews: [],
+    activePreview: 0, filename: "", filenameTouched: false, allowMissing: false });
+  put($("save-result"));
   renderFiles();
   renderSteps();
   showBanner("");
@@ -804,13 +1021,6 @@ function restart() {
 // ------------------------------------------------------------------ wiring
 
 function init() {
-  $("template").addEventListener("change", (event) => {
-    state.templateName = event.target.value;
-    state.rows = []; state.values = {}; state.manual = {}; state.preview = null;
-    state.maxStep = 1;
-    renderTemplateInfo();
-    renderSteps();
-  });
   const drop = $("drop");
   $("file-input").addEventListener("change", (event) => { addFiles(event.target.files); event.target.value = ""; });
   drop.addEventListener("dragover", (event) => { event.preventDefault(); drop.classList.add("over"); });
@@ -826,12 +1036,14 @@ function init() {
   $("filename").addEventListener("input", (event) => {
     state.filename = event.target.value;
     state.filenameTouched = true;
-    updateExportButton();
+    renderSave();
   });
   $("export-btn").addEventListener("click", exportPdf);
   $("restart-btn").addEventListener("click", restart);
   document.querySelectorAll("[data-go]").forEach((button) =>
     button.addEventListener("click", () => goTo(Number(button.dataset.go))));
+  document.querySelectorAll("[data-filter]").forEach((button) =>
+    button.addEventListener("click", () => { state.filter = button.dataset.filter; renderFields(); }));
 
   renderSteps();
   loadHealth();

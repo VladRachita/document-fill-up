@@ -20,12 +20,12 @@ def test_labels_inline_several_per_line():
 
 
 def test_labels_romanian_with_and_without_diacritics():
-    found = values("Nume: POPESCU\nPrenume: Ion\nJudeț: Cluj\nLocul nasterii: Brașov")
+    found = values("Nume: POPESCU\nPrenume: Ion\nJudeț: Cluj\nLocul nasterii: Făgăraș")
     assert found == {
         "last_name": "Popescu",
         "first_name": "Ion",
         "region": "Cluj",
-        "place_of_birth": "Brașov",
+        "place_of_birth": "Făgăraș",
     }
 
 
@@ -61,7 +61,7 @@ def test_inline_address_with_continuation_lines():
 def test_rejects_implausible_values():
     # Digits in a name, words that are part of a longer label, free text after an empty label.
     found = values("First name: 12345\nCompany name: ACME Ltd\nFirst name\nplease write clearly")
-    assert found == {}
+    assert found == {"company_name": "ACME Ltd"}  # a company, never a person's name
 
 
 def test_postal_code_is_extracted_from_noise():
@@ -116,8 +116,8 @@ def test_split_full_name(full, expected):
             },
         ),
         (
-            "Strada Lunga, nr. 3, Brasov",
-            {"street_address": "Strada Lunga, nr. 3", "city": "Brasov"},
+            "Strada Lunga, nr. 3, Sibiu",
+            {"street_address": "Strada Lunga, nr. 3", "city": "Sibiu"},
         ),
     ],
 )
@@ -141,8 +141,8 @@ def test_street_patterns():
 
 def test_labels_win_over_patterns(settings):
     result = extract("Street: 1 Main Road\nLiving at 99 Other Street", settings)
-    assert result.fields["street_address"].value == "1 Main Road"
-    assert result.fields["street_address"].source == "label"
+    assert result.fields["street"].value == "1 Main Road"
+    assert result.fields["street"].source == "label"
 
 
 def test_derives_full_name_and_address_parts(settings):

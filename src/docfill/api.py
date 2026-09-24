@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, ValidationError
 
 from docfill import __version__
+from docfill.app import build_app
 from docfill.config import Settings, get_settings
 from docfill.errors import (
     DocFillError,
@@ -28,9 +29,9 @@ from docfill.errors import (
     UnsupportedDocumentError,
 )
 from docfill.extraction import FIELDS
-from docfill.pipeline import DocFill, DocumentAnalysis
+from docfill.pipeline import DocumentAnalysis
 from docfill.readers.ocr import tesseract_available
-from docfill.templates import StandardDocumentSpec, TemplateRepository, make_session_factory
+from docfill.templates import StandardDocumentSpec, TemplateRepository
 from docfill.web import read_upload, register_wizard
 
 _ERROR_STATUS: list[tuple[type[DocFillError], int]] = [
@@ -67,8 +68,9 @@ def _analysis_json(analysis: DocumentAnalysis) -> dict[str, Any]:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
-    session_factory = make_session_factory(settings.database_url)
-    docfill = DocFill(settings)
+    context = build_app(settings)
+    session_factory = context.sessions
+    docfill = context.docfill
 
     app = FastAPI(
         title="docfill",
@@ -185,5 +187,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
 
-    register_wizard(app, settings, docfill, repository)
+    @app.get("/learning/stats", tags=["learning"])
+    def learning_stats() -> dict[str, Any]:
+        """What docfill has learned from reviewed documents, and how accurate it is."""
+        return context.learning.stats()
+
+    register_wizard(app, context, repository)
     return app

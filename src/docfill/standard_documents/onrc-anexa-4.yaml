@@ -1,0 +1,90 @@
+# ONRC Anexa nr. 4 - Declarație pe propria răspundere privind îndeplinirea condițiilor de
+# funcționare/desfășurare a activității. Same applicant and company as Anexa 2a, plus the CAEN
+# activities. The PDF is the official form with every value removed.
+name: onrc-anexa-4
+title: ONRC Anexa 4 - Declarație condiții de funcționare
+description: >
+  Declarație pe propria răspundere cu privire la îndeplinirea condițiilor de
+  funcționare/desfășurare a activității: subsemnatul (V.1), firma și sediul (V.2) și
+  activitățile CAEN la sediul social (3.1) sau la terți (3.2).
+kind: pdf_form
+doc_type: onrc_anexa_4
+pdf_file: onrc-anexa-4.pdf
+
+field_map:
+  TRIBUNALUL: orc_office
+  # V.1 Subsemnatul(a)
+  SubNume: last_name | upper
+  SubPrenume: first_name | upper
+  SubCNP: cnp
+  SubLocalitatea: city
+  SubStrada: street
+  SubNr: street_number
+  SubBl: building
+  SubSc: entrance
+  SubEt: floor
+  SubAp: apartment
+  SubJudSect: region
+  SubTara: country
+  SubCetatenia: citizenship
+  SubNLocalitatea: place_of_birth
+  SubNSectJud: birth_county
+  SubNTara: birth_country
+  SubNData: date_of_birth
+  SubTipActIdent: id_type
+  SubSerieActIdent: id_series
+  SubNrActIdent: id_number
+  SubEmisActIdent: id_issued_by
+  SubEmisActIdentLaData: id_issue_date
+  SubEmisActIdentPanaData: id_expiry_date
+  SubCalitate: capacity
+  # V.2 pentru firma
+  InmFirma: company_name | upper
+  nr100: company_registration_number
+  nr101: company_cui
+  InmLocalitatea: company_city
+  InmStrada: company_street
+  InmNr: company_street_number
+  InmBl: company_building
+  InmSc: company_entrance
+  InmEt: company_floor
+  InmAp: company_apartment
+  InmJudSect: company_county
+  InmEmail: company_email
+  InmTel: company_phone
+  InmSite: company_website
+  # Date of the declaration
+  DataCerere: today
+
+# 3.1 activities at the registered office, 3.2 activities carried out at third parties:
+# one per line, "<CAEN class> <activity name>".
+lists:
+  caen_activities:
+    rows: 18
+    columns: ["clasa_caen.0.{i}", "clasa_caen_desc.0.{i}"]
+  caen_third_party:
+    rows: 18
+    columns: ["clasa_caen.1.{i}", "clasa_caen_desc.1.{i}"]
+
+defaults:
+  id_type: CI
+  country: România
+  birth_country: România
+  citizenship: Română
+
+optional_fields:
+  - building
+  - entrance
+  - floor
+  - apartment
+  - company_registration_number
+  - company_cui
+  - company_building
+  - company_entrance
+  - company_floor
+  - company_apartment
+  - company_email
+  - company_phone
+  - company_website
+  - caen_activities
+  - caen_third_party
