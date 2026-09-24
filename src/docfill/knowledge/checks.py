@@ -85,6 +85,12 @@ def run_check(check: Check, values: Mapping[str, str], today: date | None = None
             return Outcome("failed", "missing: " + ", ".join(missing))
         return Outcome("passed")
 
+    if check.type == "required_any":
+        names = check.fields or [check.field or ""]
+        if any(get(name) for name in names):
+            return Outcome("passed")
+        return Outcome("failed", "none of: " + ", ".join(names))
+
     value = get(check.field)
     if not value:
         return Outcome("skipped", f"{check.field} is empty")

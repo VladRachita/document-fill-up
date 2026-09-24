@@ -55,6 +55,26 @@ entities:
       - citation: OUG nr. 44/2008 privind desfășurarea activităților economice de către persoanele fizice autorizate, întreprinderile individuale și întreprinderile familiale
       - citation: Legea nr. 265/2022 privind registrul comerțului
 
+  - key: pfi
+    title: Persoană fizică independentă
+    abbreviation: PFI
+    category: natural_person
+    order: 45
+    description: >
+      Persoană fizică ce desfășoară activități economice în mod independent sau exercită o
+      profesie liberă (avocat, medic, expert contabil, arhitect, traducător autorizat...). Se
+      înregistrează fiscal la ANAF (formularul 070) și, după caz, la corpul profesional; nu se
+      înregistrează în registrul comerțului.
+    legal_basis:
+      - citation: Legea nr. 207/2015 privind Codul de procedură fiscală
+        note: înregistrarea fiscală
+      - citation: Legea nr. 227/2015 privind Codul fiscal
+        note: veniturile din activități independente
+    notes:
+      - >
+        Dreptul de a exercita profesia este dat de legea fiecărei profesii (de exemplu Legea
+        nr. 51/1995 pentru avocați) și de corpul profesional; verificați cerințele profesiei.
+
   - key: ii
     title: Întreprindere individuală
     abbreviation: II

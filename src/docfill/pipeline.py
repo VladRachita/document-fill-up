@@ -43,6 +43,9 @@ def form_values(template: StandardDocument, values: Mapping[str, str]) -> dict[s
             value = choose(template.choices[pdf_field], value)
         if value:
             filled[pdf_field] = value
+    for pdf_field, names in template.ticks.items():  # section boxes
+        if any((values.get(name) or "").strip() for name in names):
+            filled[pdf_field] = "x"
     for name, spec in template.lists.items():
         cells = list_cells(spec)
         rows = [row for row in (values.get(name) or "").splitlines() if row.strip()]
@@ -163,8 +166,12 @@ class DocFill:
             match = match_form(
                 raw.form_values, ((t.name, t.doc_type, t.pdf_field_names()) for t in templates)
             )
-            if match:
-                template = next(t for t in templates if t.doc_type == match.doc_type)
+            if match:  # several standard documents can share a form (e.g. Anexa 2a variants)
+                filled = set(raw.form_values)
+                template = max(
+                    (t for t in templates if t.doc_type == match.doc_type),
+                    key=lambda t: len(filled & set(t.pdf_field_names())),
+                )
                 return match, template
         return self.classifier.predict(sanitized.text), None
 

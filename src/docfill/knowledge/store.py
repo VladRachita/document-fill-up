@@ -82,8 +82,16 @@ def _utcnow() -> datetime:
 
 
 def spec_checksum(spec: AnySpec) -> str:
-    payload = {"kind": spec.kind, **spec.model_dump(mode="json")}
+    """Of the content that differs from the defaults, so that a new optional field added to
+    the specs in a later version does not change the checksum of stored entries."""
+    payload = {"kind": spec.kind, **spec.model_dump(mode="json", exclude_defaults=True)}
     canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _legacy_checksum(kind: str, data: dict[str, Any]) -> str:
+    """How the first version computed it (over the stored data, defaults included)."""
+    canonical = json.dumps({"kind": kind, **data}, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -296,7 +304,10 @@ class KnowledgeBase:
                     except (ValidationError, ValueError) as exc:
                         broken[(row.kind, row.key)] = f"invalid: {str(exc).splitlines()[0]}"
                         continue
-                    if spec_checksum(entry.spec) != row.checksum:
+                    if row.checksum not in (
+                        spec_checksum(entry.spec),
+                        _legacy_checksum(row.kind, row.data),
+                    ):
                         broken[(row.kind, row.key)] = "modified outside docfill (checksum)"
                         continue
                     entries[(row.kind, row.key)] = entry
@@ -603,10 +614,12 @@ class KnowledgeBase:
         return {
             **entry.summary(),
             "description": spec.description,
+            "authority": spec.authority,
             "entity": entity_data,
             "operation": {"key": spec.operation, **OPERATIONS[spec.operation]},
             "forms": forms,
-            "templates": [f["template"] for f in forms if f["available"]],
+            # forms docfill fills for this procedure (optional ones are ticked by the user)
+            "templates": [f["template"] for f in forms if f["available"] and f["required"]],
             "documents": [doc.model_dump(exclude_none=True) for doc in spec.documents],
             "fields": list(spec.fields),
             "required_fields": list(spec.required_fields),

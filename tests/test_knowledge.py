@@ -6,7 +6,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from sqlalchemy import update
+from sqlalchemy import select, update
 from typer.testing import CliRunner
 
 from docfill.api import create_app
@@ -31,7 +31,7 @@ from docfill.templates import bundled_specs_dir
 from docfill.templates import load_directory as load_templates
 from docfill.wizard import field_rows
 
-ENTITIES = {"srl", "srl-d", "sa", "pfa", "ii", "if"}
+ENTITIES = {"srl", "srl-d", "sa", "pfa", "pfi", "ii", "if"}
 OPERATIONS = {"infiintare", "modificare", "radiere"}
 # Fictitious text shaped like a Romanian law (not an official text).
 LAW = """LEGEA DE TEST privind societățile (text fictiv)
@@ -122,6 +122,7 @@ def test_procedure_view_lists_forms_documents_and_rules(kb):
         "SRL-D",
         "SA",
         "PFA",
+        "PFI",
         "II",
         "IF",
     ]
@@ -442,7 +443,7 @@ SA_VALUES = {
 
 def test_api_cases_and_procedures(client):
     cases = client.get("/knowledge/cases").json()
-    assert len(cases["procedures"]) == 18
+    assert len(cases["procedures"]) == 21
     assert client.get("/knowledge/procedures/sa.infiintare").json()["entity"]["key"] == "sa"
     assert client.get("/knowledge/procedures/nope").status_code == 404
     names = {d["name"] for d in client.get("/doctypes").json()}
@@ -541,7 +542,7 @@ def test_cli_knowledge(tmp_path):
 
     assert run("templates", "seed").exit_code == 0
     seeded = run("knowledge", "seed")
-    assert seeded.exit_code == 0 and "53 created" in seeded.stdout
+    assert seeded.exit_code == 0 and "62 created" in seeded.stdout
     assert "srl.infiintare" in run("knowledge", "list", "--kind", "procedure").stdout
     check = run("knowledge", "check", "sa.infiintare", "-s", "share_capital=100", "--json")
     assert check.exit_code == 1  # an error-level check failed
@@ -578,3 +579,175 @@ def test_cli_knowledge(tmp_path):
     assert run("knowledge", "stats").exit_code == 0
     stats = json.loads(run("knowledge", "stats", "--json").stdout)
     assert stats["entries"]["rule"]["verified"] == 2
+
+
+# --------------------------------------------------------------------------- Anexa 2a variants
+
+COMPANY = {
+    "last_name": "Popescu",
+    "first_name": "Ion",
+    "cnp": cnp(date(1987, 11, 14)),
+    "company_name": "Exemplu Soft SRL",
+    "company_registration_number": "J12/1234/2020",
+    "company_cui": "RO12345678",
+    "company_city": "Cluj-Napoca",
+    "request_object": "Hotărârea AGA nr. 2/15.09.2026",
+}
+
+
+def _template(context, name):
+    with context.sessions() as session:
+        return context.repository(session).get(name)
+
+
+def test_anexa_2a_mentiuni_fills_section_4(context):
+    from docfill.export.pdf_form import read_form_values
+
+    template = _template(context, "onrc-anexa-2a-mentiuni")
+    values = {
+        **COMPANY,
+        "new_seat_county": "Sibiu",  # ticks its own box and the 4.1 section box
+        "change_activity": "x",
+        "capital_change": "majorare",
+        "filed_gm_decision": "x",
+    }
+    pdf = read_form_values(context.docfill.fill(template, None, values, allow_missing=True).pdf)
+    ticked = {name for name, value in pdf.items() if name.startswith("CheckBox")}
+    # "înscriere mențiuni" (header and section 4), 4.1 + items, capital, 4.2 + AGA decision
+    assert {"CheckBox4", "CheckBox14", "CheckBox15", "CheckBox18", "CheckBox24"} <= ticked
+    assert {"CheckBox29", "CheckBox54", "CheckBox57"} <= ticked
+    assert "CheckBox1" not in ticked  # not an înmatriculare
+    assert pdf["CheckBox29_2"] == "/v1"  # capital: majorare
+    assert (pdf["Text 49"], pdf["Text 51"], pdf["Text 64"]) == (
+        "EXEMPLU SOFT SRL",
+        "RO12345678",
+        "Sibiu",
+    )
+
+    # a filled copy uploaded as a source is read through the matching variant of the form
+    filled = context.docfill.fill(template, None, values, allow_missing=True).pdf
+    analysis = context.docfill.analyze_bytes(filled, "mentiuni.pdf")
+    assert analysis.extraction.fields["company_cui"].value == "RO12345678"
+    assert analysis.extraction.fields["company_registration_number"].value == "J12/1234/2020"
+
+
+def test_anexa_2a_radiere_fills_section_6(context):
+    from docfill.export.pdf_form import read_form_values
+
+    template = _template(context, "onrc-anexa-2a-radiere")
+    values = {
+        **COMPANY,
+        "closure_other_reason": "Expirarea duratei",
+        "filed_liquidation_statements": "x",
+    }
+    pdf = read_form_values(context.docfill.fill(template, None, values, allow_missing=True).pdf)
+    ticked = {name for name, value in pdf.items() if name.startswith("CheckBox")}
+    # "radiere" (header and section 6), persoană juridică (default), motiv "altele", 4.2
+    assert {
+        "CheckBox6",
+        "CheckBox74",
+        "CheckBox75",
+        "CheckBox81",
+        "CheckBox65",
+        "CheckBox54",
+    } <= ticked
+    assert not ticked & {"CheckBox1", "CheckBox4", "CheckBox78"}
+    assert (pdf["pg. 3 text 22"], pdf["pg. 3 text 37"]) == ("EXEMPLU SOFT SRL", "Expirarea duratei")
+
+
+def test_ticks_must_name_existing_pdf_fields():
+    from docfill.templates import StandardDocumentSpec, bundled_specs_dir, load_spec
+
+    spec = load_spec(bundled_specs_dir() / "onrc-anexa-2a-radiere.yaml")
+    data = spec.model_dump()
+    data["ticks"] = {"NoSuchBox": ["closure_by_will"]}
+    with pytest.raises(ValidationError, match="unknown PDF fields"):
+        StandardDocumentSpec.model_validate(data)
+
+
+def test_company_changes_and_closing_have_forms(kb):
+    modificare = kb.procedure_view("srl.modificare")
+    assert modificare["templates"] == ["onrc-anexa-2a-mentiuni"]  # Anexa 4 is optional
+    assert any(f["template"] == "onrc-anexa-4" and not f["required"] for f in modificare["forms"])
+    assert kb.procedure_view("sa.radiere")["templates"] == ["onrc-anexa-2a-radiere"]
+    failed = {r.rule for r in kb.evaluate("srl.modificare", {}) if r.status == "failed"}
+    assert "mentiuni-declarate" in failed
+    passed = {
+        r.rule for r in kb.evaluate("srl.modificare", {"change_seat": "x"}) if r.status == "passed"
+    }
+    assert "mentiuni-declarate" in passed
+    reasons = kb.evaluate("srl.radiere", {"closure_other_reason": "altul"})
+    assert next(r for r in reasons if r.rule == "motiv-radiere").status == "passed"
+
+
+def test_natural_person_forms_link_to_the_official_form(kb):
+    forms = kb.procedure_view("pfa.infiintare")["forms"]
+    anexa_2b = next(f for f in forms if "Anexa 2b" in f["title"])
+    assert not anexa_2b["available"] and anexa_2b["url"].startswith("https://www.onrc.ro/")
+
+
+def test_pfi_is_registered_at_anaf(kb):
+    view = kb.procedure_view("pfi.infiintare")
+    assert view["authority"] == "ANAF"
+    assert view["entity"]["abbreviation"] == "PFI"
+    assert view["templates"] == []  # form 070 is not in docfill yet
+    assert "anaf.ro" in view["forms"][0]["url"]
+    results = {r.rule: r.status for r in kb.evaluate("pfi.infiintare", {"profession": "Avocat"})}
+    assert results["pfi-profesie"] == "passed"
+    assert "caen-activitati" not in results  # trade register rules do not apply
+    radiere = {r.rule for r in kb.evaluate("pfi.radiere", {})}
+    assert "firma-existenta-identificata" not in radiere and "temei-radiere" in radiere
+
+
+def test_required_any():
+    values = {"a": "", "b": "x"}
+    assert run_check(check("required_any", fields=["a", "b"]), values).status == "passed"
+    assert run_check(check("required_any", fields=["a", "c"]), values).status == "failed"
+
+
+def test_new_optional_fields_do_not_change_stored_checksums():
+    from docfill.knowledge.specs import ProcedureSpec
+    from docfill.knowledge.store import spec_checksum
+
+    data = {
+        "key": "x.infiintare",
+        "entity": "x",
+        "operation": "infiintare",
+        "title": "X",
+        "forms": [{"title": "F"}],
+    }
+    explicit = {**data, "authority": "ONRC", "forms": [{"title": "F", "url": None}]}
+    assert spec_checksum(ProcedureSpec.model_validate(data)) == spec_checksum(
+        ProcedureSpec.model_validate(explicit)
+    )
+
+
+def test_wizard_exports_a_change_request(client):
+    from docfill.export.pdf_form import read_form_values
+
+    request = {
+        "templates": ["onrc-anexa-2a-mentiuni"],
+        "procedure": "srl.modificare",
+        "values": {**COMPANY, "change_seat": "x"},
+        "allow_missing": True,
+        "filename": "mentiuni",
+    }
+    response = client.post("/wizard/export", json=request)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["dossier"]["forms"][0]["created"] is True
+    pdf = client.get(body["files"][0]["url"]).content
+    values = read_form_values(pdf)
+    assert values["CheckBox4"] == "x" and values["CheckBox19"] == "x"
+
+
+def test_entries_saved_with_the_first_checksum_are_still_intact(kb, context):
+    from docfill.knowledge.store import _legacy_checksum
+
+    with context.sessions() as session:
+        row = session.scalar(select(KnowledgeEntry).where(KnowledgeEntry.key == "sa-capital-minim"))
+        row.checksum = _legacy_checksum(row.kind, row.data)
+        session.commit()
+    kb.invalidate()
+    assert kb.find("sa-capital-minim", "rule")
+    assert kb.stats()["integrity_problems"] == []

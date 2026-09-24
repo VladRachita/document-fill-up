@@ -1,0 +1,341 @@
+# ONRC Anexa nr. 2a - Cerere de înregistrare în registrul comerțului (persoane juridice),
+# filled for "înscriere mențiuni" (changes of a registered company): the "înscriere mențiuni" box,
+# the applicant (IV), section 4 (the firm, the changes of 4.1 and the documents filed of 4.2),
+# communication (VI-VII), billing (VIII), opis (IX) and the filer (XII).
+# Same official PDF as onrc-anexa-2a.yaml (only the fields used differ).
+name: onrc-anexa-2a-mentiuni
+title: ONRC Anexa 2a - Cerere înregistrare (înscriere mențiuni)
+description: >
+  Cerere de înregistrare în registrul comerțului - persoane juridice, completată pentru
+  înscriere mențiuni: solicitantul (IV), firma și mențiunile solicitate (4.1), actele depuse
+  (4.2), persoana pentru comunicare (VII) și datele de facturare (VIII).
+kind: pdf_form
+doc_type: onrc_anexa_2a
+pdf_file: onrc-anexa-2a.pdf
+
+field_map:
+  # Header: trade register office and type of request
+  ORC: orc_office
+  CheckBox4: request_mentions
+  # IV. Subsemnatul(a) - the applicant, as on the identity card
+  nume: last_name | upper
+  prenume: first_name | upper
+  cnp_nif: cnp
+  localitatea: city
+  strada: street
+  numar: street_number
+  bloc: building
+  scara: entrance
+  etaj: floor
+  apartament: apartment
+  judet: region
+  tara: country
+  cetatenia: citizenship
+  localitate nastere: place_of_birth
+  sector: birth_county
+  tara_2: birth_country
+  la data de: date_of_birth
+  act_ident: id_type
+  act_ident_seria: id_series
+  act_ident_numar: id_number
+  eliberat: id_issued_by
+  eliberat_data: id_issue_date
+  valabil pana la data: id_expiry_date
+  regim matrimonial: marital_regime
+  calitate: capacity
+  prin: represented_by
+  conform: representation_basis
+  # V. Obiectul cererii (the act the request is based on, e.g. the AGA decision)
+  obiectul cererii: request_object
+  # 4. Înscriere mențiuni pentru firma
+  CheckBox14: request_mentions
+  Text 49: company_name | upper
+  Text 50: company_registration_number
+  Text 51: company_cui
+  Text 52: company_euid
+  Text 53: company_city
+  Text 54: company_street
+  Text 55: company_street_number
+  Text 56: company_building
+  Text 57: company_entrance
+  Text 58: company_floor
+  Text 59: company_apartment
+  Text 60: company_county
+  Text 61: company_email
+  Text 62: company_phone
+  Text 63: company_website
+  # 4.1 Acte și fapte pentru care legea prevede obligația înscrierii
+  CheckBox16: change_name
+  CheckBox17: change_legal_form
+  CheckBox18: change_seat_county
+  "Text 64": new_seat_county
+  CheckBox19: change_seat
+  CheckBox20: change_branches
+  CheckBox21: change_duration
+  CheckBox22: suspend_activity
+  CheckBox23: resume_activity
+  CheckBox24: change_activity
+  CheckBox25: transfer_shares
+  "Text 70": incoming_associates
+  CheckBox27: change_management
+  "Text 71": management_persons
+  CheckBox28: associate_exit
+  CheckBox29: change_capital
+  CheckBox29_2: capital_change
+  CheckBox30: change_identification
+  CheckBox31: change_marital_regime
+  CheckBox33: mandate_resignation
+  CheckBox41: dissolution
+  CheckBox42: liquidator_appointment
+  CheckBox44: certificate_exchange
+  CheckBox53: updated_constitutive_act
+  CheckBox32: other_mentions
+  "Text 74": other_mentions_text
+  # 4.2 Depunere de acte
+  CheckBox55: filed_capital_proof
+  CheckBox57: filed_gm_decision
+  CheckBox62: filed_other
+  "pg. 3 text 5": filed_other_text
+  # 4.3 Declarație pe propria răspundere (Anexa 4), e.g. when the activities or the seat change
+  CheckBox72: request_operating_declaration
+  # VI. Comunicarea documentelor
+  CheckBox90: request_communication
+  CheckBox90_2: communication_method
+  # VII. Persoana pentru comunicare
+  pg. 3 text 61: contact_last_name
+  pg. 3 text 62: contact_first_name
+  pg. 3 text 63: contact_city
+  pg. 3 text 64: contact_street
+  pg. 3 text 65: contact_street_number
+  pg. 3 text 66: contact_building
+  pg. 3 text 67: contact_entrance
+  pg. 3 text 68: contact_floor
+  pg. 3 text 69: contact_apartment
+  pg. 3 text 70: contact_county
+  pg. 3 text 71: contact_postal_code
+  pg. 3 text 72: contact_phone
+  pg. 3 text 73: contact_email
+  # VIII. Date de facturare
+  pg. 3 text 74: billing_name
+  pg. 3 text 75: billing_code
+  pg. 3 text 76: billing_email
+  pg. 3 text 77: billing_bank
+  pg. 3 text 78: billing_iban
+  pg. 3 text 78_08.01.2025_32: billing_address
+  # IX. Opis de documente depuse: total pages
+  pg. 4 text 26: attached_pages_total
+  # X. Prelucrarea datelor cu caracter personal: applicant and date
+  pg. 4 text 27: "{{ last_name | upper }} {{ first_name | upper }}"
+  pg. 4 text 28: today
+  # XI. Anexele ... fac parte integrantă din prezenta cerere
+  pg. 4 text 29: annex_numbers
+  pg. 4 text 30: today
+  # XII. Cererea se depune de către (the filer)
+  pg. 4 text 31: filer_last_name
+  pg. 4 text 32: filer_first_name
+  pg. 4 text 33: filer_id_type
+  pg. 4 text 34: filer_id_series
+  pg. 4 text 35: filer_id_number
+  pg. 4 text 36: filer_cnp
+  pg. 4 text 37: filer_capacity
+  pg. 4 text 38: filer_basis
+  pg. 4 text 39: filer_basis_number
+  pg. 4 text 40: filer_basis_date
+  pg. 4 text 41: today
+
+
+# IX. Opis: rows 2-7 of the table (row 1 is the pre-printed general assembly decision).
+lists:
+  attached_documents:
+    cells:
+      - ["pg. 4 text 1", "pg. 4 text 5_1", "pg. 4 text 20"]
+      - ["pg. 4 text 2", "pg. 4 text 5_2", "pg. 4 text 21"]
+      - ["pg. 4 text 3", "pg. 4 text 8", "pg. 4 text 22"]
+      - ["pg. 4 text 4", "pg. 4 text 9", "pg. 4 text 23"]
+      - ["pg. 4 text 13", "pg. 4 text 10", "pg. 4 text 24"]
+      - ["pg. 4 text 14", "pg. 4 text 11", "pg. 4 text 25"]
+
+
+# Section boxes ticked when any of their items is ticked.
+ticks:
+  # 4.1 Acte și fapte pentru care legea prevede obligația înscrierii
+  CheckBox15:
+    - change_name
+    - change_legal_form
+    - change_seat_county
+    - change_seat
+    - change_branches
+    - change_duration
+    - suspend_activity
+    - resume_activity
+    - change_activity
+    - transfer_shares
+    - change_management
+    - associate_exit
+    - change_capital
+    - change_identification
+    - change_marital_regime
+    - mandate_resignation
+    - dissolution
+    - liquidator_appointment
+    - certificate_exchange
+    - updated_constitutive_act
+    - other_mentions
+    - other_mentions_text
+    - new_seat_county
+    - incoming_associates
+    - management_persons
+    - capital_change
+  # an item's own box when its details are filled in
+  CheckBox18:
+    - new_seat_county
+  CheckBox25:
+    - incoming_associates
+  CheckBox27:
+    - management_persons
+  CheckBox29:
+    - capital_change
+  CheckBox32:
+    - other_mentions_text
+  CheckBox62:
+    - filed_other_text
+  # 4.2 Depunere de acte
+  CheckBox54:
+    - filed_capital_proof
+    - filed_gm_decision
+    - filed_other
+    - filed_other_text
+
+choices:
+  CheckBox29_2:
+    majorare: /v1
+    reducere: /v2
+  CheckBox90_2:
+    poștă: /v1
+    curier: /v2
+    mijloace electronice: /v3
+    sediul O.R.C.T.: /v4
+
+defaults:
+  request_mentions: x
+  request_communication: x
+  id_type: CI
+  country: România
+  birth_country: România
+  citizenship: Română
+
+# The filer's own details: proposed again next time.
+remember:
+  - represented_by
+  - representation_basis
+  - communication_method
+  - contact_last_name
+  - contact_first_name
+  - contact_city
+  - contact_street
+  - contact_street_number
+  - contact_building
+  - contact_entrance
+  - contact_floor
+  - contact_apartment
+  - contact_county
+  - contact_postal_code
+  - contact_phone
+  - contact_email
+  - billing_name
+  - billing_code
+  - billing_email
+  - billing_bank
+  - billing_iban
+  - billing_address
+  - attached_documents
+  - filer_last_name
+  - filer_first_name
+  - filer_id_type
+  - filer_id_series
+  - filer_id_number
+  - filer_cnp
+  - filer_capacity
+  - filer_basis
+
+optional_fields:
+  - building
+  - entrance
+  - floor
+  - apartment
+  - marital_regime
+  - represented_by
+  - representation_basis
+  - company_euid
+  - company_building
+  - company_entrance
+  - company_floor
+  - company_apartment
+  - company_email
+  - company_phone
+  - company_website
+  - request_communication
+  - communication_method
+  - contact_last_name
+  - contact_first_name
+  - contact_city
+  - contact_street
+  - contact_street_number
+  - contact_building
+  - contact_entrance
+  - contact_floor
+  - contact_apartment
+  - contact_county
+  - contact_postal_code
+  - contact_phone
+  - contact_email
+  - billing_name
+  - billing_code
+  - billing_email
+  - billing_bank
+  - billing_iban
+  - billing_address
+  - annex_numbers
+  - attached_documents
+  - attached_pages_total
+  - filer_last_name
+  - filer_first_name
+  - filer_id_type
+  - filer_id_series
+  - filer_id_number
+  - filer_cnp
+  - filer_capacity
+  - filer_basis
+  - filer_basis_number
+  - filer_basis_date
+  - change_name
+  - change_legal_form
+  - change_seat_county
+  - new_seat_county
+  - change_seat
+  - change_branches
+  - change_duration
+  - suspend_activity
+  - resume_activity
+  - change_activity
+  - transfer_shares
+  - incoming_associates
+  - change_management
+  - management_persons
+  - associate_exit
+  - change_capital
+  - capital_change
+  - change_identification
+  - change_marital_regime
+  - mandate_resignation
+  - dissolution
+  - liquidator_appointment
+  - certificate_exchange
+  - updated_constitutive_act
+  - other_mentions
+  - other_mentions_text
+  - filed_capital_proof
+  - filed_gm_decision
+  - filed_other
+  - filed_other_text
+  - request_operating_declaration

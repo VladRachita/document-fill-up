@@ -119,3 +119,20 @@ doc_types:
         copii rude convenim constituirea unei întreprinderi familiale Reprezentantul
         întreprinderii familiale Membrii întreprinderii familiale Cotele procentuale de
         participare la beneficii și pierderi Condițiile de participare Retragerea membrilor
+
+  - key: drept_exercitare_profesie
+    title: Document privind dreptul de exercitare a profesiei
+    description: >
+      Documentul care atestă dreptul de a exercita o profesie liberă sau o activitate
+      independentă (decizie de înscriere în corpul profesional, autorizație, atestat).
+    seeds:
+      - >
+        DECIZIE privind înscrierea în tabloul membrilor corpului profesional Consiliul decide
+        înscrierea domnului doamnei în Tabloul profesioniștilor cu drept de exercitare a
+        profesiei forma de exercitare cabinet individual data înscrierii
+      - >
+        AUTORIZAȚIE DE LIBERĂ PRACTICĂ Se autorizează exercitarea profesiei pentru titularul
+        certificatului de membru valabil în condițiile legii specialitatea număr de înregistrare
+      - >
+        ATESTAT PROFESIONAL CERTIFICAT DE MEMBRU al corpului profesional Se atestă dreptul de
+        exercitare a profesiei de expert traducător autorizat arhitect expert contabil valabil

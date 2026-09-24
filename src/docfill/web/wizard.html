@@ -380,7 +380,8 @@ const SOURCE_LABELS = {
 };
 const GROUPS = [
   ["person", "Person"], ["birth", "Birth"], ["domicile", "Domicile"], ["id_card", "Identity card"],
-  ["company", "Company"], ["filing", "Request"], ["contact", "Contact person"],
+  ["company", "Company"], ["filing", "Request"], ["changes", "Changes (mențiuni)"],
+  ["closure", "Closure (radiere)"], ["contact", "Contact person"],
   ["billing", "Billing"], ["filer", "Filed by"], ["parents", "Parents"], ["other", "Other"],
 ];
 const LIST_HINTS = {
@@ -612,6 +613,7 @@ function renderProcedurePanel() {
   const docs = procedure.documents;
   put(panel, el("div", { class: "proc" },
     el("h3", {}, procedure.title,
+      el("span", { class: "pill accent", title: "Where the file is submitted" }, `filed at ${procedure.authority || "ONRC"}`),
       unverified.length
         ? el("span", { class: "pill warn", title: `Not yet verified by a legal professional:\n${unverified.join("\n")}` },
             `${unverified.length} knowledge item${unverified.length === 1 ? "" : "s"} not verified yet`)
@@ -619,14 +621,16 @@ function renderProcedurePanel() {
     procedure.description ? el("div", { class: "muted", style: "font-size:13.5px" }, procedure.description) : null,
     !procedure.templates.length
       ? el("div", { class: "warnbox", style: "margin-top:10px" },
-          "docfill cannot fill any form of this procedure yet. Add the official form (docfill forms inspect + docfill templates add), then reference it in the procedure on the Knowledge page.")
+          "docfill cannot fill any form of this procedure yet. Download the official form (link below), add it to docfill (docfill forms inspect + docfill templates add), then reference it in the procedure on the Knowledge page.")
       : null,
     el("div", { class: "cols" },
       el("div", {},
         el("h4", {}, "Forms"),
         el("ul", { class: "check" }, procedure.forms.map((f) => el("li", {},
-          el("span", { class: `ic ${f.available ? "ok" : "no"}` }, f.available ? "✓" : "✗"),
-          el("div", {}, f.title, el("small", {}, f.available ? "filled by docfill" : (f.note || "not in docfill yet")))))),
+          el("span", { class: `ic ${f.available ? "ok" : f.required ? "no" : "opt"}` }, f.available ? "✓" : "✗"),
+          el("div", {}, f.title + (f.required ? "" : " (if applicable)"),
+            el("small", {}, f.available ? `filled by docfill${f.note ? " · " + f.note : ""}` : (f.note || "not in docfill yet")),
+            !f.available && f.url ? el("small", {}, el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
         el("h4", { style: "margin-top:12px" }, `Legal checks (${procedure.rules.length})`),
         el("ul", { class: "check" }, procedure.rules.map((r) => el("li", {},
           el("span", { class: `ic ${r.severity === "error" ? "no" : "opt"}` }, "⚖"),
@@ -1182,13 +1186,14 @@ function renderDossier(container, result) {
   const procedure = currentProcedure();
   if (!procedure) { put(container); return; }
   const provided = providedTypes();
-  const forms = result ? result.forms : procedure.forms.map((f) => ({ ...f, created: f.available }));
+  const forms = result ? result.forms : procedure.forms.map((f) => ({ ...f, created: !!f.template && state.selected.includes(f.template) }));
   const docs = result ? result.documents : procedure.documents.map((d) => ({ ...d, provided: !!d.doc_type && provided.has(d.doc_type) }));
   put(container, el("div", { style: "margin-top:12px" },
     el("div", { class: "panel-title" }, `File (dosar): ${procedure.title}`),
     el("ul", { class: "check" },
-      forms.map((f) => el("li", {}, el("span", { class: `ic ${f.created ? "ok" : "no"}` }, f.created ? "✓" : "✗"),
-        el("div", {}, f.title, el("small", {}, f.created ? "created by docfill" : "to prepare separately (not in docfill yet)")))),
+      forms.filter((f) => f.created || f.required).map((f) => el("li", {}, el("span", { class: `ic ${f.created ? "ok" : "no"}` }, f.created ? "✓" : "✗"),
+        el("div", {}, f.title, el("small", {}, f.created ? "created by docfill" : "to prepare separately (not in docfill yet)",
+          !f.created && f.url ? el("span", {}, " · ", el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
       docs.map((d) => el("li", {}, el("span", { class: `ic ${d.provided ? "ok" : d.required ? "no" : "opt"}` }, d.provided ? "✓" : d.required ? "□" : "○"),
         el("div", {}, d.title + (d.required ? "" : " (if applicable)"),
           el("small", {}, d.provided ? "uploaded and recognised" : d.required ? "to attach" : (d.note || "attach if it applies"))))))));

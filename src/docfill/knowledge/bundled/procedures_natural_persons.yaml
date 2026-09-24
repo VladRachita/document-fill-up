@@ -8,8 +8,9 @@ procedures:
     title: Înființare PFA (înregistrare)
     description: Înregistrarea unei persoane fizice autorizate în registrul comerțului.
     forms: &forms_infiintare_pf
-      - title: Cerere de înregistrare - persoane fizice (PFA, II, IF)
-        note: Nu este încă în docfill; adăugați formularul ONRC pentru persoane fizice.
+      - title: Cerere de înregistrare - persoane fizice (Anexa 2b, înregistrare)
+        url: https://www.onrc.ro/templates/site/formulare/11-10-180.pdf
+        note: Formularul oficial ONRC nu este încă în docfill; verificați versiunea în vigoare pe onrc.ro.
       - title: Declarație privind îndeplinirea condițiilor de funcționare (Anexa 4)
         template: onrc-anexa-4
         note: Pentru sediul profesional și activitățile CAEN declarate.
@@ -42,8 +43,9 @@ procedures:
     title: Modificare PFA (înscriere mențiuni)
     description: Înscrierea modificărilor unei PFA (sediu, activități, date de identificare...).
     forms: &forms_modificare_pf
-      - title: Cerere de înregistrare mențiuni - persoane fizice
-        note: Nu este încă în docfill; adăugați formularul ONRC pentru persoane fizice.
+      - title: Cerere de înregistrare - persoane fizice (Anexa 2b, înscriere mențiuni)
+        url: https://www.onrc.ro/templates/site/formulare/11-10-180.pdf
+        note: Formularul oficial ONRC nu este încă în docfill; verificați versiunea în vigoare pe onrc.ro.
     documents: &documents_modificare_pf
       - title: Actul de identitate al titularului
         doc_type: id_card
@@ -66,8 +68,9 @@ procedures:
     title: Radiere PFA
     description: Radierea unei PFA din registrul comerțului (încetarea activității).
     forms: &forms_radiere_pf
-      - title: Cerere de radiere - persoane fizice
-        note: Nu este încă în docfill; adăugați formularul ONRC pentru persoane fizice.
+      - title: Cerere de înregistrare - persoane fizice (Anexa 2b, radiere)
+        url: https://www.onrc.ro/templates/site/formulare/11-10-180.pdf
+        note: Formularul oficial ONRC nu este încă în docfill; verificați versiunea în vigoare pe onrc.ro.
     documents: &documents_radiere_pf
       - title: Actul de identitate al titularului
         doc_type: id_card

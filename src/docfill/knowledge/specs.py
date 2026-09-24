@@ -54,12 +54,18 @@ OPERATIONS: dict[str, dict[str, str]] = {
 }
 CATEGORIES: dict[str, str] = {
     "legal_person": "Societăți (persoane juridice)",
-    "natural_person": "Persoane fizice (PFA, II, IF)",
+    "natural_person": "Persoane fizice (PFA, PFI, II, IF)",
 }
 
 
 class _Model(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+def _http(value: str | None) -> str | None:
+    if value and not re.match(r"https?://", value):
+        raise ValueError("url must start with http:// or https://")
+    return value
 
 
 class LegalRef(_Model):
@@ -72,10 +78,8 @@ class LegalRef(_Model):
 
     @field_validator("url")
     @classmethod
-    def _http(cls, value: str | None) -> str | None:
-        if value and not re.match(r"https?://", value):
-            raise ValueError("url must start with http:// or https://")
-        return value
+    def _http_url(cls, value: str | None) -> str | None:
+        return _http(value)
 
 
 class _Entry(_Model):
@@ -116,6 +120,13 @@ class FormRef(_Model):
     template: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9_-]{1,99}$")
     required: bool = True
     note: str = Field(default="", max_length=500)
+    # Where the official form is published (to add it to docfill, or to fill it by hand).
+    url: str | None = Field(default=None, max_length=500)
+
+    @field_validator("url")
+    @classmethod
+    def _http_url(cls, value: str | None) -> str | None:
+        return _http(value)
 
 
 class DocumentRef(_Model):
@@ -134,6 +145,8 @@ class ProcedureSpec(_Entry):
 
     entity: str = Field(pattern=KEY_PATTERN)
     operation: Operation
+    # Where the file is submitted: the trade register (ONRC) or, e.g., the tax office (ANAF).
+    authority: str = Field(default="ONRC", min_length=2, max_length=100)
     forms: list[FormRef] = Field(default_factory=list, max_length=20)
     documents: list[DocumentRef] = Field(default_factory=list, max_length=40)
     # Fields to collect besides the forms' own fields (e.g. the share capital for the checks).
@@ -165,6 +178,7 @@ class ProcedureSpec(_Entry):
 
 CheckType = Literal[
     "required",
+    "required_any",
     "min_amount",
     "max_amount",
     "min_count",
@@ -186,6 +200,7 @@ class Check(_Model):
 
     ============== ===============================================================
     required       every field of ``fields`` (or ``field``) has a value
+    required_any   at least one field of ``fields`` has a value (e.g. one change ticked)
     min_amount     ``field`` is an amount (``90.000 lei``) of at least ``value``
     max_amount     ... at most ``value``
     min_count      ``field`` (one item per line) has at least ``value`` lines
@@ -201,8 +216,8 @@ class Check(_Model):
     one_of         ``field`` is one of ``any_of``
     ============== ===============================================================
 
-    Except ``required``, a check whose field is empty is skipped (not failed): missing values
-    are the job of ``required`` checks and of the forms' required fields.
+    Except ``required`` / ``required_any``, a check whose field is empty is skipped (not
+    failed): missing values are the job of those checks and of the forms' required fields.
     """
 
     type: CheckType
@@ -215,9 +230,9 @@ class Check(_Model):
 
     @model_validator(mode="after")
     def _complete(self) -> Check:
-        if self.type == "required":
+        if self.type in ("required", "required_any"):
             if not self.fields and not self.field:
-                raise ValueError("a 'required' check needs 'fields' (or 'field')")
+                raise ValueError(f"a '{self.type}' check needs 'fields' (or 'field')")
             for name in self.fields:
                 if not re.fullmatch(FIELD_PATTERN, name):
                     raise ValueError(f"invalid field name {name!r}")
@@ -240,7 +255,7 @@ class Check(_Model):
 
     def targets(self) -> list[str]:
         """The fields the check reads (the first one is where a problem is shown)."""
-        if self.type == "required":
+        if self.type in ("required", "required_any"):
             return list(self.fields) or [self.field or ""]
         return [self.field or ""] + ([self.other] if self.other else [])
 

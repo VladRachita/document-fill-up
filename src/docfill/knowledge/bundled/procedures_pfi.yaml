@@ -1,0 +1,83 @@
+# Proceduri pentru PFI (persoană fizică independentă: activități economice desfășurate în mod
+# independent sau profesii libere). PFI nu se înregistrează în registrul comerțului, ci fiscal,
+# la ANAF, cu formularul 070 (declarație de înregistrare fiscală / de mențiuni / de radiere),
+# pe lângă formalitățile cerute de corpul profesional. Livrate ca "draft".
+procedures:
+  - key: pfi.infiintare
+    entity: pfi
+    operation: infiintare
+    authority: ANAF
+    title: Înregistrare PFI (declarație de înregistrare fiscală)
+    description: >
+      Înregistrarea fiscală a persoanei fizice care începe o activitate independentă sau o
+      profesie liberă.
+    forms:
+      - title: Formularul 070 - Declarație de înregistrare fiscală
+        url: https://static.anaf.ro/static/10/Anaf/formulare/D_070_OPANAF_15_2026.pdf
+        note: >
+          Formularul ANAF nu este încă în docfill; se depune la organul fiscal competent.
+          Verificați versiunea în vigoare pe anaf.ro.
+    documents:
+      - title: Actul de identitate
+        doc_type: id_card
+      - title: Documentul care atestă dreptul de exercitare a profesiei / activității
+        doc_type: drept_exercitare_profesie
+        note: Decizie de înscriere în corpul profesional, autorizație, atestat (după caz).
+      - title: Dovada dreptului de folosință asupra sediului
+        doc_type: dovada_sediu
+        required: false
+        note: Când activitatea se desfășoară la un sediu (cabinet, birou).
+    fields: [profession, profession_document]
+    required_fields: [profession]
+    legal_basis: &basis_pfi
+      - citation: Legea nr. 207/2015 privind Codul de procedură fiscală
+        note: înregistrarea fiscală
+      - citation: Legea nr. 227/2015 privind Codul fiscal
+        note: veniturile din activități independente
+    notes:
+      - >
+        Declarația de înregistrare se depune în termen de 30 de zile de la începerea activității
+        (termen de verificat în forma în vigoare).
+      - Formalitățile corpului profesional (înscriere, aviz) se fac separat, conform legii profesiei.
+
+  - key: pfi.modificare
+    entity: pfi
+    operation: modificare
+    authority: ANAF
+    title: Modificare PFI (declarație de mențiuni)
+    description: Declararea modificării datelor din declarația de înregistrare fiscală.
+    forms:
+      - title: Formularul 070 - Declarație de mențiuni
+        url: https://static.anaf.ro/static/10/Anaf/formulare/D_070_OPANAF_15_2026.pdf
+        note: Formularul ANAF nu este încă în docfill; verificați versiunea în vigoare pe anaf.ro.
+    documents:
+      - title: Actul de identitate
+        doc_type: id_card
+      - title: Documentele justificative ale modificării
+        note: De exemplu noul contract pentru sediu sau decizia corpului profesional.
+    fields: [profession, requested_changes]
+    required_fields: [requested_changes]
+    legal_basis: *basis_pfi
+    notes:
+      - >
+        Modificările se declară în termen de 15 zile de la data producerii lor (termen de
+        verificat în forma în vigoare).
+
+  - key: pfi.radiere
+    entity: pfi
+    operation: radiere
+    authority: ANAF
+    title: Radiere PFI (declarație de radiere)
+    description: Radierea din evidența fiscală la încetarea activității independente.
+    forms:
+      - title: Formularul 070 - Declarație de radiere
+        url: https://static.anaf.ro/static/10/Anaf/formulare/D_070_OPANAF_15_2026.pdf
+        note: Formularul ANAF nu este încă în docfill; verificați versiunea în vigoare pe anaf.ro.
+    documents:
+      - title: Actul de identitate
+        doc_type: id_card
+      - title: Documentul care atestă încetarea activității / a dreptului de exercitare
+        note: De exemplu decizia corpului profesional privind încetarea calității.
+    fields: [profession, closure_basis]
+    required_fields: [closure_basis]
+    legal_basis: *basis_pfi

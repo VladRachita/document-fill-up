@@ -5,16 +5,17 @@ them, **detects what kind of document** each one is, **extracts the data** a sta
 needs and **fills the standard documents stored in a database**, exporting **new PDFs**. Every
 document you check in the wizard **teaches it**, so errors decrease over time.
 
-It is built for **Romanian trade register work**: opening, changing and closing companies
-(**SRL, SRL-D, SA**) and authorised natural persons (**PFA, II, IF**). A **legal knowledge base**
+It is built for **Romanian registration work**: opening, changing and closing companies
+(**SRL, SRL-D, SA**) and natural persons with an economic activity (**PFA, II, IF** at the trade
+register, **PFI** - persoană fizică independentă - at ANAF). A **legal knowledge base**
 knows each procedure (forms, documents of the file, legal checks with the article they come
 from) and can be **fed and corrected over time**: laws, rules, procedures and document types,
 each versioned and verified by a named person (see [Legal knowledge](#legal-knowledge-romania)).
 
 The source is typically the **Romanian identity card (CI)** (a birth certificate, an act
 constitutiv or an already filled form can be added); the results are the official **ONRC
-Anexa 2a** (cerere de înregistrare) and **ONRC Anexa 4** (declarație condiții de funcționare)
-PDF forms.
+Anexa 2a** (cerere de înregistrare: înmatriculare, înscriere mențiuni, radiere) and **ONRC
+Anexa 4** (declarație condiții de funcționare) PDF forms.
 
 ```
  CI photo / scan, birth certificate, filled forms, PDF / DOCX / PNG / JPG
@@ -86,8 +87,8 @@ docker run -p 8000:8000 -v docfill-data:/data docfill
 docfill serve                 # open http://127.0.0.1:8000
 ```
 
-1. **Documents.** Choose **what you are doing**: the legal form (SRL, SRL-D, SA, PFA, II, IF)
-   and the operation (înființare, modificare, radiere). docfill ticks the forms of that
+1. **Documents.** Choose **what you are doing**: the legal form (SRL, SRL-D, SA, PFA, PFI, II,
+   IF) and the operation (înființare, modificare, radiere). docfill ticks the forms of that
    procedure (e.g. *Anexa 2a* and *Anexa 4* together: they are filled from the same data), lists
    the **documents of the file** (dosar) and its legal checks, and shows which knowledge is not
    verified yet. Then drop the source files (identity card, birth certificate, act constitutiv,
@@ -175,10 +176,26 @@ and verify over time. Open it at **http://127.0.0.1:8000/knowledge**, or use
 
 | Kind | What it holds | Bundled |
 |---|---|---|
-| `entity` | a legal form | SRL, SRL-D, SA (societăți), PFA, II, IF (persoane fizice) |
-| `procedure` | a legal form × an operation: the official forms (and which docfill fills), the documents of the file, extra fields to collect, legal basis | 18: every form × înființare / modificare / radiere |
-| `rule` | a legal check with its legal basis | 22, e.g. SA capital ≥ 90.000 lei and ≥ 2 shareholders (Legea 31/1990 art. 10), SRL ≤ 50 associates (art. 12), legal form in the firm name, PFA / II holder ≥ 18 years, IF ≥ 2 members, CAEN classes per PFA / II / IF |
-| `doc_type` | a document the classifier learns to recognise | act constitutiv, dovada sediului, hotărâre AGA / decizie asociat unic, certificat de înregistrare, declarație beneficiar real, specimen de semnătură, acord de constituire IF |
+| `entity` | a legal form | SRL, SRL-D, SA (societăți), PFA, PFI, II, IF (persoane fizice) |
+| `procedure` | a legal form × an operation: where it is filed (ONRC / ANAF), the official forms (which docfill fills, and where to get the others), the documents of the file, extra fields to collect, legal basis | 21: every form × înființare / modificare / radiere |
+| `rule` | a legal check with its legal basis | 26, e.g. SA capital ≥ 90.000 lei and ≥ 2 shareholders (Legea 31/1990 art. 10), SRL ≤ 50 associates (art. 12), legal form in the firm name, PFA / II holder ≥ 18 years, IF ≥ 2 members, CAEN classes per PFA / II / IF, at least one change ticked (mențiuni), a reason for closing, the PFI's profession |
+| `doc_type` | a document the classifier learns to recognise | act constitutiv, dovada sediului, hotărâre AGA / decizie asociat unic, certificat de înregistrare, declarație beneficiar real, specimen de semnătură, acord de constituire IF, document privind dreptul de exercitare a profesiei |
+
+Which forms docfill fills:
+
+| Procedure | Filed at | Forms filled by docfill | Official forms still to add |
+|---|---|---|---|
+| SRL, SRL-D, SA înființare | ONRC | Anexa 2a (înmatriculare) + Anexa 4 | - (the beneficial owner declaration is listed as a document) |
+| SRL, SRL-D, SA modificare | ONRC | Anexa 2a (înscriere mențiuni: section 4, 4.1 changes, 4.2 documents) + Anexa 4 when needed | - |
+| SRL, SRL-D, SA radiere | ONRC | Anexa 2a (radiere: section 6, reason) | - |
+| PFA, II, IF înființare | ONRC | Anexa 4 | Anexa 2b (cerere de înregistrare persoane fizice) |
+| PFA, II, IF modificare / radiere | ONRC | - | Anexa 2b |
+| PFI înființare / modificare / radiere | ANAF | - | Formularul 070 (declarație de înregistrare fiscală / de mențiuni / de radiere) |
+
+The forms still to add are linked from the wizard and the knowledge page (official ONRC / ANAF
+downloads). To add one: `docfill forms inspect form.pdf --suggest`, write its YAML (see
+`src/docfill/standard_documents/`), `docfill templates add form.yaml`, then set `template:` on
+the procedure's form (`docfill knowledge show procedure/pfa.infiintare` → edit → `add`).
 
 **Verified by people.** Everything starts as `draft`. A lawyer, notary or expert checks an
 entry against the law in force and marks it `verified` (who and when are recorded); any later
@@ -257,6 +274,8 @@ lists:                                 # repeated rows, one per line in the wiza
   caen_activities: {rows: 18, columns: ["clasa_caen.0.{i}", "clasa_caen_desc.0.{i}"]}
 choices:                               # option buttons: value -> button state
   # CheckBox90_2: {poștă: /v1, curier: /v2, mijloace electronice: /v3}
+ticks:                                 # section boxes ticked when any listed field has a value
+  # CheckBox15: [change_name, change_seat, change_activity]
 defaults: {id_type: CI, country: România}
 remember: [represented_by, billing_iban]   # the filer's own details
 optional_fields: [building, entrance, floor, apartment]
@@ -346,7 +365,8 @@ src/docfill/
   validation.py        cross-checks and live validation
   learning.py          review outcomes, calibration, learned labels, memory
   templates/           standard documents: placeholders, DB model, repository, YAML loader
-  standard_documents/  bundled standard documents (ONRC Anexa 2a / 4 blank forms + YAML)
+  standard_documents/  bundled standard documents (ONRC Anexa 2a: înmatriculare, mențiuni,
+                       radiere; Anexa 4; blank official PDFs + YAML)
   export/              PDF forms (fill, blank, inspect) and text rendering
   pipeline.py, app.py  read -> clean -> detect -> extract -> fill; wiring with learning
   wizard.py, web/      review logic, the web wizard and the knowledge page
@@ -364,11 +384,11 @@ ruff check src tests examples && ruff format --check src tests examples
 
 ## Limitations and next steps
 
-* **Forms not in docfill yet.** docfill fills the ONRC Anexa 2a (înmatriculare) and Anexa 4.
-  The procedures list the other official forms they need (Anexa 2a for mențiuni / radiere, the
-  forms for PFA / II / IF, the beneficial owner declaration) as "not in docfill yet"; add each
-  with `docfill forms inspect` + `docfill templates add`, then set its `template` in the
-  procedure. Until then, those procedures cannot produce PDFs.
+* **Forms not in docfill yet.** docfill fills the ONRC Anexa 2a (înmatriculare, înscriere
+  mențiuni, radiere) and Anexa 4. **Anexa 2b** (PFA / II / IF) and **ANAF form 070** (PFI) are
+  listed with their official download link but not bundled yet (see the table in
+  [Legal knowledge](#legal-knowledge-romania)); until they are added, those procedures cannot
+  produce the request PDF.
 * **The bundled legal knowledge is draft** and must be verified by a legal professional against
   the law in force; it has no expert opinion beyond the rules written in it. docfill does not
   use a large language model: it checks values against the rules and searches the laws you feed

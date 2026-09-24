@@ -59,10 +59,11 @@ procedures:
       administratori, obiect de activitate, capital, denumire...).
     forms: &forms_modificare_societate
       - title: Cerere de înregistrare - persoane juridice (Anexa 2a, înscriere mențiuni)
-        note: >
-          Același formular ca la înmatriculare, completat la "înscriere mențiuni". docfill are
-          configurată doar varianta de înmatriculare; adăugați documentul standard pentru
-          mențiuni.
+        template: onrc-anexa-2a-mentiuni
+      - title: Declarație privind îndeplinirea condițiilor de funcționare (Anexa 4)
+        template: onrc-anexa-4
+        required: false
+        note: Când se schimbă sediul sau activitățile desfășurate.
     documents: &documents_modificare_societate
       - title: Hotărârea adunării generale / decizia asociatului unic
         doc_type: hotarare_aga
@@ -80,8 +81,8 @@ procedures:
         note: Când se schimbă beneficiarii reali.
       - title: Actele justificative ale fiecărei mențiuni
         note: De exemplu actele de identitate ale noilor asociați sau administratori.
-    fields: &fields_modificare [company_name, company_registration_number, company_cui, requested_changes]
-    required_fields: &required_modificare [company_registration_number, company_cui, requested_changes]
+    fields: &fields_modificare [company_name, company_registration_number, company_cui]
+    required_fields: &required_modificare [company_registration_number, company_cui]
     legal_basis: *basis_societati
     notes: *notes_forms
 
@@ -92,9 +93,7 @@ procedures:
     description: Radierea unui SRL din registrul comerțului, după dizolvare și lichidare.
     forms: &forms_radiere_societate
       - title: Cerere de înregistrare - persoane juridice (Anexa 2a, radiere)
-        note: >
-          Același formular, completat la "radiere". docfill are configurată doar varianta de
-          înmatriculare; adăugați documentul standard pentru radiere.
+        template: onrc-anexa-2a-radiere
     documents: &documents_radiere_societate
       - title: Hotărârea de dizolvare (și lichidare) a societății
         doc_type: hotarare_aga
@@ -104,8 +103,8 @@ procedures:
         doc_type: certificat_inregistrare
         required: false
         note: În original, dacă este cerut.
-    fields: &fields_radiere [company_name, company_registration_number, company_cui, closure_basis]
-    required_fields: &required_radiere [company_registration_number, company_cui, closure_basis]
+    fields: &fields_radiere [company_name, company_registration_number, company_cui]
+    required_fields: &required_radiere [company_registration_number, company_cui]
     legal_basis:
       - citation: Legea nr. 31/1990 privind societățile
         article: art. 235
@@ -115,7 +114,8 @@ procedures:
       - >
         Radierea presupune dizolvarea și lichidarea societății; procedura diferă (dizolvare cu
         lichidare simultană, lichidare prin lichidator, dizolvare judiciară...). Verificați calea
-        aplicabilă și actele cerute pentru ea.
+        aplicabilă și actele cerute pentru ea. Dizolvarea sau numirea lichidatorului se înscriu
+        ca mențiuni (procedura de modificare).
 
   # ------------------------------------------------------------------ SRL-D
   - key: srl-d.infiintare

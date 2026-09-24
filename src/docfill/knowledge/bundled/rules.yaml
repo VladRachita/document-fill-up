@@ -227,7 +227,7 @@ rules:
   # ------------------------------------------------------------------ toate procedurile
   - key: caen-activitati
     title: Cel puțin o activitate CAEN
-    applies_to: {operations: [infiintare]}
+    applies_to: {entities: [srl, srl-d, sa, pfa, ii, if], operations: [infiintare]}
     severity: warning
     check: {type: required, fields: [caen_activities]}
     message: >
@@ -239,7 +239,7 @@ rules:
 
   - key: firma-existenta-identificata
     title: Firma existentă este identificată
-    applies_to: {operations: [modificare, radiere]}
+    applies_to: {entities: [srl, srl-d, sa, pfa, ii, if], operations: [modificare, radiere]}
     severity: error
     check: {type: required, fields: [company_registration_number, company_cui]}
     message: >
@@ -249,21 +249,79 @@ rules:
       - citation: Legea nr. 265/2022 privind registrul comerțului
 
   - key: mentiuni-declarate
+    title: Mențiunile solicitate sunt bifate
+    applies_to: {entities: [srl, srl-d, sa], operations: [modificare]}
+    severity: error
+    check:
+      type: required_any
+      fields: [change_name, change_legal_form, change_seat_county, change_seat, change_branches,
+               change_duration, suspend_activity, resume_activity, change_activity,
+               transfer_shares, change_management, associate_exit, change_capital,
+               change_identification, change_marital_regime, mandate_resignation, dissolution,
+               liquidator_appointment, certificate_exchange, updated_constitutive_act,
+               other_mentions, other_mentions_text]
+    message: >
+      Bifați cel puțin o mențiune solicitată (secțiunea 4.1 a cererii), de exemplu schimbarea
+      sediului sau modificarea obiectului de activitate.
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+
+  - key: mentiuni-declarate-pf
     title: Mențiunile solicitate sunt declarate
-    applies_to: {operations: [modificare]}
+    applies_to: {entities: [pfa, ii, if, pfi], operations: [modificare]}
     severity: error
     check: {type: required, fields: [requested_changes]}
     message: Declarați mențiunile solicitate (câte una pe linie), de exemplu schimbarea sediului.
     legal_basis:
       - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: pentru PFA, II, IF
+      - citation: Legea nr. 207/2015 privind Codul de procedură fiscală
+        note: pentru PFI (declarația de mențiuni)
+
+  - key: motiv-radiere
+    title: Motivul radierii este bifat
+    applies_to: {entities: [srl, srl-d, sa], operations: [radiere]}
+    severity: error
+    check: {type: required_any, fields: [closure_by_will, closure_by_court, closure_other_reason]}
+    message: >
+      Bifați motivul radierii (voința profesionistului, hotărâre judecătorească) sau descrieți
+      alt motiv.
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
 
   - key: temei-radiere
     title: Temeiul radierii este declarat
-    applies_to: {operations: [radiere]}
+    applies_to: {entities: [pfa, ii, if, pfi], operations: [radiere]}
     severity: error
     check: {type: required, fields: [closure_basis]}
     message: >
-      Declarați temeiul radierii (de exemplu dizolvarea cu lichidare simultană a societății
-      sau încetarea activității PFA / II / IF).
+      Declarați temeiul radierii (de exemplu încetarea activității PFA / II / IF sau
+      încetarea exercitării profesiei).
     legal_basis:
       - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: pentru PFA, II, IF
+      - citation: Legea nr. 207/2015 privind Codul de procedură fiscală
+        note: pentru PFI (declarația de radiere)
+
+  # ------------------------------------------------------------------ PFI (ANAF, formularul 070)
+  - key: pfi-profesie
+    title: Profesia / activitatea independentă este declarată
+    applies_to: {entities: [pfi], operations: [infiintare]}
+    severity: error
+    check: {type: required, fields: [profession]}
+    message: Declarați profesia sau activitatea independentă desfășurată.
+    legal_basis:
+      - citation: Legea nr. 207/2015 privind Codul de procedură fiscală
+        note: înregistrarea fiscală (formularul 070)
+
+  - key: pfi-drept-exercitare
+    title: Dreptul de exercitare a profesiei este dovedit
+    applies_to: {entities: [pfi], operations: [infiintare]}
+    severity: warning
+    check: {type: required, fields: [profession_document]}
+    message: >
+      Indicați documentul care atestă dreptul de exercitare a profesiei (decizie de înscriere,
+      autorizație, atestat), când profesia îl cere.
+    legal_basis:
+      - citation: Legea nr. 227/2015 privind Codul fiscal
+        note: activitățile independente și profesiile libere
