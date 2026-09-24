@@ -102,6 +102,9 @@ class StandardDocumentSpec(BaseModel):
     lists: dict[str, ListSpec] = Field(default_factory=dict)
     # Option buttons: {"PdfRadio": {"posta": "/v1", "electronic": "/v3"}} (value -> state).
     choices: dict[str, dict[str, str]] = Field(default_factory=dict)
+    # Section boxes ticked when any listed field has a value, e.g. the "4.1 Acte și fapte"
+    # box of Anexa 2a when any of its items is ticked: {"CheckBox15": ["change_name", ...]}.
+    ticks: dict[str, list[str]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check(self) -> StandardDocumentSpec:
@@ -129,7 +132,9 @@ class StandardDocumentSpec(BaseModel):
             listed = {
                 cell for spec in self.lists.values() for row in list_cells(spec) for cell in row
             }
-            unknown = (set(self.field_map) | listed | set(self.choices)) - set(pdf_fields)
+            unknown = (set(self.field_map) | listed | set(self.choices) | set(self.ticks)) - set(
+                pdf_fields
+            )
             if unknown:
                 raise ValueError(f"unknown PDF fields: {sorted(unknown)[:10]}")
             for expression in self.field_map.values():
@@ -154,6 +159,8 @@ class StandardDocumentSpec(BaseModel):
             options["lists"] = {k: v.model_dump(exclude_none=True) for k, v in self.lists.items()}
         if self.choices:
             options["choices"] = {k: dict(v) for k, v in self.choices.items()}
+        if self.ticks:
+            options["ticks"] = {k: list(v) for k, v in self.ticks.items()}
         return options
 
     def checksum(self) -> str:
@@ -227,9 +234,13 @@ class StandardDocument(Base):
     def choices(self) -> dict[str, dict[str, str]]:
         return self.option("choices", {})
 
+    @property
+    def ticks(self) -> dict[str, list[str]]:
+        return self.option("ticks", {})
+
     def pdf_field_names(self) -> list[str]:
         """Every PDF field this document fills (mapped fields and list cells)."""
-        names = list(self.field_map)
+        names = list(self.field_map) + [name for name in self.ticks if name not in self.field_map]
         for spec in self.lists.values():
             names += [cell for row in list_cells(spec) for cell in row]
         return names

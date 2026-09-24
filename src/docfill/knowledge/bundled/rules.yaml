@@ -1,0 +1,327 @@
+# Verificări juridice aplicate în wizard. Fiecare regulă citează temeiul legal; mesajul apare
+# când verificarea eșuează. Tipurile de verificări sunt descrise în docfill.knowledge.specs.Check.
+#
+# ATENȚIE: regulile livrate sunt "draft". Un jurist trebuie să confirme că textul de lege citat
+# este cel în vigoare (docfill knowledge verify rule/<cheie> --by "Nume"). Dacă legea se schimbă,
+# corectați regula (docfill knowledge add) sau retrageți-o (docfill knowledge retire).
+rules:
+  # ------------------------------------------------------------------ societăți (Legea 31/1990)
+  - key: sa-capital-minim
+    title: Capitalul social minim al unei SA
+    applies_to: {entities: [sa], operations: [infiintare]}
+    severity: error
+    check: {type: min_amount, field: share_capital, value: 90000}
+    message: Capitalul social al unei societăți pe acțiuni nu poate fi mai mic de 90.000 lei.
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+        article: art. 10 alin. (1)
+
+  - key: sa-actionari-minim
+    title: Numărul minim de acționari ai unei SA
+    applies_to: {entities: [sa], operations: [infiintare]}
+    severity: error
+    check: {type: min_count, field: associates, value: 2}
+    message: O societate pe acțiuni are cel puțin 2 acționari (câte unul pe linie).
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+        article: art. 10 alin. (1)
+
+  - key: srl-asociati-maxim
+    title: Numărul maxim de asociați ai unui SRL
+    applies_to: {entities: [srl, srl-d], operations: [infiintare, modificare]}
+    severity: error
+    check: {type: max_count, field: associates, value: 50}
+    message: Numărul asociaților într-o societate cu răspundere limitată nu poate fi mai mare de 50.
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+        article: art. 12
+
+  - key: srl-capital-minim
+    title: Capitalul social minim al unui SRL
+    applies_to: {entities: [srl], operations: [infiintare]}
+    severity: warning
+    check: {type: min_amount, field: share_capital, value: 500}
+    message: >
+      Capitalul social al unui SRL trebuie să respecte minimul legal (500 lei în forma
+      modificată în 2025 - de verificat).
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+        article: art. 11
+        note: >
+          Minimul a fost modificat de mai multe ori (200 lei înainte de 2020, apoi fără un minim
+          global, cu părți sociale de cel puțin 1 leu; 500 lei după modificările din 2025).
+          Verificați textul în vigoare înainte de a marca regula ca verificată.
+
+  - key: asociati-obligatoriu
+    title: Asociații / acționarii sunt declarați
+    applies_to: {entities: [srl, srl-d, sa], operations: [infiintare]}
+    severity: error
+    check: {type: required, fields: [associates]}
+    message: Declarați asociații / acționarii (câte unul pe linie), așa cum apar în actul constitutiv.
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+
+  - key: capital-obligatoriu
+    title: Capitalul social este declarat
+    applies_to: {entities: [srl, srl-d, sa], operations: [infiintare]}
+    severity: error
+    check: {type: required, fields: [share_capital]}
+    message: Declarați capitalul social, așa cum apare în actul constitutiv.
+    legal_basis:
+      - citation: Legea nr. 31/1990 privind societățile
+
+  # ------------------------------------------------------------------ firma (denumirea)
+  - key: firma-srl
+    title: Firma unui SRL conține forma juridică
+    applies_to: {entities: [srl], operations: [infiintare, modificare]}
+    severity: warning
+    check:
+      type: contains_any
+      field: company_name
+      any_of: [SRL, societate cu răspundere limitată]
+    message: >
+      Firma unui SRL este însoțită de mențiunea "societate cu răspundere limitată" sau de
+      inițialele "S.R.L.".
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: dispozițiile privind firma
+
+  - key: firma-srl-d
+    title: Firma unui SRL-D conține forma juridică
+    applies_to: {entities: [srl-d], operations: [infiintare, modificare]}
+    severity: warning
+    check:
+      type: contains_any
+      field: company_name
+      any_of: [SRL-D, societate cu răspundere limitată - debutant]
+    message: Firma unui SRL-D este însoțită de inițialele "S.R.L.-D.".
+    legal_basis:
+      - citation: OUG nr. 6/2011 pentru stimularea înființării și dezvoltării microîntreprinderilor de către întreprinzătorii debutanți în afaceri
+
+  - key: firma-sa
+    title: Firma unei SA conține forma juridică
+    applies_to: {entities: [sa], operations: [infiintare, modificare]}
+    severity: warning
+    check:
+      type: contains_any
+      field: company_name
+      any_of: [SA, societate pe acțiuni]
+    message: >
+      Firma unei societăți pe acțiuni este însoțită de mențiunea "societate pe acțiuni" sau de
+      inițialele "S.A.".
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: dispozițiile privind firma
+
+  - key: firma-pfa
+    title: Firma unui PFA conține "persoană fizică autorizată"
+    applies_to: {entities: [pfa], operations: [infiintare, modificare]}
+    severity: warning
+    check:
+      type: contains_any
+      field: company_name
+      any_of: [persoană fizică autorizată, PFA]
+    message: >
+      Firma unei persoane fizice autorizate se compune din numele și prenumele acesteia, urmate
+      de mențiunea "persoană fizică autorizată".
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: dispozițiile privind firma
+      - citation: OUG nr. 44/2008
+
+  - key: firma-ii
+    title: Firma unei II conține "întreprindere individuală"
+    applies_to: {entities: [ii], operations: [infiintare, modificare]}
+    severity: warning
+    check:
+      type: contains_any
+      field: company_name
+      any_of: [întreprindere individuală, II]
+    message: >
+      Firma unei întreprinderi individuale se compune din numele întreprinzătorului, urmat de
+      mențiunea "întreprindere individuală".
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: dispozițiile privind firma
+      - citation: OUG nr. 44/2008
+
+  - key: firma-if
+    title: Firma unei IF conține "întreprindere familială"
+    applies_to: {entities: [if], operations: [infiintare, modificare]}
+    severity: warning
+    check:
+      type: contains_any
+      field: company_name
+      any_of: [întreprindere familială, IF]
+    message: >
+      Firma unei întreprinderi familiale se compune din numele reprezentantului, urmat de
+      mențiunea "întreprindere familială".
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: dispozițiile privind firma
+      - citation: OUG nr. 44/2008
+
+  - key: firma-contine-numele
+    title: Firma conține numele titularului
+    applies_to: {entities: [pfa, ii, if], operations: [infiintare]}
+    severity: warning
+    check: {type: contains_field, field: company_name, other: last_name}
+    message: Firma unui PFA / II / IF conține numele titularului (reprezentantului).
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: dispozițiile privind firma
+
+  # ------------------------------------------------------------------ PFA, II, IF (OUG 44/2008)
+  - key: varsta-minima-titular
+    title: Titularul are cel puțin 18 ani
+    applies_to: {entities: [pfa, ii, if], operations: [infiintare]}
+    severity: error
+    check: {type: min_age, field: cnp, value: 18}
+    message: >
+      Titularul PFA / II și reprezentantul IF trebuie să aibă vârsta de cel puțin 18 ani
+      (vârsta este calculată din CNP).
+    legal_basis:
+      - citation: OUG nr. 44/2008
+        note: condițiile de înregistrare ale persoanei fizice (verificați articolul în vigoare)
+
+  - key: if-membri-minim
+    title: IF are cel puțin doi membri
+    applies_to: {entities: [if], operations: [infiintare]}
+    severity: error
+    check: {type: min_count, field: family_members, value: 2}
+    message: O întreprindere familială se constituie din doi sau mai mulți membri ai unei familii.
+    legal_basis:
+      - citation: OUG nr. 44/2008
+        note: constituirea întreprinderii familiale (verificați articolul în vigoare)
+
+  - key: pfa-caen-maxim
+    title: PFA - numărul maxim de clase CAEN
+    applies_to: {entities: [pfa], operations: [infiintare, modificare]}
+    severity: warning
+    check: {type: max_count, field: caen_activities, value: 5}
+    message: O persoană fizică autorizată poate avea cel mult 5 clase de activitate CAEN.
+    legal_basis:
+      - citation: OUG nr. 44/2008
+        note: limita de clase CAEN pentru PFA (verificați articolul și limita în vigoare)
+
+  - key: ii-caen-maxim
+    title: II - numărul maxim de clase CAEN
+    applies_to: {entities: [ii], operations: [infiintare, modificare]}
+    severity: warning
+    check: {type: max_count, field: caen_activities, value: 10}
+    message: O întreprindere individuală poate avea cel mult 10 clase de activitate CAEN.
+    legal_basis:
+      - citation: OUG nr. 44/2008
+        note: limita de clase CAEN pentru II (verificați articolul și limita în vigoare)
+
+  - key: if-caen-maxim
+    title: IF - numărul maxim de clase CAEN
+    applies_to: {entities: [if], operations: [infiintare, modificare]}
+    severity: warning
+    check: {type: max_count, field: caen_activities, value: 10}
+    message: O întreprindere familială poate avea cel mult 10 clase de activitate CAEN.
+    legal_basis:
+      - citation: OUG nr. 44/2008
+        note: limita de clase CAEN pentru IF (verificați articolul și limita în vigoare)
+
+  # ------------------------------------------------------------------ toate procedurile
+  - key: caen-activitati
+    title: Cel puțin o activitate CAEN
+    applies_to: {entities: [srl, srl-d, sa, pfa, ii, if], operations: [infiintare]}
+    severity: warning
+    check: {type: required, fields: [caen_activities]}
+    message: >
+      Declarați activitățile CAEN (cod de 4 cifre urmat de denumire, câte una pe linie) pentru
+      declarația privind condițiile de funcționare.
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: activitățile se declară conform clasificării CAEN Rev. 3
+
+  - key: firma-existenta-identificata
+    title: Firma existentă este identificată
+    applies_to: {entities: [srl, srl-d, sa, pfa, ii, if], operations: [modificare, radiere]}
+    severity: error
+    check: {type: required, fields: [company_registration_number, company_cui]}
+    message: >
+      Pentru o firmă deja înregistrată sunt necesare numărul de ordine în registrul
+      comerțului și codul unic de înregistrare (CUI).
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+
+  - key: mentiuni-declarate
+    title: Mențiunile solicitate sunt bifate
+    applies_to: {entities: [srl, srl-d, sa], operations: [modificare]}
+    severity: error
+    check:
+      type: required_any
+      fields: [change_name, change_legal_form, change_seat_county, change_seat, change_branches,
+               change_duration, suspend_activity, resume_activity, change_activity,
+               transfer_shares, change_management, associate_exit, change_capital,
+               change_identification, change_marital_regime, mandate_resignation, dissolution,
+               liquidator_appointment, certificate_exchange, updated_constitutive_act,
+               other_mentions, other_mentions_text]
+    message: >
+      Bifați cel puțin o mențiune solicitată (secțiunea 4.1 a cererii), de exemplu schimbarea
+      sediului sau modificarea obiectului de activitate.
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+
+  - key: mentiuni-declarate-pf
+    title: Mențiunile solicitate sunt declarate
+    applies_to: {entities: [pfa, ii, if, pfi], operations: [modificare]}
+    severity: error
+    check: {type: required, fields: [requested_changes]}
+    message: Declarați mențiunile solicitate (câte una pe linie), de exemplu schimbarea sediului.
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: pentru PFA, II, IF
+      - citation: Legea nr. 207/2015 privind Codul de procedură fiscală
+        note: pentru PFI (declarația de mențiuni)
+
+  - key: motiv-radiere
+    title: Motivul radierii este bifat
+    applies_to: {entities: [srl, srl-d, sa], operations: [radiere]}
+    severity: error
+    check: {type: required_any, fields: [closure_by_will, closure_by_court, closure_other_reason]}
+    message: >
+      Bifați motivul radierii (voința profesionistului, hotărâre judecătorească) sau descrieți
+      alt motiv.
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+
+  - key: temei-radiere
+    title: Temeiul radierii este declarat
+    applies_to: {entities: [pfa, ii, if, pfi], operations: [radiere]}
+    severity: error
+    check: {type: required, fields: [closure_basis]}
+    message: >
+      Declarați temeiul radierii (de exemplu încetarea activității PFA / II / IF sau
+      încetarea exercitării profesiei).
+    legal_basis:
+      - citation: Legea nr. 265/2022 privind registrul comerțului
+        note: pentru PFA, II, IF
+      - citation: Legea nr. 207/2015 privind Codul de procedură fiscală
+        note: pentru PFI (declarația de radiere)
+
+  # ------------------------------------------------------------------ PFI (ANAF, formularul 070)
+  - key: pfi-profesie
+    title: Profesia / activitatea independentă este declarată
+    applies_to: {entities: [pfi], operations: [infiintare]}
+    severity: error
+    check: {type: required, fields: [profession]}
+    message: Declarați profesia sau activitatea independentă desfășurată.
+    legal_basis:
+      - citation: Legea nr. 207/2015 privind Codul de procedură fiscală
+        note: înregistrarea fiscală (formularul 070)
+
+  - key: pfi-drept-exercitare
+    title: Dreptul de exercitare a profesiei este dovedit
+    applies_to: {entities: [pfi], operations: [infiintare]}
+    severity: warning
+    check: {type: required, fields: [profession_document]}
+    message: >
+      Indicați documentul care atestă dreptul de exercitare a profesiei (decizie de înscriere,
+      autorizație, atestat), când profesia îl cere.
+    legal_basis:
+      - citation: Legea nr. 227/2015 privind Codul fiscal
+        note: activitățile independente și profesiile libere

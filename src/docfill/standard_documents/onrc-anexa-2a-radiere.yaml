@@ -1,0 +1,247 @@
+# ONRC Anexa nr. 2a - Cerere de înregistrare în registrul comerțului (persoane juridice),
+# filled for "radiere" (closing a company): the "radiere" box, the applicant (IV), section 6
+# (the firm and the reason), the final liquidation statements filed (4.2), communication
+# (VI-VII), billing (VIII), opis (IX) and the filer (XII).
+# Same official PDF as onrc-anexa-2a.yaml (only the fields used differ).
+name: onrc-anexa-2a-radiere
+title: ONRC Anexa 2a - Cerere înregistrare (radiere)
+description: >
+  Cerere de înregistrare în registrul comerțului - persoane juridice, completată pentru
+  radiere: solicitantul (IV), firma și motivul radierii (6), persoana pentru comunicare (VII)
+  și datele de facturare (VIII).
+kind: pdf_form
+doc_type: onrc_anexa_2a
+pdf_file: onrc-anexa-2a.pdf
+
+field_map:
+  # Header: trade register office and type of request
+  ORC: orc_office
+  CheckBox6: request_closure
+  # IV. Subsemnatul(a) - the applicant, as on the identity card
+  nume: last_name | upper
+  prenume: first_name | upper
+  cnp_nif: cnp
+  localitatea: city
+  strada: street
+  numar: street_number
+  bloc: building
+  scara: entrance
+  etaj: floor
+  apartament: apartment
+  judet: region
+  tara: country
+  cetatenia: citizenship
+  localitate nastere: place_of_birth
+  sector: birth_county
+  tara_2: birth_country
+  la data de: date_of_birth
+  act_ident: id_type
+  act_ident_seria: id_series
+  act_ident_numar: id_number
+  eliberat: id_issued_by
+  eliberat_data: id_issue_date
+  valabil pana la data: id_expiry_date
+  regim matrimonial: marital_regime
+  calitate: capacity
+  prin: represented_by
+  conform: representation_basis
+  # V. Obiectul cererii (the act the request is based on, e.g. the dissolution decision)
+  obiectul cererii: request_object
+  # 6. Radiere pentru firma
+  CheckBox74: request_closure
+  pg. 3 text 22: company_name | upper
+  pg. 3 text 23: company_registration_number
+  pg. 3 text 24: company_cui
+  pg. 3 text 25: company_euid
+  pg. 3 text 26: company_city
+  pg. 3 text 27: company_street
+  pg. 3 text 28: company_street_number
+  pg. 3 text 29: company_building
+  pg. 3 text 30: company_entrance
+  pg. 3 text 31: company_floor
+  pg. 3 text 32: company_apartment
+  pg. 3 text 33: company_county
+  pg. 3 text 34: company_email
+  pg. 3 text 35: company_phone
+  pg. 3 text 36: company_website
+  # persoană juridică; motiv: voința profesionistului / hotărâre judecătorească / altele
+  CheckBox75: closure_legal_person
+  CheckBox78: closure_by_will
+  CheckBox79: closure_by_court
+  "pg. 3 text 37": closure_other_reason
+  CheckBox82: closure_liquidation_report
+  # 4.2 Depunere de acte: situații financiare finale de lichidare și repartizare
+  CheckBox65: filed_liquidation_statements
+  # VI. Comunicarea documentelor
+  CheckBox90: request_communication
+  CheckBox90_2: communication_method
+  # VII. Persoana pentru comunicare
+  pg. 3 text 61: contact_last_name
+  pg. 3 text 62: contact_first_name
+  pg. 3 text 63: contact_city
+  pg. 3 text 64: contact_street
+  pg. 3 text 65: contact_street_number
+  pg. 3 text 66: contact_building
+  pg. 3 text 67: contact_entrance
+  pg. 3 text 68: contact_floor
+  pg. 3 text 69: contact_apartment
+  pg. 3 text 70: contact_county
+  pg. 3 text 71: contact_postal_code
+  pg. 3 text 72: contact_phone
+  pg. 3 text 73: contact_email
+  # VIII. Date de facturare
+  pg. 3 text 74: billing_name
+  pg. 3 text 75: billing_code
+  pg. 3 text 76: billing_email
+  pg. 3 text 77: billing_bank
+  pg. 3 text 78: billing_iban
+  pg. 3 text 78_08.01.2025_32: billing_address
+  # IX. Opis de documente depuse: total pages
+  pg. 4 text 26: attached_pages_total
+  # X. Prelucrarea datelor cu caracter personal: applicant and date
+  pg. 4 text 27: "{{ last_name | upper }} {{ first_name | upper }}"
+  pg. 4 text 28: today
+  # XI. Anexele ... fac parte integrantă din prezenta cerere
+  pg. 4 text 29: annex_numbers
+  pg. 4 text 30: today
+  # XII. Cererea se depune de către (the filer)
+  pg. 4 text 31: filer_last_name
+  pg. 4 text 32: filer_first_name
+  pg. 4 text 33: filer_id_type
+  pg. 4 text 34: filer_id_series
+  pg. 4 text 35: filer_id_number
+  pg. 4 text 36: filer_cnp
+  pg. 4 text 37: filer_capacity
+  pg. 4 text 38: filer_basis
+  pg. 4 text 39: filer_basis_number
+  pg. 4 text 40: filer_basis_date
+  pg. 4 text 41: today
+
+
+# IX. Opis: rows 2-7 of the table (row 1 is the pre-printed general assembly decision).
+lists:
+  attached_documents:
+    cells:
+      - ["pg. 4 text 1", "pg. 4 text 5_1", "pg. 4 text 20"]
+      - ["pg. 4 text 2", "pg. 4 text 5_2", "pg. 4 text 21"]
+      - ["pg. 4 text 3", "pg. 4 text 8", "pg. 4 text 22"]
+      - ["pg. 4 text 4", "pg. 4 text 9", "pg. 4 text 23"]
+      - ["pg. 4 text 13", "pg. 4 text 10", "pg. 4 text 24"]
+      - ["pg. 4 text 14", "pg. 4 text 11", "pg. 4 text 25"]
+
+
+# Boxes ticked when their text is filled in.
+ticks:
+  # Motiv: altele
+  CheckBox81:
+    - closure_other_reason
+  # 4.2 Depunere de acte
+  CheckBox54:
+    - filed_liquidation_statements
+
+choices:
+  CheckBox90_2:
+    poștă: /v1
+    curier: /v2
+    mijloace electronice: /v3
+    sediul O.R.C.T.: /v4
+
+defaults:
+  request_closure: x
+  closure_legal_person: x
+  request_communication: x
+  id_type: CI
+  country: România
+  birth_country: România
+  citizenship: Română
+
+# The filer's own details: proposed again next time.
+remember:
+  - represented_by
+  - representation_basis
+  - communication_method
+  - contact_last_name
+  - contact_first_name
+  - contact_city
+  - contact_street
+  - contact_street_number
+  - contact_building
+  - contact_entrance
+  - contact_floor
+  - contact_apartment
+  - contact_county
+  - contact_postal_code
+  - contact_phone
+  - contact_email
+  - billing_name
+  - billing_code
+  - billing_email
+  - billing_bank
+  - billing_iban
+  - billing_address
+  - attached_documents
+  - filer_last_name
+  - filer_first_name
+  - filer_id_type
+  - filer_id_series
+  - filer_id_number
+  - filer_cnp
+  - filer_capacity
+  - filer_basis
+
+optional_fields:
+  - building
+  - entrance
+  - floor
+  - apartment
+  - marital_regime
+  - represented_by
+  - representation_basis
+  - company_euid
+  - company_building
+  - company_entrance
+  - company_floor
+  - company_apartment
+  - company_email
+  - company_phone
+  - company_website
+  - request_communication
+  - communication_method
+  - contact_last_name
+  - contact_first_name
+  - contact_city
+  - contact_street
+  - contact_street_number
+  - contact_building
+  - contact_entrance
+  - contact_floor
+  - contact_apartment
+  - contact_county
+  - contact_postal_code
+  - contact_phone
+  - contact_email
+  - billing_name
+  - billing_code
+  - billing_email
+  - billing_bank
+  - billing_iban
+  - billing_address
+  - annex_numbers
+  - attached_documents
+  - attached_pages_total
+  - filer_last_name
+  - filer_first_name
+  - filer_id_type
+  - filer_id_series
+  - filer_id_number
+  - filer_cnp
+  - filer_capacity
+  - filer_basis
+  - filer_basis_number
+  - filer_basis_date
+  - closure_legal_person
+  - closure_by_will
+  - closure_by_court
+  - closure_other_reason
+  - closure_liquidation_report
+  - filed_liquidation_statements

@@ -12,6 +12,7 @@ from docfill.templates.models import Base, StandardDocument, StandardDocumentSpe
 def make_engine(database_url: str) -> Engine:
     connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
     engine = create_engine(database_url, connect_args=connect_args)
+    import docfill.knowledge.store  # noqa: F401  (registers the knowledge tables)
     import docfill.learning  # noqa: F401  (registers the learning tables on the same metadata)
 
     Base.metadata.create_all(engine)

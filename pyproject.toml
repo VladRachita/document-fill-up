@@ -50,7 +50,13 @@ docfill = "docfill.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-docfill = ["py.typed", "standard_documents/*.yaml", "standard_documents/*.pdf", "web/*.html"]
+docfill = [
+    "py.typed",
+    "standard_documents/*.yaml",
+    "standard_documents/*.pdf",
+    "knowledge/bundled/*.yaml",
+    "web/*.html",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -37,3 +37,11 @@ class MissingFieldsError(DocFillError):
     def __init__(self, missing: list[str]):
         self.missing = missing
         super().__init__("Missing values for required fields: " + ", ".join(missing))
+
+
+class KnowledgeError(DocFillError):
+    """A knowledge entry (legal form, procedure, rule, document type) is invalid."""
+
+
+class KnowledgeNotFoundError(KnowledgeError):
+    pass

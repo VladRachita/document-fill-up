@@ -187,12 +187,49 @@
   .paper .form-row { cursor: pointer; }
   .paper .form-row td:first-child { color: #4b5563; width: 48%; }
   .paper .form-row.req-missing td:last-child { background: #fde2df; color: #9b2c24; }
+
+  /* v3: procedures (legal form + operation), legal checks, dossier */
+  .navlink { color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .navlink:hover { text-decoration: underline; }
+  .case-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; margin-bottom: 12px; }
+  @media (max-width: 900px) { .case-grid { grid-template-columns: 1fr; } }
+  .pick-label { color: var(--muted); font-size: 13px; margin: 0 0 6px; }
+  .picker { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .pick { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer;
+          display: flex; flex-direction: column; align-items: flex-start; min-width: 92px; text-align: left; }
+  .pick strong { font-size: 14px; }
+  .pick span { color: var(--muted); font-size: 12px; }
+  .pick[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-weak); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .pick[aria-pressed="true"] span { color: var(--accent); }
+  .pick:disabled { opacity: .45; cursor: not-allowed; }
+  .proc { border-top: 1px solid var(--border); padding-top: 12px; }
+  .proc h3 { margin: 0 0 4px; font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .proc .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+  @media (max-width: 900px) { .proc .cols { grid-template-columns: 1fr; } }
+  .proc h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  ul.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
+  ul.check li { display: flex; gap: 8px; align-items: flex-start; }
+  ul.check li .ic { flex: none; width: 18px; text-align: center; font-weight: 700; }
+  ul.check li .ic.ok { color: var(--ok); } ul.check li .ic.no { color: var(--bad); } ul.check li .ic.opt { color: var(--muted); }
+  ul.check li small { display: block; color: var(--muted); font-size: 12.5px; }
+  .cite { font-size: 12.5px; color: var(--muted); }
+  .cite b { color: var(--text); font-weight: 600; }
+  .legal { margin-bottom: 12px; }
+  .legal-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; background: var(--surface); font-size: 13.5px; }
+  .legal-item.error { border-color: var(--bad); }
+  .legal-item.warning { border-color: var(--warn); }
+  .legal-item .lh { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+  .legal-item .lh button { margin-left: auto; }
+  .legal-item blockquote { margin: 6px 0 0; padding: 6px 10px; border-left: 3px solid var(--border); background: var(--surface-2);
+                           border-radius: 0 6px 6px 0; font-size: 12.5px; white-space: pre-wrap; }
+  .legal-ok { color: var(--ok); font-size: 13px; }
 </style>
 </head>
 <body>
 <header>
   <div class="wrap">
     <div class="brand">docfill<small>document fill-up wizard</small></div>
+    <a class="navlink" href="/knowledge" title="Legal knowledge: procedures, rules, laws">Knowledge base →</a>
     <div class="health" id="health" aria-live="polite"></div>
   </div>
 </header>
@@ -203,14 +240,23 @@
 
   <!-- Step 1 -->
   <section class="step" data-step="1">
+    <div class="card" id="case-card" style="margin-bottom:16px">
+      <h2>1. What are you doing?</h2>
+      <p class="hint">Choose the legal form and the operation. docfill selects the official forms, lists the documents of the file (dosar) and checks the values against the legal rules.</p>
+      <div class="case-grid">
+        <div><p class="pick-label">Legal form</p><div id="entity-picker"></div></div>
+        <div><p class="pick-label">Operation</p><div class="picker" id="operation-picker"></div></div>
+      </div>
+      <div id="procedure-panel"></div>
+    </div>
     <div class="grid-2">
       <div class="card">
-        <h2>1. Reference documents</h2>
+        <h2>2. Reference documents</h2>
         <p class="hint">The standard documents to fill; choose several to fill them from the same data (e.g. Anexa 2a and Anexa 4). They are used exactly as stored; only their fields are filled in.</p>
         <div class="tpl-list" id="template-list"></div>
       </div>
       <div class="card">
-        <h2>2. Source documents</h2>
+        <h2>3. Source documents</h2>
         <p class="hint">Where the information comes from: identity card, birth certificate, an already filled form… PDF, Word (.docx), PNG or JPEG. Photos and scans are read with OCR.</p>
         <label class="drop" id="drop">
           <input type="file" id="file-input" multiple accept=".pdf,.docx,.png,.jpg,.jpeg">
@@ -260,6 +306,7 @@
     <div class="grid-review">
       <div>
         <div class="progress"><span id="progress-text"></span><div class="bar"><div id="progress-bar"></div></div></div>
+        <div class="legal" id="legal-box"></div>
         <div class="toolbar">
           <div class="seg" role="group" aria-label="Show fields">
             <button type="button" data-filter="attention" aria-pressed="true">Needs attention</button>
@@ -293,6 +340,8 @@
         <h2>Save the filled documents</h2>
         <p class="hint" id="save-summary"></p>
         <div id="save-missing"></div>
+        <div id="save-legal"></div>
+        <div id="dossier"></div>
         <label for="filename" class="muted" style="font-size:13px">New file name</label>
         <div class="filename"><input type="text" id="filename" autocomplete="off"><span>.pdf</span></div>
         <p class="hint" style="margin-top:6px" id="filename-hint"></p>
@@ -319,7 +368,7 @@
 "use strict";
 
 const STEPS = [
-  { title: "Documents", sub: "Reference + sources" },
+  { title: "Documents", sub: "Procedure + sources" },
   { title: "Scan & clean", sub: "Check text and type" },
   { title: "Review fields", sub: "Correct values live" },
   { title: "Save PDF", sub: "Choose a file name" },
@@ -331,14 +380,19 @@ const SOURCE_LABELS = {
 };
 const GROUPS = [
   ["person", "Person"], ["birth", "Birth"], ["domicile", "Domicile"], ["id_card", "Identity card"],
-  ["company", "Company"], ["filing", "Request"], ["contact", "Contact person"],
+  ["company", "Company"], ["filing", "Request"], ["changes", "Changes (mențiuni)"],
+  ["closure", "Closure (radiere)"], ["contact", "Contact person"],
   ["billing", "Billing"], ["filer", "Filed by"], ["parents", "Parents"], ["other", "Other"],
 ];
 const LIST_HINTS = {
   caen_activities: "6201 Activități de realizare a soft-ului la comandă",
   caen_third_party: "4321 Lucrări de instalații electrice",
   attached_documents: "Act constitutiv | 1/01.10.2026 | 5",
+  associates: "POPESCU ION | 1871114321239 | 50%",
+  family_members: "POPESCU ION | 1871114321239",
+  requested_changes: "Schimbarea sediului social",
 };
+const SEVERITY = { error: ["bad", "Error"], warning: ["warn", "Warning"], info: ["accent", "Info"] };
 
 const state = {
   step: 1, maxStep: 1, templates: [], selected: [], docTypes: [],
@@ -346,6 +400,8 @@ const state = {
   rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {},
   previews: [], activePreview: 0, filter: "attention",
   filename: "", filenameTouched: false, allowMissing: false, learned: null,
+  cases: { entities: [], operations: [], procedures: [] }, entity: null, operation: null,
+  procedure: null, legal: [], legalAck: false,
 };
 
 // ------------------------------------------------------------------ helpers
@@ -418,6 +474,12 @@ const docTypeLabel = (name) => (state.docTypes.find((d) => d.name === name) || {
 const rowByName = (name) => state.rows.find((r) => r.name === name);
 const labelFor = (name) => (rowByName(name) || { label: name }).label;
 const valueOf = (name) => (state.values[name] || "").trim();
+const currentProcedure = () => state.cases.procedures.find((p) => p.key === state.procedure) || null;
+const hasProcedures = () => state.cases.procedures.length > 0;
+const legalFailed = () => state.legal.filter((r) => r.status === "failed");
+const legalErrors = () => legalFailed().filter((r) => r.severity === "error");
+const providedTypes = () => new Set(state.documents.map((d) => d.doc_type).filter(Boolean));
+const citeText = (ref) => [ref.citation, ref.article].filter(Boolean).join(", ");
 
 // ------------------------------------------------------------------ stepper
 
@@ -471,17 +533,116 @@ async function loadHealth() {
 // ------------------------------------------------------------------ step 1
 
 async function loadTemplates() {
-  const [templates, docTypes] = await Promise.all([
+  const [templates, docTypes, cases] = await Promise.all([
     api("/templates").then((r) => r.json()), api("/doctypes").then((r) => r.json()),
+    api("/knowledge/cases").then((r) => r.json()).catch(() => null),
   ]);
   state.templates = templates;
   state.docTypes = docTypes;
+  if (cases) state.cases = cases;
   if (!templates.length) {
     showBanner("No standard documents in the database yet. Run: docfill templates seed", "info");
+  } else if (!hasProcedures()) {
+    showBanner("No procedures in the knowledge base yet. Run: docfill knowledge seed", "info");
   }
   const remembered = (storage.get("docfill.templates") || []).filter((n) => templates.some((t) => t.name === n));
   state.selected = remembered.length ? remembered : templates.slice(0, 1).map((t) => t.name);
+  const procedure = state.cases.procedures.find((p) => p.key === storage.get("docfill.procedure"));
+  if (procedure) selectProcedure(procedure.key, false);
+  renderCases();
   renderTemplates();
+}
+
+// ------------------------------------------------------------------ step 1: procedure
+
+function selectProcedure(key, applyForms = true) {
+  const procedure = state.cases.procedures.find((p) => p.key === key);
+  state.procedure = procedure ? procedure.key : null;
+  state.entity = procedure ? procedure.entity.key : state.entity;
+  state.operation = procedure ? procedure.operation.key : state.operation;
+  if (procedure && applyForms) state.selected = [...procedure.templates];
+  storage.set("docfill.procedure", state.procedure);
+  if (applyForms) storage.set("docfill.templates", state.selected);
+  state.rows = []; state.previews = []; state.legal = []; state.legalAck = false; state.maxStep = 1;
+}
+
+function choose(entity, operation) {
+  state.entity = entity;
+  state.operation = operation;
+  const match = state.cases.procedures.find((p) => p.entity.key === entity && p.operation.key === operation);
+  if (match) selectProcedure(match.key);
+  else { state.procedure = null; storage.set("docfill.procedure", null); }
+  renderCases();
+  renderTemplates();
+  renderSteps();
+}
+
+function renderCases() {
+  const card = $("case-card");
+  card.hidden = !hasProcedures();
+  if (card.hidden) return;
+  const { entities, operations, categories, procedures } = state.cases;
+  put($("entity-picker"), (categories || []).map((category) => {
+    const items = entities.filter((e) => e.category === category.key);
+    if (!items.length) return null;
+    return el("div", {}, el("div", { class: "muted", style: "font-size:12.5px;margin-bottom:4px" }, category.title),
+      el("div", { class: "picker" }, items.map((e) => el("button", {
+        type: "button", class: "pick", "aria-pressed": String(state.entity === e.key), title: e.description || e.title,
+        onclick: () => choose(e.key, state.operation || "infiintare"),
+      }, el("strong", {}, e.abbreviation), el("span", {}, e.title)))));
+  }));
+  put($("operation-picker"), operations.map((op) => {
+    const exists = !state.entity || procedures.some((p) => p.entity.key === state.entity && p.operation.key === op.key);
+    return el("button", {
+      type: "button", class: "pick", "aria-pressed": String(state.operation === op.key), disabled: !exists,
+      title: op.description, onclick: () => choose(state.entity, op.key),
+    }, el("strong", {}, op.title), el("span", {}, `${op.english} · ${op.description}`));
+  }));
+  renderProcedurePanel();
+}
+
+function renderProcedurePanel() {
+  const procedure = currentProcedure();
+  const panel = $("procedure-panel");
+  if (!procedure) {
+    put(panel, el("p", { class: "muted", style: "margin:0" },
+      state.entity ? "No procedure for this operation in the knowledge base yet." : "Pick a legal form to start."));
+    return;
+  }
+  const unverified = procedure.unverified || [];
+  const docs = procedure.documents;
+  put(panel, el("div", { class: "proc" },
+    el("h3", {}, procedure.title,
+      el("span", { class: "pill accent", title: "Where the file is submitted" }, `filed at ${procedure.authority || "ONRC"}`),
+      unverified.length
+        ? el("span", { class: "pill warn", title: `Not yet verified by a legal professional:\n${unverified.join("\n")}` },
+            `${unverified.length} knowledge item${unverified.length === 1 ? "" : "s"} not verified yet`)
+        : el("span", { class: "pill ok" }, `verified by ${procedure.verified_by}`)),
+    procedure.description ? el("div", { class: "muted", style: "font-size:13.5px" }, procedure.description) : null,
+    !procedure.templates.length
+      ? el("div", { class: "warnbox", style: "margin-top:10px" },
+          "docfill cannot fill any form of this procedure yet. Download the official form (link below), add it to docfill (docfill forms inspect + docfill templates add), then reference it in the procedure on the Knowledge page.")
+      : null,
+    el("div", { class: "cols" },
+      el("div", {},
+        el("h4", {}, "Forms"),
+        el("ul", { class: "check" }, procedure.forms.map((f) => el("li", {},
+          el("span", { class: `ic ${f.available ? "ok" : f.required ? "no" : "opt"}` }, f.available ? "✓" : "✗"),
+          el("div", {}, f.title + (f.required ? "" : " (if applicable)"),
+            el("small", {}, f.available ? `filled by docfill${f.note ? " · " + f.note : ""}` : (f.note || "not in docfill yet")),
+            !f.available && f.url ? el("small", {}, el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
+        el("h4", { style: "margin-top:12px" }, `Legal checks (${procedure.rules.length})`),
+        el("ul", { class: "check" }, procedure.rules.map((r) => el("li", {},
+          el("span", { class: `ic ${r.severity === "error" ? "no" : "opt"}` }, "⚖"),
+          el("div", {}, r.title, r.status !== "verified" ? el("small", {}, "not verified yet") : null))))),
+      el("div", {},
+        el("h4", {}, "Documents of the file (dosar)"),
+        el("ul", { class: "check" }, docs.map((d) => el("li", {},
+          el("span", { class: `ic ${d.required ? "no" : "opt"}` }, d.required ? "•" : "○"),
+          el("div", {}, d.title + (d.required ? "" : " (if applicable)"), d.note ? el("small", {}, d.note) : null)))),
+        el("h4", { style: "margin-top:12px" }, "Legal basis"),
+        el("div", { class: "cite" }, procedure.legal_basis.map((ref) => el("div", {}, el("b", {}, ref.citation), ref.article ? `, ${ref.article}` : ""))),
+        (procedure.notes || []).map((note) => el("div", { class: "cite", style: "margin-top:6px" }, `Note: ${note}`))))));
 }
 
 function renderTemplates() {
@@ -507,8 +668,10 @@ function toggleTemplate(name, on) {
 }
 
 function updateScanButton() {
-  $("scan-btn").disabled = !state.selected.length || !state.files.length;
-  $("manual-btn").disabled = !state.selected.length;
+  const needsProcedure = hasProcedures() && !state.procedure;
+  $("scan-btn").disabled = needsProcedure || !state.selected.length || !state.files.length;
+  $("manual-btn").disabled = needsProcedure || !state.selected.length;
+  $("scan-btn").title = needsProcedure ? "Choose what you are doing first" : "";
 }
 
 function addFiles(fileList) {
@@ -538,6 +701,7 @@ async function scan() {
     if (state.filesDirty || !state.documents.length) {
       const form = new FormData();
       state.selected.forEach((name) => form.append("templates", name));
+      if (state.procedure) form.append("procedure", state.procedure);
       state.files.forEach((file) => form.append("files", file, file.name));
       const result = await (await api("/wizard/analyze", { method: "POST", body: form })).json();
       state.documents = result.documents;
@@ -562,7 +726,7 @@ async function fillManually() {
   showBanner("");
   try {
     state.documents = []; state.filesDirty = true; state.manual = {}; state.derivedFrom = {};
-    applyReview(await (await postJSON("/wizard/reextract", { templates: state.selected, documents: [] })).json());
+    applyReview(await (await postJSON("/wizard/reextract", { templates: state.selected, procedure: state.procedure, documents: [] })).json());
     unlock(4);
     goTo(3);
   } catch (error) { showBanner(error.message); }
@@ -593,7 +757,7 @@ async function reextract() {
   $("reextract-status").textContent = "re-extracting…";
   try {
     const result = await (await postJSON("/wizard/reextract", {
-      templates: state.selected, documents: documentsPayload(),
+      templates: state.selected, procedure: state.procedure, documents: documentsPayload(),
     })).json();
     if (seq !== reextractSeq) return;  // a newer edit is in flight
     applyReview(result);
@@ -657,6 +821,11 @@ function renderFoundChips() {
 
 function fieldIssues(row) {
   const issues = [...(state.issues[row.name] || [])];
+  const empty = !valueOf(row.name);
+  for (const result of legalFailed()) {
+    if (result.field !== row.name || (empty && row.required)) continue;  // "Required" says it already
+    issues.push(`⚖ ${result.message}`);
+  }
   const found = row.found;
   if (found && !state.manual[row.name] && valueOf(row.name) === (found.value || "").trim()) {
     for (const issue of found.issues || []) if (!issues.includes(issue)) issues.push(issue);
@@ -676,7 +845,37 @@ function needsAttention(row) {
   return false;
 }
 
+function legalItem(result) {
+  const [cls, label] = SEVERITY[result.severity] || ["", result.severity];
+  const law = result.law_text ? el("blockquote", { hidden: true }, result.law_text) : null;
+  return el("div", { class: `legal-item ${result.status === "failed" ? result.severity : ""}` },
+    el("div", { class: "lh" },
+      el("span", { class: `pill ${result.status === "failed" ? cls : "ok"}` }, result.status === "failed" ? label : "OK"),
+      result.title,
+      result.knowledge_status !== "verified" ? el("span", { class: "pill", title: "This rule has not been verified by a legal professional yet" }, "unverified rule") : null,
+      result.field ? el("button", { type: "button", class: "btn link small", onclick: () => focusField(result.field) }, "Go to field") : null),
+    result.status === "failed" ? el("div", {}, result.message, result.detail ? el("span", { class: "muted" }, ` (${result.detail})`) : null) : null,
+    el("div", { class: "cite" }, (result.legal_basis || []).map((ref) => el("span", {}, el("b", {}, citeText(ref)), ref.note ? ` · ${ref.note}` : "", " ")),
+      law ? el("button", { type: "button", class: "btn link small", onclick: () => { law.hidden = !law.hidden; } }, "Show the law text") : null),
+    law);
+}
+
+function renderLegal() {
+  const box = $("legal-box");
+  if (!state.procedure) { put(box); return; }
+  const failed = legalFailed();
+  const passed = state.legal.filter((r) => r.status === "passed");
+  put(box, el("div", { class: "panel-title" }, `Legal checks · ${(currentProcedure() || {}).title || ""}`,
+      el("span", { class: "status" }, "update as you type")),
+    failed.map(legalItem),
+    !failed.length && state.legal.length ? el("div", { class: "legal-ok" }, "✓ No legal problems found in the values filled in so far.") : null,
+    passed.length ? el("details", { style: "margin-top:4px" },
+      el("summary", { class: "muted", style: "cursor:pointer;font-size:13px" }, `${passed.length} check${passed.length === 1 ? "" : "s"} passed`),
+      passed.map(legalItem)) : null);
+}
+
 function renderFields() {
+  renderLegal();
   const container = $("fields");
   const visible = state.rows.filter((row) => state.filter === "all" || needsAttention(row));
   document.querySelectorAll("[data-filter]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === state.filter)));
@@ -836,9 +1035,11 @@ function renderProgress() {
   const filled = state.rows.filter((row) => valueOf(row.name)).length;
   const missing = missingRequired().length;
   const problems = state.rows.filter((row) => fieldIssues(row).length).length;
+  const legal = legalFailed().length;
   $("progress-text").textContent = `${filled} of ${total} fields filled` +
     (missing ? ` · ${missing} required missing` : "") + (problems ? ` · ${problems} with problems` : "") +
-    (!missing && !problems ? " · ready" : "");
+    (legal ? ` · ${legal} legal check${legal === 1 ? "" : "s"} failed` : "") +
+    (!missing && !problems && !legal ? " · ready" : "");
   $("progress-bar").style.width = total ? `${(filled / total) * 100}%` : "0";
 }
 
@@ -863,10 +1064,11 @@ async function refreshPreview() {
   if (!state.selected.length) return;
   const seq = ++previewSeq;
   try {
-    const body = await (await postJSON("/wizard/preview", { templates: state.selected, values: state.values })).json();
+    const body = await (await postJSON("/wizard/preview", { templates: state.selected, procedure: state.procedure, values: state.values })).json();
     if (seq !== previewSeq) return;
     state.previews = body.previews;
     state.issues = body.issues || {};
+    state.legal = body.legal || [];
     let derivedChanged = false;
     for (const [name, suggestion] of Object.entries(body.derived || {})) {
       if (!rowByName(name) || state.manual[name] || valueOf(name)) continue;
@@ -877,6 +1079,7 @@ async function refreshPreview() {
     if (!state.filenameTouched) state.filename = body.suggested_filename;
     if (state.step === 3) {
       state.rows.forEach((row) => refreshCard(row.name));
+      renderLegal();
       renderProgress();
       renderPreviewTabs("preview-tabs", $("preview"));
     }
@@ -941,7 +1144,7 @@ function renderSave() {
   const filled = previews.reduce((a, p) => a + p.filled, 0);
   const total = previews.reduce((a, p) => a + p.total, 0);
   $("save-summary").textContent = `${previews.map((p) => p.title).join(" + ")}: ${filled} of ${total} fields filled.`;
-  const missing = [...new Set(previews.flatMap((p) => p.missing))];
+  const missing = [...new Set([...previews.flatMap((p) => p.missing), ...missingRequired().map((r) => r.name)])];
   const box = $("save-missing");
   if (missing.length) {
     const checkbox = el("input", { type: "checkbox", id: "allow-missing", checked: state.allowMissing,
@@ -953,6 +1156,8 @@ function renderSave() {
   } else {
     put(box);
   }
+  renderSaveLegal();
+  renderDossier($("dossier"));
   const input = $("filename");
   if (document.activeElement !== input) input.value = state.filename;
   const names = previews.length > 1 ? previews.map((p) => `${state.filename || "document"}_${p.name}.pdf`) : [`${state.filename || "document"}.pdf`];
@@ -962,9 +1167,42 @@ function renderSave() {
   renderPreviewTabs("final-tabs", $("final-preview"));
 }
 
+function renderSaveLegal() {
+  const box = $("save-legal");
+  const failed = legalFailed();
+  if (!state.procedure || !failed.length) { put(box); return; }
+  const errors = legalErrors();
+  const checkbox = errors.length ? el("input", { type: "checkbox", id: "legal-ack", checked: state.legalAck,
+    onchange: (event) => { state.legalAck = event.target.checked; updateExportButton(); } }) : null;
+  put(box, el("div", { class: "warnbox" },
+    el("strong", {}, `${failed.length} legal check${failed.length === 1 ? "" : "s"} failed`),
+    el("ul", { style: "margin:6px 0 0;padding-left:18px" }, failed.map((r) => el("li", {},
+      `${r.title}: ${r.message}`, el("span", { class: "cite" }, ` (${(r.legal_basis || []).map(citeText).join("; ")})`)))),
+    errors.length ? el("div", { class: "check" }, checkbox, el("label", { for: "legal-ack" },
+      "I checked these and go on anyway (recorded, so rules that are often overridden get reviewed)")) : null));
+}
+
+function renderDossier(container, result) {
+  const procedure = currentProcedure();
+  if (!procedure) { put(container); return; }
+  const provided = providedTypes();
+  const forms = result ? result.forms : procedure.forms.map((f) => ({ ...f, created: !!f.template && state.selected.includes(f.template) }));
+  const docs = result ? result.documents : procedure.documents.map((d) => ({ ...d, provided: !!d.doc_type && provided.has(d.doc_type) }));
+  put(container, el("div", { style: "margin-top:12px" },
+    el("div", { class: "panel-title" }, `File (dosar): ${procedure.title}`),
+    el("ul", { class: "check" },
+      forms.filter((f) => f.created || f.required).map((f) => el("li", {}, el("span", { class: `ic ${f.created ? "ok" : "no"}` }, f.created ? "✓" : "✗"),
+        el("div", {}, f.title, el("small", {}, f.created ? "created by docfill" : "to prepare separately (not in docfill yet)",
+          !f.created && f.url ? el("span", {}, " · ", el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
+      docs.map((d) => el("li", {}, el("span", { class: `ic ${d.provided ? "ok" : d.required ? "no" : "opt"}` }, d.provided ? "✓" : d.required ? "□" : "○"),
+        el("div", {}, d.title + (d.required ? "" : " (if applicable)"),
+          el("small", {}, d.provided ? "uploaded and recognised" : d.required ? "to attach" : (d.note || "attach if it applies"))))))));
+}
+
 function updateExportButton() {
-  const missing = state.previews.some((p) => p.missing.length);
-  $("export-btn").disabled = !state.filename.trim() || (missing && !state.allowMissing);
+  const missing = state.previews.some((p) => p.missing.length) || missingRequired().length > 0;
+  $("export-btn").disabled = !state.filename.trim() || (missing && !state.allowMissing) ||
+    (legalErrors().length > 0 && !state.legalAck);
 }
 
 async function exportPdf() {
@@ -973,9 +1211,9 @@ async function exportPdf() {
   button.disabled = true;
   try {
     const body = await (await postJSON("/wizard/export", {
-      templates: state.selected, values: state.values, filename: state.filename,
+      templates: state.selected, procedure: state.procedure, values: state.values, filename: state.filename,
       allow_missing: state.allowMissing, rows: state.rows, documents: documentsPayload(),
-      derived: Object.keys(state.derivedFrom),
+      derived: Object.keys(state.derivedFrom), legal_acknowledged: state.legalAck,
     })).json();
     body.files.forEach((file, index) => setTimeout(() => download(file), index * 400));
     const learned = body.learned || {};
@@ -992,7 +1230,10 @@ async function exportPdf() {
         (learned.new_labels || []).length ? el("div", {}, `New labels: ${learned.new_labels.join(", ")}`) : null,
         learned.spelling_fixes ? el("div", {}, `Spelling fixes remembered: ${learned.spelling_fixes}`) : null,
         learned.examples ? el("div", {}, `Document type examples added: ${learned.examples}`) : null,
-        learned.remembered ? el("div", {}, `Your details remembered for next time: ${learned.remembered} fields`) : null));
+        learned.remembered ? el("div", {}, `Your details remembered for next time: ${learned.remembered} fields`) : null,
+        body.knowledge ? el("div", {}, `Legal checks run: ${body.knowledge.rules_checked}` +
+          (body.knowledge.overridden.length ? ` · overridden (recorded for review): ${body.knowledge.overridden.join(", ")}` : "")) : null));
+    if (body.dossier) renderDossier($("dossier"), body.dossier);
     loadHealth();
   } catch (error) {
     showBanner(error.message);
@@ -1011,7 +1252,7 @@ function download(file) {
 function restart() {
   Object.assign(state, { step: 1, maxStep: 1, files: [], filesDirty: true, documents: [], activeDoc: 0,
     rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {}, previews: [],
-    activePreview: 0, filename: "", filenameTouched: false, allowMissing: false });
+    activePreview: 0, filename: "", filenameTouched: false, allowMissing: false, legal: [], legalAck: false });
   put($("save-result"));
   renderFiles();
   renderSteps();

@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>docfill knowledge</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f5f6f8; --surface: #ffffff; --surface-2: #f0f2f5; --text: #1b1f24; --muted: #5d6673;
+    --border: #d9dde3; --accent: #2f5bd3; --accent-text: #ffffff; --accent-weak: #e8eefc;
+    --ok: #16794a; --ok-bg: #e3f3ea; --warn: #8a5a00; --warn-bg: #fff3d4; --bad: #b8322a;
+    --bad-bg: #fcebea; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.05);
+    --radius: 10px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171b; --surface: #1c2026; --surface-2: #232830; --text: #e7eaee; --muted: #9aa3ae;
+      --border: #333a44; --accent: #7c9cf5; --accent-text: #0f1320; --accent-weak: #253050;
+      --ok: #5fd39a; --ok-bg: #173627; --warn: #f0c060; --warn-bg: #3a2f14; --bad: #ff8a80;
+      --bad-bg: #3f1d1b; --shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); }
+  header .wrap { display: flex; align-items: center; gap: 16px; padding-top: 12px; padding-bottom: 12px; flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 18px; }
+  .brand small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 14px; }
+  .navlink { color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .navlink:hover { text-decoration: underline; }
+  .pills { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 12.5px;
+          border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .pill.ok { color: var(--ok); background: var(--ok-bg); border-color: transparent; }
+  .pill.warn { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+  .pill.bad { color: var(--bad); background: var(--bad-bg); border-color: transparent; }
+  .pill.accent { color: var(--accent); background: var(--accent-weak); border-color: transparent; }
+  main { padding: 20px 0 40px; }
+  .banner { display: none; padding: 10px 14px; border-radius: var(--radius); margin-bottom: 14px; }
+  .banner.show { display: block; }
+  .banner.error { background: var(--bad-bg); color: var(--bad); }
+  .banner.info { background: var(--ok-bg); color: var(--ok); }
+  .grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; min-width: 0; margin-bottom: 16px; }
+  .grid-2 > .card { margin-bottom: 0; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .hint { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  input[type=text], select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  textarea { min-height: 220px; font-family: var(--mono); font-size: 13px; resize: vertical; }
+  label.f { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .btn.small { padding: 3px 9px; font-size: 13px; font-weight: 500; }
+  .btn.link { border: none; background: none; color: var(--accent); padding: 3px 6px; font-weight: 500; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tabs button { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--accent-weak); color: var(--accent); border-color: var(--accent); }
+  .hit { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+  .hit .t { font-weight: 600; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hit .x { white-space: pre-wrap; font-size: 13.5px; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+  code, pre { font-family: var(--mono); font-size: 12.5px; }
+  pre { background: var(--surface-2); padding: 10px; border-radius: 8px; overflow: auto; max-height: 420px; white-space: pre-wrap; }
+  .detail { border: 1px solid var(--accent); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
+  .explain { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; font-size: 13.5px; }
+  .explain b { display: block; margin-bottom: 2px; }
+  .empty { color: var(--muted); padding: 12px; text-align: center; font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">docfill<small>knowledge base · registrul comerțului</small></div>
+    <a class="navlink" href="/wizard">← Wizard</a>
+    <div class="pills" id="pills" aria-live="polite"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="banner" role="alert"></div>
+
+  <div class="card">
+    <h2>How docfill becomes an expert</h2>
+    <div class="explain">
+      <div><b>1. Knowledge you feed</b>Legal forms, procedures (open / change / close), legal rules and document types, written as YAML. Every change is versioned and kept in the history.</div>
+      <div><b>2. Verified by people</b>Everything starts as <span class="pill warn">draft</span>. A lawyer or expert checks it and marks it <span class="pill ok">verified</span>; changing it makes it draft again.</div>
+      <div><b>3. Laws you feed</b>Upload the text of a law or an ONRC guide: it is split into articles, searchable here, and shown next to the rules that cite it.</div>
+      <div><b>4. Learning from files</b>Every file saved in the wizard teaches the document classifier and records which rules were overridden, so wrong or outdated rules surface for review.</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>Search the knowledge and the laws</h2>
+      <p class="hint">E.g. "capital social minim SA", "radiere PFA", "beneficiar real".</p>
+      <form id="search-form" class="row">
+        <input type="text" id="q" placeholder="Search…" style="flex:1" autocomplete="off">
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <div id="hits"></div>
+    </div>
+
+    <div class="card">
+      <h2>Feed docfill</h2>
+      <div class="tabs" id="feed-tabs" role="tablist"></div>
+      <form id="feed-law" data-panel="law">
+        <p class="hint">A law, ordinance, order or ONRC guide as TXT, HTML (e.g. saved from legislatie.just.ro), PDF or DOCX. The same citation replaces the previous version.</p>
+        <label class="f" for="law-file">File</label><input type="file" id="law-file" accept=".txt,.md,.html,.htm,.pdf,.docx" required>
+        <label class="f" for="law-citation">Citation (how rules cite it)</label><input type="text" id="law-citation" placeholder="Legea nr. 31/1990" required>
+        <label class="f" for="law-title">Title</label><input type="text" id="law-title" placeholder="Legea societăților (forma consolidată)">
+        <label class="f" for="law-url">Source URL (optional)</label><input type="text" id="law-url" placeholder="https://legislatie.just.ro/...">
+        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Add the text</button></div>
+      </form>
+      <form id="feed-yaml" data-panel="yaml" hidden>
+        <p class="hint">Add or correct entries (legal forms, procedures, rules, document types). Use "Edit" on an entry below to start from its current version.</p>
+        <textarea id="yaml" spellcheck="false" placeholder="rules:&#10;  - key: sa-capital-minim&#10;    title: Capitalul social minim al unei SA&#10;    applies_to: {entities: [sa], operations: [infiintare]}&#10;    severity: error&#10;    check: {type: min_amount, field: share_capital, value: 90000}&#10;    message: Capitalul social al unei SA nu poate fi mai mic de 90.000 lei.&#10;    legal_basis:&#10;      - {citation: Legea nr. 31/1990, article: art. 10 alin. (1)}"></textarea>
+        <label class="f"><input type="checkbox" id="yaml-verified"> I verified this content (saved as verified, in my name)</label>
+        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Save</button></div>
+      </form>
+      <form id="feed-teach" data-panel="teach" hidden>
+        <p class="hint">Teach the document classifier with examples of a document type (sensitive numbers are removed; prefer blank or sample documents).</p>
+        <label class="f" for="teach-type">Document type</label><select id="teach-type"></select>
+        <label class="f" for="teach-files">Example files</label><input type="file" id="teach-files" multiple accept=".pdf,.docx,.png,.jpg,.jpeg" required>
+        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Teach</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2>Knowledge entries</h2>
+      <div class="row">
+        <label class="muted" style="font-size:13px" for="reviewer">Your name (for verify / retire)</label>
+        <input type="text" id="reviewer" style="width:220px" placeholder="e.g. Av. Maria Ionescu" autocomplete="name">
+      </div>
+    </div>
+    <div class="row" style="margin:8px 0 10px">
+      <div class="tabs" id="kind-tabs" role="tablist" style="margin:0"></div>
+      <label class="muted" style="font-size:13px"><input type="checkbox" id="only-draft"> only not verified</label>
+      <span style="flex:1"></span>
+      <a class="btn small" href="/knowledge/export" download="docfill-knowledge.yaml">Export all (YAML)</a>
+      <button class="btn small" type="button" id="seed-btn" title="Load the knowledge shipped with docfill; entries changed here are kept">Load bundled knowledge</button>
+    </div>
+    <div id="entries"></div>
+    <div id="detail"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>What the saved files taught</h2>
+      <p class="hint">Rules that people often override are flagged for review; documents often provided but not listed in a procedure are suggested.</p>
+      <div id="feedback"></div>
+    </div>
+    <div class="card">
+      <h2>Laws and guides fed</h2>
+      <div id="sources"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+const KINDS = [["procedure", "Procedures"], ["rule", "Rules"], ["entity", "Legal forms"], ["doc_type", "Document types"]];
+const FEEDS = [["law", "Law or guide"], ["yaml", "Knowledge (YAML)"], ["teach", "Teach a document type"]];
+const state = { kind: "procedure", feed: "law", entries: [], onlyDraft: false, detail: null };
+
+const $ = (id) => document.getElementById(id);
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === false || value == null) continue;
+    if (key === "class") node.className = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value === true ? "" : value);
+  }
+  for (const child of children.flat()) {
+    if (child == null || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+const put = (node, ...children) => node.replaceChildren(...children.flat().filter((c) => c != null && c !== false));
+const storage = {
+  get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch (_) { /* private mode */ } },
+};
+function showBanner(message, kind = "error") {
+  const banner = $("banner");
+  banner.className = `banner ${kind}` + (message ? " show" : "");
+  banner.textContent = message || "";
+  if (message) window.scrollTo({ top: 0, behavior: "smooth" });
+}
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
+  if (!response.ok) {
+    let message = `${response.status} ${response.statusText}`;
+    try {
+      const body = await response.json();
+      if (Array.isArray(body.detail)) message = body.detail.map((d) => d.msg || JSON.stringify(d)).join("; ");
+      else if (body.detail) message = body.detail;
+    } catch (_) { /* not JSON */ }
+    throw new Error(message);
+  }
+  return response.status === 204 ? null : response.json();
+}
+const postJSON = (path, payload) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+const statusPill = (status) => el("span", { class: `pill ${status === "verified" ? "ok" : status === "retired" ? "" : "warn"}` }, status);
+const reviewer = () => $("reviewer").value.trim();
+
+// ------------------------------------------------------------------ stats
+
+async function loadStats() {
+  const stats = await api("/knowledge/stats");
+  const total = (kind) => Object.values(stats.entries[kind] || {}).reduce((a, b) => a + b, 0);
+  const verified = Object.values(stats.entries).reduce((a, c) => a + (c.verified || 0), 0);
+  const all = Object.keys(stats.entries).reduce((a, k) => a + total(k), 0);
+  put($("pills"),
+    el("span", { class: `pill ${verified === all && all ? "ok" : "warn"}` }, `${verified} of ${all} entries verified`),
+    el("span", { class: "pill accent" }, `${stats.legal_texts.sources} law${stats.legal_texts.sources === 1 ? "" : "s"} · ${stats.legal_texts.passages} passages`),
+    stats.rules_to_review.length ? el("span", { class: "pill bad" }, `${stats.rules_to_review.length} rule${stats.rules_to_review.length === 1 ? "" : "s"} to review`) : null,
+    stats.integrity_problems.length ? el("span", { class: "pill bad", title: stats.integrity_problems.map((p) => `${p.entry}: ${p.problem}`).join("\n") },
+      `${stats.integrity_problems.length} damaged entr${stats.integrity_problems.length === 1 ? "y" : "ies"}`) : null);
+  const rules = stats.rules.filter((r) => r.failed || r.passed);
+  const suggestions = stats.procedures.filter((p) => p.suggested_documents.length);
+  put($("feedback"),
+    rules.length ? el("table", {},
+      el("tr", {}, el("th", {}, "Rule"), el("th", {}, "Passed"), el("th", {}, "Failed"), el("th", {}, "Overridden"), el("th", {}, "")),
+      rules.map((r) => el("tr", {}, el("td", {}, el("code", {}, r.rule)), el("td", {}, r.passed), el("td", {}, r.failed),
+        el("td", {}, r.overridden + (r.override_rate != null ? ` (${Math.round(r.override_rate * 100)}%)` : "")),
+        el("td", {}, r.needs_review ? el("span", { class: "pill bad" }, "review") : "")))) : el("div", { class: "empty" }, "No files saved with a procedure yet."),
+    suggestions.map((p) => el("div", { class: "hit" }, el("div", { class: "t" }, `Documents often provided for ${p.procedure}`),
+      el("div", { class: "x" }, p.suggested_documents.map((d) => `${d.doc_type}: ${d.cases} of ${d.of} files`).join("\n")))));
+}
+
+async function loadSources() {
+  const sources = await api("/knowledge/texts");
+  put($("sources"), sources.length ? el("table", {},
+    el("tr", {}, el("th", {}, "Citation"), el("th", {}, "Passages"), el("th", {}, "")),
+    sources.map((s) => el("tr", {},
+      el("td", {}, el("strong", {}, s.citation), s.title ? el("div", { class: "muted" }, s.title) : null,
+        s.url ? el("a", { href: s.url, target: "_blank", rel: "noopener", class: "navlink", style: "font-size:12.5px" }, "source") : null),
+      el("td", {}, s.passages),
+      el("td", {}, el("button", { type: "button", class: "btn link small", onclick: () => removeSource(s.citation) }, "Remove")))))
+    : el("div", { class: "empty" }, "No laws yet. Feed the laws your rules cite (e.g. Legea nr. 31/1990, Legea nr. 265/2022, OUG nr. 44/2008) to see their articles next to the checks."));
+}
+
+async function removeSource(citation) {
+  if (!confirm(`Remove "${citation}" and its passages?`)) return;
+  try { await api(`/knowledge/texts?citation=${encodeURIComponent(citation)}`, { method: "DELETE" }); await Promise.all([loadSources(), loadStats()]); }
+  catch (error) { showBanner(error.message); }
+}
+
+// ------------------------------------------------------------------ search
+
+async function search(event) {
+  event.preventDefault();
+  const q = $("q").value.trim();
+  if (q.length < 2) return;
+  try {
+    const hits = await api(`/knowledge/search?q=${encodeURIComponent(q)}`);
+    put($("hits"), hits.length ? hits.map((h) => el("div", { class: "hit" },
+      el("div", { class: "t" }, el("span", { class: `pill ${h.kind === "law" ? "accent" : ""}` }, h.kind === "law" ? "law" : h.kind), h.title,
+        el("span", { class: "muted", style: "font-weight:400;font-size:13px" }, h.subtitle),
+        h.kind !== "law" ? el("button", { type: "button", class: "btn link small", onclick: () => showEntry(h.kind, h.ref) }, "Open") : null),
+      el("div", { class: "x" }, h.text))) : el("div", { class: "empty" }, "Nothing found. Feed the relevant law or add the knowledge."));
+  } catch (error) { showBanner(error.message); }
+}
+
+// ------------------------------------------------------------------ feeding
+
+function renderFeedTabs() {
+  put($("feed-tabs"), FEEDS.map(([key, title]) => el("button", { type: "button", role: "tab", "aria-selected": String(state.feed === key),
+    onclick: () => { state.feed = key; renderFeedTabs(); } }, title)));
+  document.querySelectorAll("form[data-panel]").forEach((form) => { form.hidden = form.dataset.panel !== state.feed; });
+}
+
+async function feedLaw(event) {
+  event.preventDefault();
+  const form = new FormData();
+  form.append("file", $("law-file").files[0]);
+  form.append("citation", $("law-citation").value.trim());
+  form.append("title", $("law-title").value.trim());
+  if ($("law-url").value.trim()) form.append("url", $("law-url").value.trim());
+  try {
+    const result = await api("/knowledge/texts", { method: "POST", body: form });
+    showBanner(`${result.citation}: ${result.passages} passages (${result.articles} articles) added.`, "info");
+    event.target.reset();
+    await Promise.all([loadSources(), loadStats()]);
+  } catch (error) { showBanner(error.message); }
+}
+
+async function feedYaml(event) {
+  event.preventDefault();
+  const verified = $("yaml-verified").checked;
+  if (verified && !reviewer()) { showBanner("Write your name in \"Your name\" to save it as verified."); return; }
+  try {
+    const result = await postJSON("/knowledge/entries", { yaml: $("yaml").value, verified_by: verified ? reviewer() : null, actor: reviewer() || null });
+    const changed = result.results.filter((r) => r.changed);
+    showBanner(`${changed.length} entr${changed.length === 1 ? "y" : "ies"} saved` +
+      (result.results.length > changed.length ? `, ${result.results.length - changed.length} unchanged` : "") +
+      (result.warnings.length ? `. Warnings: ${result.warnings.join("; ")}` : "."), "info");
+    await Promise.all([loadEntries(), loadStats()]);
+  } catch (error) { showBanner(error.message); }
+}
+
+async function teach(event) {
+  event.preventDefault();
+  const form = new FormData();
+  for (const file of $("teach-files").files) form.append("files", file, file.name);
+  try {
+    const result = await api(`/knowledge/doctypes/${encodeURIComponent($("teach-type").value)}/examples`, { method: "POST", body: form });
+    showBanner(`${result.examples_added} example${result.examples_added === 1 ? "" : "s"} of ${result.doc_type} learned.`, "info");
+    event.target.reset();
+  } catch (error) { showBanner(error.message); }
+}
+
+async function loadDocTypes() {
+  const types = await api("/doctypes");
+  put($("teach-type"), types.filter((t) => t.name !== "other").map((t) => el("option", { value: t.name }, `${t.label} (${t.name})`)));
+}
+
+// ------------------------------------------------------------------ entries
+
+function renderKindTabs() {
+  put($("kind-tabs"), KINDS.map(([key, title]) => el("button", { type: "button", role: "tab", "aria-selected": String(state.kind === key),
+    onclick: () => { state.kind = key; loadEntries(); } }, title)));
+}
+
+async function loadEntries() {
+  renderKindTabs();
+  try {
+    state.entries = await api(`/knowledge/entries?kind=${state.kind}&include_retired=true`);
+  } catch (error) { showBanner(error.message); return; }
+  const rows = state.entries.filter((e) => !state.onlyDraft || e.status === "draft");
+  put($("entries"), rows.length ? el("table", {},
+    el("tr", {}, el("th", {}, "Entry"), el("th", {}, "Status"), el("th", {}, "Version"), el("th", {}, "Verified"), el("th", {}, "")),
+    rows.map((e) => el("tr", {},
+      el("td", {}, el("strong", {}, e.title), el("div", {}, el("code", {}, e.key), e.origin === "local" ? el("span", { class: "muted", style: "font-size:12px" }, " · changed here") : null)),
+      el("td", {}, statusPill(e.status)),
+      el("td", {}, `v${e.version}`),
+      el("td", { class: "muted" }, e.verified_by ? `${e.verified_by}, ${e.verified_at.slice(0, 10)}` : "—"),
+      el("td", {}, el("div", { class: "row" },
+        el("button", { type: "button", class: "btn link small", onclick: () => showEntry(e.kind, e.key) }, "View"),
+        e.status === "draft" ? el("button", { type: "button", class: "btn small", onclick: () => setStatus(e, "verify") }, "Verify") : null,
+        e.status !== "retired" ? el("button", { type: "button", class: "btn link small", onclick: () => setStatus(e, "retire") }, "Retire") : null)))))
+    : el("div", { class: "empty" }, state.onlyDraft ? "Everything here is verified." : "No entries. Load the bundled knowledge or add your own."));
+}
+
+async function setStatus(entry, action) {
+  if (!reviewer()) { showBanner(`Write your name in "Your name" to ${action} entries.`); $("reviewer").focus(); return; }
+  let note = "";
+  if (action === "retire") {
+    note = prompt(`Why does "${entry.title}" no longer apply? (e.g. the law changed)`) || "";
+    if (!note) return;
+  } else if (!confirm(`Confirm that "${entry.title}" is correct and current, as ${reviewer()}?`)) return;
+  try {
+    await postJSON(`/knowledge/entries/${entry.kind}/${encodeURIComponent(entry.key)}/${action}`, { by: reviewer(), note });
+    await Promise.all([loadEntries(), loadStats()]);
+    if (state.detail && state.detail.key === entry.key) showEntry(entry.kind, entry.key);
+  } catch (error) { showBanner(error.message); }
+}
+
+async function showEntry(kind, key) {
+  try {
+    const entry = await api(`/knowledge/entries/${kind}/${encodeURIComponent(key)}`);
+    state.detail = entry;
+    put($("detail"), el("div", { class: "detail" },
+      el("div", { class: "row" }, el("strong", {}, entry.title), statusPill(entry.status), el("code", {}, `${entry.kind}/${entry.key} v${entry.version}`),
+        el("span", { style: "flex:1" }),
+        el("button", { type: "button", class: "btn small", onclick: () => editEntry(entry) }, "Edit"),
+        el("button", { type: "button", class: "btn link small", onclick: () => { state.detail = null; put($("detail")); } }, "Close")),
+      el("pre", {}, entry.yaml),
+      el("details", {}, el("summary", { class: "muted", style: "cursor:pointer;font-size:13px" }, `History (${entry.history.length} change${entry.history.length === 1 ? "" : "s"})`),
+        el("table", {}, entry.history.slice().reverse().map((h) => el("tr", {},
+          el("td", {}, `v${h.version}`), el("td", {}, h.action), el("td", {}, h.status), el("td", {}, h.actor || "—"),
+          el("td", { class: "muted" }, (h.at || "").slice(0, 16).replace("T", " ")), el("td", {}, h.note || "")))))));
+    $("detail").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (error) { showBanner(error.message); }
+}
+
+function editEntry(entry) {
+  state.feed = "yaml";
+  renderFeedTabs();
+  $("yaml").value = entry.yaml;
+  $("yaml-verified").checked = false;
+  $("feed-yaml").scrollIntoView({ behavior: "smooth", block: "center" });
+  $("yaml").focus();
+}
+
+async function seed() {
+  try {
+    const results = await api("/knowledge/seed", { method: "POST" });
+    const count = (action) => results.filter((r) => r.action === action).length;
+    showBanner(`Bundled knowledge: ${count("created")} added, ${count("updated")} updated, ${count("kept-local")} kept as changed here, ${count("unchanged")} unchanged.`, "info");
+    await Promise.all([loadEntries(), loadStats(), loadDocTypes()]);
+  } catch (error) { showBanner(error.message); }
+}
+
+// ------------------------------------------------------------------ wiring
+
+function init() {
+  $("reviewer").value = storage.get("docfill.reviewer") || "";
+  $("reviewer").addEventListener("input", () => storage.set("docfill.reviewer", reviewer()));
+  $("search-form").addEventListener("submit", search);
+  $("feed-law").addEventListener("submit", feedLaw);
+  $("feed-yaml").addEventListener("submit", feedYaml);
+  $("feed-teach").addEventListener("submit", teach);
+  $("seed-btn").addEventListener("click", seed);
+  $("only-draft").addEventListener("change", (event) => { state.onlyDraft = event.target.checked; loadEntries(); });
+  renderFeedTabs();
+  Promise.all([loadStats(), loadSources(), loadEntries(), loadDocTypes()]).catch((error) => showBanner(error.message));
+}
+
+init();
+</script>
+</body>
+</html>

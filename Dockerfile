@@ -21,5 +21,6 @@ ENV DOCFILL_DATABASE_URL=sqlite:////data/docfill.db \
 VOLUME /data
 EXPOSE 8000
 
-# Seeding is idempotent: unchanged standard documents are left as they are.
-CMD ["sh", "-c", "docfill templates seed && exec docfill serve --host 0.0.0.0 --port 8000"]
+# Seeding is idempotent: unchanged standard documents are left as they are, and knowledge you
+# changed or retired is never overwritten.
+CMD ["sh", "-c", "docfill templates seed && docfill knowledge seed && exec docfill serve --host 0.0.0.0 --port 8000"]

@@ -1,0 +1,138 @@
+# Tipuri de documente din dosarele de registrul comerțului, învățate de clasificatorul docfill.
+# "seeds" sunt texte tipice (titluri, formulări standard, fără date personale). Documentele
+# confirmate în wizard și cele adăugate cu `docfill knowledge teach` îl fac tot mai precis.
+doc_types:
+  - key: act_constitutiv
+    title: Act constitutiv
+    description: Actul constitutiv (contract de societate și/sau statut) al societății.
+    seeds:
+      - >
+        ACT CONSTITUTIV AL SOCIETĂȚII CU RĂSPUNDERE LIMITATĂ Subsemnații asociați am convenit să
+        constituim o societate cu răspundere limitată Capitolul I Denumirea, forma juridică,
+        sediul și durata societății Denumirea societății este S.R.L. Sediul social al
+        societății este în Durata societății este nelimitată Capitolul II Scopul și obiectul
+        de activitate Domeniul principal de activitate Activitatea principală cod CAEN
+        Capitolul III Capitalul social părți sociale aport în numerar Capitolul IV Administrarea
+        societății administrator Capitolul V Dizolvarea și lichidarea societății Dispoziții
+        finale
+      - >
+        ACT CONSTITUTIV al societății pe acțiuni STATUT Fondatorii Acționarii Denumirea
+        societății S.A. Sediul social Obiectul de activitate Capitalul social subscris și vărsat
+        acțiuni nominative valoarea nominală a unei acțiuni Adunarea generală a acționarilor
+        Consiliul de administrație Cenzori auditor financiar Exercițiul financiar Dizolvarea și
+        lichidarea Litigii
+      - >
+        ACT CONSTITUTIV al S.R.L. cu asociat unic Subsemnatul în calitate de asociat unic am
+        hotărât constituirea unei societăți cu răspundere limitată forma juridică denumirea
+        sediul durata obiectul de activitate capitalul social se divide în părți sociale
+        administrarea societății se asigură de administrator numit pe durată nelimitată
+
+  - key: dovada_sediu
+    title: Dovada sediului
+    description: >
+      Documentul care atestă dreptul de folosință asupra sediului social / profesional
+      (contract de comodat, închiriere, act de proprietate).
+    seeds:
+      - >
+        CONTRACT DE COMODAT Părțile comodant proprietar al imobilului situat în și comodatar
+        Obiectul contractului îl constituie folosința gratuită a spațiului în vederea stabilirii
+        sediului social al societății Durata contractului Obligațiile comodantului Obligațiile
+        comodatarului restituirea bunului
+      - >
+        CONTRACT DE ÎNCHIRIERE pentru sediul social Locator Locatar Obiectul contractului
+        spațiul situat în județul strada numărul destinat sediului social sediului profesional
+        al firmei Chiria lunară Durata închirierii Predarea primirea spațiului
+      - >
+        DECLARAȚIE pe propria răspundere privind sediul Subsemnatul proprietar al imobilului
+        situat în declar că sunt de acord cu stabilirea sediului social profesional al firmei
+        în imobilul proprietatea mea extras de carte funciară număr cadastral
+
+  - key: hotarare_aga
+    title: Hotărâre AGA / decizia asociatului unic
+    description: >
+      Hotărârea adunării generale (a asociaților sau a acționarilor) ori decizia asociatului
+      unic prin care se decide o modificare, dizolvarea sau lichidarea.
+    seeds:
+      - >
+        HOTĂRÂREA ADUNĂRII GENERALE A ASOCIAȚILOR nr. din data de Adunarea generală a asociaților
+        societății S.R.L. legal întrunită cu unanimitate de voturi HOTĂRĂȘTE Art. 1 Se aprobă
+        schimbarea sediului social Art. 2 Se modifică actul constitutiv în mod corespunzător
+        Art. 3 Se împuternicește administratorul să îndeplinească formalitățile la registrul
+        comerțului
+      - >
+        DECIZIA ASOCIATULUI UNIC nr. din Subsemnatul în calitate de asociat unic al societății
+        S.R.L. având în vedere prevederile Legii nr. 31/1990 DECIDE Art. 1 Art. 2 cooptarea
+        numirea revocarea administratorului majorarea capitalului social cesiunea părților
+        sociale actul constitutiv actualizat
+      - >
+        HOTĂRÂREA ADUNĂRII GENERALE EXTRAORDINARE A ACȚIONARILOR societății S.A. convocată
+        cvorum voturi exprimate aprobă dizolvarea și lichidarea simultană a societății
+        repartizarea activului rămas radierea din registrul comerțului
+
+  - key: certificat_inregistrare
+    title: Certificat de înregistrare
+    description: Certificatul de înregistrare emis de registrul comerțului (CUI, nr. de ordine).
+    seeds:
+      - >
+        MINISTERUL JUSTIȚIEI OFICIUL NAȚIONAL AL REGISTRULUI COMERȚULUI CERTIFICAT DE
+        ÎNREGISTRARE Firma Sediul social Activitatea principală Cod unic de înregistrare Număr
+        de ordine în registrul comerțului Data eliberării Seria Nr. Oficiul registrului
+        comerțului de pe lângă tribunalul
+      - >
+        CERTIFICAT DE ÎNREGISTRARE persoană fizică autorizată întreprindere individuală Firma
+        Sediul profesional Cod unic de înregistrare CUI Număr de ordine în registrul
+        comerțului F Data eliberării Registrul comerțului
+
+  - key: declaratie_beneficiar_real
+    title: Declarația privind beneficiarul real
+    description: Declarația reprezentantului legal privind beneficiarul real al persoanei juridice.
+    seeds:
+      - >
+        DECLARAȚIE PRIVIND BENEFICIARUL REAL Subsemnatul în calitate de reprezentant legal al
+        persoanei juridice declar pe propria răspundere că beneficiarul real al societății
+        este modalitatea în care se exercită controlul asupra persoanei juridice deține direct
+        indirect procentul din acțiunile părțile sociale drepturile de vot cunoscând prevederile
+        Legii nr. 129/2019 privind falsul în declarații
+      - >
+        Declarație pe propria răspundere privind beneficiarul real al societății date de
+        identificare ale beneficiarului real numele prenumele data nașterii cetățenia
+        domiciliul modalitatea de exercitare a controlului legal reprezentant
+
+  - key: specimen_semnatura
+    title: Specimen de semnătură
+    description: Specimenul de semnătură al administratorului / reprezentantului.
+    seeds:
+      - >
+        SPECIMEN DE SEMNĂTURĂ Subsemnatul în calitate de administrator al societății depun
+        specimenul de semnătură Semnătura Încheiere de legalizare a semnăturii notar public
+        dat în fața grefierului oficiului registrului comerțului
+      - >
+        SPECIMEN DE SEMNĂTURĂ persoană fizică autorizată titular întreprindere individuală
+        semnătura olografă dată în fața registratorului sau legalizată de notarul public
+
+  - key: acord_constituire_if
+    title: Acord de constituire a întreprinderii familiale
+    description: Acordul încheiat între membrii familiei care constituie întreprinderea familială.
+    seeds:
+      - >
+        ACORD DE CONSTITUIRE A ÎNTREPRINDERII FAMILIALE Subsemnații membri ai familiei soț soție
+        copii rude convenim constituirea unei întreprinderi familiale Reprezentantul
+        întreprinderii familiale Membrii întreprinderii familiale Cotele procentuale de
+        participare la beneficii și pierderi Condițiile de participare Retragerea membrilor
+
+  - key: drept_exercitare_profesie
+    title: Document privind dreptul de exercitare a profesiei
+    description: >
+      Documentul care atestă dreptul de a exercita o profesie liberă sau o activitate
+      independentă (decizie de înscriere în corpul profesional, autorizație, atestat).
+    seeds:
+      - >
+        DECIZIE privind înscrierea în tabloul membrilor corpului profesional Consiliul decide
+        înscrierea domnului doamnei în Tabloul profesioniștilor cu drept de exercitare a
+        profesiei forma de exercitare cabinet individual data înscrierii
+      - >
+        AUTORIZAȚIE DE LIBERĂ PRACTICĂ Se autorizează exercitarea profesiei pentru titularul
+        certificatului de membru valabil în condițiile legii specialitatea număr de înregistrare
+      - >
+        ATESTAT PROFESIONAL CERTIFICAT DE MEMBRU al corpului profesional Se atestă dreptul de
+        exercitare a profesiei de expert traducător autorizat arhitect expert contabil valabil
