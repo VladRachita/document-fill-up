@@ -109,3 +109,25 @@ def test_fill_reports_missing_fields_and_accepts_overrides(db, tmp_path):
 
 def test_fill_rejects_bad_set_syntax(db):
     assert run(*db, "fill", "-t", "x", "--set", "novalue").exit_code == 1
+
+
+@pytest.mark.parametrize(
+    ("given", "written"),
+    [("result.docx", "result.docx.pdf"), ("result", "result.pdf"), ("result.PDF", "result.PDF")],
+)
+def test_fill_output_is_always_pdf(db, source, tmp_path, given, written):
+    run(*db, "templates", "seed")
+    result = run(
+        *db,
+        "fill",
+        str(source),
+        "-t",
+        "residence-declaration",
+        "-o",
+        str(tmp_path / given),
+        "--no-ner",
+    )
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / written).read_bytes().startswith(b"%PDF-")
+    if written != given:
+        assert not (tmp_path / given).exists()

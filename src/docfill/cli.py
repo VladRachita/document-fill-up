@@ -267,7 +267,10 @@ def fill(
     files: Annotated[
         list[Path] | None, typer.Argument(help="Source documents to extract data from.")
     ] = None,
-    output: Annotated[Path | None, typer.Option("--output", "-o", help="Output PDF path.")] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Output PDF path (.pdf is added if missing)."),
+    ] = None,
     set_values: Annotated[
         list[str] | None,
         typer.Option("--set", "-s", help="Provide or override a value: FIELD=VALUE."),
@@ -298,6 +301,9 @@ def fill(
     if output is None:
         stem = files[0].stem if files else "manual"
         output = Path(f"{template}-{stem}.pdf")
+    elif output.suffix.lower() != ".pdf":
+        # The output is always a PDF: never write it under another extension.
+        output = output.with_name(output.name + ".pdf")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(result.pdf)
 
