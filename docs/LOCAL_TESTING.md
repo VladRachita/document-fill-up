@@ -136,15 +136,17 @@ fresh database.
    are flagged for review.
 8. **Expired card.** `ci_muresan_clean.jpg`: the expiry date is flagged "The identity card has
    expired".
-9. **An SA with several persons.** Choose **SA** and **înființare**: six forms are ticked (Anexa
-   2a, Anexa 4, Anexa 1, the beneficial owner declaration, the administrators' statements, the
-   act constitutiv). Upload `ci_popescu_clean.jpg` and `ci_stefanescu_clean.jpg`: in *Scan &
-   clean* they are persons 1 and 2. In *Review fields*, give each 450 shares (share capital
-   90.000 lei, 900 shares), make person 1 *președinte* and person 2 *membru*, mark both as
-   beneficial owners (*art. 4 alin. (2) lit. a) pct. 1*). Watch the derived values (associates,
-   *consiliu de administrație*), the statement preview becoming "× 2" and the legal checks
-   asking for what is still missing. Save: one PDF per form and one statement per
-   administrator.
+9. **An SRL with two associates.** Choose **SRL** and **înființare**: five forms are ticked
+   (Anexa 2a, Anexa 4, Anexa 1, the beneficial owner declaration, the administrators'
+   statements). Upload `ci_popescu_clean.jpg` and `ci_stefanescu_clean.jpg`: in *Scan & clean*
+   they are persons 1 and 2. In *Review fields*, type the associates, make person 1
+   *administrator*, mark both as beneficial owners (*art. 4 alin. (2) lit. a) pct. 1*) and
+   choose the tax (Anexa 1). The legal checks say what is still missing. Save: one PDF per form
+   and one statement per administrator.
+10. **An SA with several persons.** The same with **SA**: the act constitutiv is ticked too. Give
+   each person 450 shares (share capital 90.000 lei, 900 shares), make person 1 *președinte*
+   and person 2 *membru*: the associates and *consiliu de administrație* are derived and the
+   statement preview becomes "× 2".
 
 ## 5. Watch what it learned
 

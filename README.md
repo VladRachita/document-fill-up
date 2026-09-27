@@ -106,8 +106,9 @@ docfill serve                 # open http://127.0.0.1:8000
 
 1. **Documents.** Choose **what you are doing**: the legal form (SRL, SRL-D, SA, PFA, PFI, II,
    IF) and the operation (înființare, modificare, radiere). docfill ticks the forms of that
-   procedure (for an SA: Anexa 2a, Anexa 4, Anexa 1, the beneficial owner declaration, the
-   administrators' statements and the act constitutiv, all filled from the same data), lists
+   procedure (to open an SRL: Anexa 2a, Anexa 4, Anexa 1, the beneficial owner declaration and
+   the administrators' statements, all filled from the same data; for an SA the act constitutiv
+   too), lists
    the **documents of the file** (dosar) and its legal checks, and shows which knowledge is not
    verified yet. Then drop the source files: **the identity card of each person** (applicant,
    shareholders, administrators), birth certificate, act constitutiv, an already filled form...
