@@ -149,7 +149,6 @@ def _person_computed(prefix: str, person: str) -> list[Computed]:
         for name, word in (
             ("born", "născut"),
             ("identified", "identificat"),
-            ("appointed", "numit"),
             ("domiciled", "domiciliat"),
         )
     ]

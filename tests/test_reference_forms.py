@@ -431,7 +431,7 @@ def test_one_statement_for_each_administrator(tmp_path):
     texts = [act_text(result.pdf) for _, result in copies]
     assert texts[0].startswith("DECLARAȚIE PE PROPRIE RĂSPUNDERE POPESCU ION-ANDREI, CNP")
     assert "IONESCU MARIA, CNP " + PERSON_2.cnp in texts[1]
-    assert "în calitate de administrator numită al societății EXEMPLU INVEST S.A." in texts[1]
+    assert "în calitate de administrator numit al societății EXEMPLU INVEST S.A." in texts[1]
     # an administrator whose identity is incomplete: the missing fields are named for them
     values["p3_board_role"] = "membru"
     with pytest.raises(MissingFieldsError) as missing:

@@ -3,8 +3,8 @@
 #
 # One statement per administrator (per_person: every person with a board role; the applicant
 # when nobody has one), written with that person's data as read from their identity card. The
-# wording and layout follow the statements the filers submit; "născut", "identificat" and
-# "numit" agree with the person's sex (from the CNP).
+# wording and layout follow the statements the filers submit; "născut" and "identificat" agree
+# with the person's sex (from the CNP); "administrator numit" agrees with "administrator".
 name: declaratie-administrator
 title: Declarație pe proprie răspundere - administrator
 description: >
@@ -17,7 +17,7 @@ per_person: [board_role]
 body: |
   # DECLARAȚIE PE PROPRIE RĂSPUNDERE
 
-  {{ last_name | upper }} {{ first_name | upper }}, CNP {{ cnp }}, cu domiciliul în {{ domicile_line }}, țara {{ country }}, cetățenia {{ citizenship }}, {{ born_word }} în {{ place_of_birth }}, jud. {{ birth_county }}, țara {{ birth_country }}, la data de {{ date_of_birth }}, {{ identified_word }} prin {{ id_type }}, seria {{ id_series }}, nr. {{ id_number }}, emisă de {{ id_issued_by }}, la data de {{ id_issue_date }}, valabilă până la data de {{ id_expiry_date }}, în calitate de administrator {{ appointed_word }} al societății {{ company_name | upper }} (în curs de constituire).
+  {{ last_name | upper }} {{ first_name | upper }}, CNP {{ cnp }}, cu domiciliul în {{ domicile_line }}, țara {{ country }}, cetățenia {{ citizenship }}, {{ born_word }} în {{ place_of_birth }}, jud. {{ birth_county }}, țara {{ birth_country }}, la data de {{ date_of_birth }}, {{ identified_word }} prin {{ id_type }}, seria {{ id_series }}, nr. {{ id_number }}, emisă de {{ id_issued_by }}, la data de {{ id_issue_date }}, valabilă până la data de {{ id_expiry_date }}, în calitate de administrator numit al societății {{ company_name | upper }} (în curs de constituire).
 
   Declar pe proprie răspundere, cunoscând prevederile articolului 326 din Codul Penal privind falsul în declarații, că îndeplinesc toate condițiile legale pentru a deține calitatea de administrator, aşa cum sunt acestea prevăzute de Legea societăților nr. 31/1990, republicată, cu modificările şi completările ulterioare, şi nu mă aflu în nicio situație de incapacitate sau incompatibilitate prevăzută de lege.
 

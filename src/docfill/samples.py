@@ -187,7 +187,7 @@ def sworn_statement_text(
         f"născut{a} în {_spaced(person.birth_locality)}, jud. {birth_county}, țara România, "
         f"la data de {person.birth:%d.%m.%Y}, identificat{a} prin CI, seria {person.series}, "
         f"nr. {person.number}, emisă de {person.issued_by}, la data de {person.issued:%d.%m.%Y}, "
-        f"valabilă până la data de {person.expires:%d.%m.%Y}, în calitate de {capacity} numit{a} "
+        f"valabilă până la data de {person.expires:%d.%m.%Y}, în calitate de {capacity} numit "
         f"al societății {company} (în curs de constituire).",
         "Declar pe proprie răspundere, cunoscând prevederile articolului 326 din Codul Penal "
         "privind falsul în declarații, că îndeplinesc toate condițiile legale pentru a deține "
