@@ -136,3 +136,24 @@ doc_types:
       - >
         ATESTAT PROFESIONAL CERTIFICAT DE MEMBRU al corpului profesional Se atestă dreptul de
         exercitare a profesiei de expert traducător autorizat arhitect expert contabil valabil
+
+  - key: cerere_inregistrare_fiscala
+    title: Cerere de înregistrare fiscală (Anexa 1)
+    description: >
+      Cererea de înregistrare fiscală (vectorul fiscal) depusă odată cu cererea de înregistrare
+      în registrul comerțului (Anexa nr. 1 la Ordinul nr. 2.509/5.672/C/2022).
+    seeds:
+      - >
+        ANEXĂ Anexa nr. 1 la Ordinul nr. 2.509/5.672/C/2022 Anexă la Cererea de înregistrare în
+        registrul comerțului Cerere de înregistrare fiscală Nr. Data Persoană juridică Persoană
+        fizică DATE PRIVIND VECTORUL FISCAL Impozit pe profit Luare în evidență începând cu
+        data de Perioada fiscală Trimestrială Anuală Impozit pe veniturile microîntreprinderilor
+        Impozit pe veniturile din salarii și asimilate salariilor precum și contribuții sociale
+        Contribuție de asigurări sociale Contribuție asiguratorie pentru muncă Taxa pe valoarea
+        adăugată Cifra de afaceri estimată Înregistrare în scopuri de TVA Numele și prenumele
+        persoanei care face declarația Funcția Semnătura
+      - >
+        Cerere de inregistrare fiscala vectorul fiscal impozit pe profit impozit pe veniturile
+        microintreprinderilor impozit pe veniturile din salarii contributii sociale CAS CASS
+        contributie asiguratorie pentru munca taxa pe valoarea adaugata cifra de afaceri
+        estimata TVA la incasare perioada fiscala lunara trimestriala

@@ -5,10 +5,15 @@ arranges it) and label synonyms. The label-based extractor picks up synonyms aut
 standard documents reference fields as ``{{ name }}``. Synonyms are matched case- and
 accent-insensitively ("Județ" == "judet"); multilingual labels printed on identity cards such as
 ``Nume/Nom/Last name`` match through any of their parts.
+
+Several people can be involved (shareholders, beneficial owners, board members): person 1 is the
+applicant and uses the plain fields (``last_name``...); persons 2 and 3 use the same fields
+prefixed ``p2_`` / ``p3_``. Each uploaded identity card fills one person.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Literal
 
@@ -46,6 +51,11 @@ GROUPS = {
     "contact": "Contact person",
     "billing": "Billing",
     "filer": "Filed by",
+    "roles": "Shareholders, management, beneficial owners",
+    "person2": "Person 2",
+    "person3": "Person 3",
+    "articles": "Articles of incorporation (act constitutiv)",
+    "fiscal": "Tax registration (Anexa 1, vector fiscal)",
     "other": "Other",
 }
 
@@ -58,10 +68,12 @@ class FieldSpec:
     synonyms: tuple[str, ...] = ()
     group: str = "other"
     max_length: int = 120
+    # The values a person picks from (shown as a list in the wizard).
+    options: tuple[str, ...] = ()
 
 
-def _f(name, label, kind, group, synonyms=(), max_length=120) -> FieldSpec:
-    return FieldSpec(name, label, kind, tuple(synonyms), group, max_length)
+def _f(name, label, kind, group, synonyms=(), max_length=120, options=()) -> FieldSpec:
+    return FieldSpec(name, label, kind, tuple(synonyms), group, max_length, tuple(options))
 
 
 _SPECS = [
@@ -761,6 +773,308 @@ _SPECS = [
     ),
     _f("phone", "Phone", "phone", "person", ("telefon", "tel", "phone", "mobile"), 30),
 ]
+
+# ---------------------------------------------------------------- roles of each person
+# Legea nr. 129/2019, art. 4 alin. (2): how a beneficial owner controls the company (the boxes of
+# the ONRC declaration). Only lit. a) concerns companies; the hints are short reminders.
+CONTROL_OPTIONS = (
+    "art. 4 alin. (2) lit. a) pct. 1 (deținere / control direct sau indirect, peste 25%)",
+    "art. 4 alin. (2) lit. a) pct. 2 (funcție de conducere de nivel superior)",
+    "art. 4 alin. (2) lit. d) pct. 1",
+    "art. 4 alin. (2) lit. d) pct. 2",
+    "art. 4 alin. (2) lit. d) pct. 3",
+    "art. 4 alin. (2) lit. d) pct. 4",
+)
+BOARD_ROLES = ("președinte", "membru", "administrator unic", "administrator")
+
+_ROLE_SPECS = [
+    _f("shares", "shares subscribed (number of shares)", "short", "roles", (), 15),
+    _f("board_role", "board role", "text", "roles", (), 40, BOARD_ROLES),
+    _f("general_director", "appointed general director", "checkbox", "roles"),
+    _f(
+        "beneficial_owner",
+        "beneficial owner: how control is exercised (empty = not a beneficial owner)",
+        "text",
+        "roles",
+        (),
+        120,
+        CONTROL_OPTIONS,
+    ),
+    _f("control_description", "beneficial owner: description of the control", "text", "roles"),
+]
+
+# ---------------------------------------------------------------- articles of incorporation (SA)
+_SPECS += [
+    *_ROLE_SPECS,
+    _f("share_count", "Number of shares (acțiuni)", "short", "articles", (), 15),
+    _f("share_form", "Shares are", "text", "articles", (), 40, ("nominative", "la purtător")),
+    _f(
+        "company_duration",
+        "Duration in years (empty: nedeterminată, undetermined)",
+        "short",
+        "articles",
+        (),
+        10,
+    ),
+    _f(
+        "name_reservation_number",
+        "Name availability proof (dovada disponibilității firmei): number",
+        "short",
+        "articles",
+        (),
+        30,
+    ),
+    _f("name_reservation_date", "Name availability proof: date", "date", "articles", (), 30),
+    _f(
+        "main_activity_domain",
+        "Main field of activity (domeniul principal, name of the CAEN group)",
+        "text",
+        "articles",
+        (),
+        150,
+    ),
+    _f(
+        "administration",
+        "Administered by",
+        "text",
+        "articles",
+        (),
+        40,
+        ("consiliu de administrație", "administrator unic"),
+    ),
+    _f("board_term_years", "Term of office of the administrators (years)", "short", "articles"),
+    _f(
+        "control_body",
+        "Financial control by",
+        "text",
+        "articles",
+        (),
+        40,
+        ("cenzori", "auditor financiar"),
+    ),
+    _f(
+        "control_members",
+        "Censors / financial auditor (one per line: identification)",
+        "list",
+        "articles",
+        (),
+        4000,
+    ),
+]
+
+# ---------------------------------------------------------------- tax registration (Anexa 1)
+_SPECS += [
+    _f(
+        "taxpayer_type",
+        "Registered as",
+        "text",
+        "fiscal",
+        (),
+        40,
+        ("persoană juridică", "persoană fizică"),
+    ),
+    _f("profit_tax", "1. Impozit pe profit", "checkbox", "fiscal"),
+    _f("profit_tax_start", "1.1 Profit tax from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f(
+        "profit_tax_period",
+        "1.2 Profit tax period",
+        "text",
+        "fiscal",
+        (),
+        20,
+        ("trimestrială", "anuală"),
+    ),
+    _f("micro_tax", "2. Impozit pe veniturile microîntreprinderilor", "checkbox", "fiscal"),
+    _f("micro_tax_start", "2.1 Micro-enterprise tax from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f(
+        "payroll_taxes",
+        "3. Impozit pe veniturile din salarii și contribuții sociale",
+        "checkbox",
+        "fiscal",
+    ),
+    _f(
+        "payroll_up_to_3_employees",
+        "3.1.1 Up to 3 employees on average (estimated)",
+        "checkbox",
+        "fiscal",
+    ),
+    _f(
+        "payroll_revenue_under_100k",
+        "3.1.2 Total revenue up to 100.000 euro (estimated)",
+        "checkbox",
+        "fiscal",
+    ),
+    _f(
+        "payroll_period",
+        "3.2 Payroll tax period",
+        "text",
+        "fiscal",
+        (),
+        20,
+        ("lunară", "trimestrială"),
+    ),
+    _f("salary_tax", "3.3 Impozit pe veniturile din salarii", "checkbox", "fiscal"),
+    _f("salary_tax_start", "3.3.1 Salary tax from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f("cas_employee", "3.4 Contribuție de asigurări sociale (angajat)", "checkbox", "fiscal"),
+    _f("cas_employee_start", "3.4.1 CAS from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f(
+        "cass_employee",
+        "3.5 Contribuție de asigurări sociale de sănătate (angajat)",
+        "checkbox",
+        "fiscal",
+    ),
+    _f("cass_employee_start", "3.5.1 CASS from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f("cam_employer", "3.6 Contribuție asiguratorie pentru muncă", "checkbox", "fiscal"),
+    _f("cam_employer_start", "3.6.1 CAM from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f("vat", "4. Taxa pe valoarea adăugată", "checkbox", "fiscal"),
+    _f(
+        "estimated_turnover",
+        "4.1 Estimated turnover (lei, up to 8 digits)",
+        "short",
+        "fiscal",
+        (),
+        20,
+    ),
+    _f(
+        "vat_registration",
+        "VAT registration",
+        "text",
+        "fiscal",
+        (),
+        80,
+        (
+            "4.2 depășirea plafonului de scutire (art. 316 alin. (1) lit. a) pct. 1)",
+            "4.3 prin opțiune (art. 316 alin. (1) lit. a) pct. 2)",
+        ),
+    ),
+    _f("vat_period", "4.4 VAT period", "text", "fiscal", (), 20, ("lunară", "trimestrială")),
+    _f("vat_cash_accounting", "4.5 TVA la încasare", "checkbox", "fiscal"),
+]
+
+# The beneficial owner declaration (ONRC Formular nr. 3) is filed by the legal representative or
+# by a proxy (împuternicit, the "Filed by" person).
+_SPECS.append(
+    _f(
+        "bo_filed_by",
+        "Beneficial owner declaration filed by",
+        "text",
+        "filing",
+        (),
+        40,
+        ("reprezentantul legal", "împuternicit"),
+    )
+)
+
+# ---------------------------------------------------------------- persons 2 and 3
+PERSON_PREFIXES = ("", "p2_", "p3_")
+MAX_PERSONS = len(PERSON_PREFIXES)
+# The fields that describe one person, repeated for every person (read from their identity card).
+PERSON_BASE = (
+    "last_name",
+    "first_name",
+    "full_name",
+    "cnp",
+    "sex",
+    "citizenship",
+    "date_of_birth",
+    "place_of_birth",
+    "birth_county",
+    "birth_country",
+    "full_address",
+    "street_address",
+    "street",
+    "street_number",
+    "building",
+    "entrance",
+    "floor",
+    "apartment",
+    "city",
+    "postal_code",
+    "region",
+    "country",
+    "id_type",
+    "id_series",
+    "id_number",
+    "id_issued_by",
+    "id_issue_date",
+    "id_expiry_date",
+)
+PERSON_ROLES = tuple(spec.name for spec in _ROLE_SPECS)
+PERSON_FIELDS = PERSON_BASE + PERSON_ROLES
+
+
+def person_prefix(person: int) -> str:
+    """``1`` -> ``""`` (the applicant), ``2`` -> ``"p2_"``..."""
+    if not 1 <= person <= MAX_PERSONS:
+        raise ValueError(f"person must be between 1 and {MAX_PERSONS}")
+    return PERSON_PREFIXES[person - 1]
+
+
+def split_person(name: str) -> tuple[int, str]:
+    """``p2_cnp`` -> ``(2, "cnp")``; ``cnp`` -> ``(1, "cnp")``; other fields -> ``(0, name)``."""
+    for index, prefix in enumerate(PERSON_PREFIXES[1:], start=2):
+        if name.startswith(prefix) and name[len(prefix) :] in PERSON_FIELDS:
+            return index, name[len(prefix) :]
+    return (1, name) if name in PERSON_FIELDS else (0, name)
+
+
+def base_field(name: str) -> str:
+    """The field a person's field repeats: ``p2_cnp`` -> ``cnp``."""
+    return split_person(name)[1]
+
+
+def person_view(values: Mapping[str, str], person: int) -> dict[str, str]:
+    """The values as seen by a document about one person: that person's fields under the plain
+    names (``p2_cnp`` -> ``cnp``), the company and filing fields unchanged."""
+    prefix = person_prefix(person)
+    if not prefix:
+        return dict(values)
+    view = {name: value for name, value in values.items() if split_person(name)[0] == 0}
+    for name in PERSON_FIELDS:
+        if value := values.get(prefix + name):
+            view[name] = value
+    return view
+
+
+def persons_with(values: Mapping[str, str], roles: Iterable[str]) -> list[int]:
+    """The persons having any of ``roles`` (``["board_role"]``: the administrators); person 1
+    when nobody has one."""
+    roles = list(roles)
+    found = [
+        index
+        for index, prefix in enumerate(PERSON_PREFIXES, start=1)
+        if any((values.get(prefix + role) or "").strip() for role in roles)
+    ]
+    return found or [1]
+
+
+def _person_specs() -> list[FieldSpec]:
+    by_name = {spec.name: spec for spec in _SPECS}
+    specs = []
+    for name in PERSON_ROLES:  # person 1's roles
+        spec = by_name[name]
+        specs.append(FieldSpec(**{**spec.__dict__, "label": f"Person 1 (applicant): {spec.label}"}))
+    for index, prefix in enumerate(PERSON_PREFIXES[1:], start=2):
+        for name in PERSON_FIELDS:
+            spec = by_name[name]
+            specs.append(
+                FieldSpec(
+                    name=prefix + name,
+                    label=f"Person {index}: {spec.label[0].lower()}{spec.label[1:]}"
+                    if name in PERSON_ROLES
+                    else f"Person {index}: {spec.label}",
+                    kind=spec.kind,
+                    synonyms=(),  # never read from labels: identity cards fill them
+                    group="roles" if name in PERSON_ROLES else f"person{index}",
+                    max_length=spec.max_length,
+                    options=spec.options,
+                )
+            )
+    return specs
+
+
+_SPECS = [spec for spec in _SPECS if spec.name not in PERSON_ROLES] + _person_specs()
+
 
 FIELDS: dict[str, FieldSpec] = {spec.name: spec for spec in _SPECS}
 

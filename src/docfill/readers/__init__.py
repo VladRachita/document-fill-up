@@ -10,7 +10,7 @@ from docfill.config import Settings, get_settings
 from docfill.errors import DocumentReadError, UnsupportedDocumentError
 from docfill.models import DocumentType, RawDocument
 
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".png", ".jpg", ".jpeg"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg"}
 
 
 def detect_type(data: bytes, filename: str = "") -> DocumentType:
@@ -31,10 +31,8 @@ def detect_type(data: bytes, filename: str = "") -> DocumentType:
                     return DocumentType.DOCX
         except zipfile.BadZipFile:
             pass
-    if data.startswith(b"\xd0\xcf\x11\xe0"):
-        raise UnsupportedDocumentError(
-            f"{filename}: legacy Word .doc files are not supported, save the file as .docx"
-        )
+    if data.startswith(b"\xd0\xcf\x11\xe0") and suffix in ("", ".doc"):
+        return DocumentType.DOC  # legacy Word (OLE compound file)
     raise UnsupportedDocumentError(f"{filename or 'document'}: unrecognised file content")
 
 
@@ -55,6 +53,10 @@ def read_bytes(data: bytes, filename: str, settings: Settings | None = None) -> 
         from docfill.readers.docx import read_docx
 
         return read_docx(data, filename)
+    if doc_type is DocumentType.DOC:
+        from docfill.readers.doc import read_doc
+
+        return read_doc(data, filename)
     from docfill.readers.image import read_image
 
     return read_image(data, filename, settings)

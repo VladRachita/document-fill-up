@@ -10,7 +10,7 @@ from datetime import date
 from typing import Any
 
 from docfill.knowledge.specs import Check, RuleSpec
-from docfill.ro import check_cnp, parse_date
+from docfill.ro import check_cnp, format_amount, parse_amount, parse_date
 
 
 def fold(text: str) -> str:
@@ -22,27 +22,6 @@ def fold(text: str) -> str:
 def words(text: str) -> str:
     """Comparable words: accents, case and dots ignored (``S.R.L.`` -> ``srl``)."""
     return " ".join(re.sub(r"[^\w]+", " ", fold(text).replace(".", "")).split())
-
-
-def parse_amount(text: str) -> float | None:
-    """``90.000 lei``, ``90 000``, ``1.500,50 RON``, ``200`` -> a number (Romanian notation:
-    ``.`` groups thousands, ``,`` marks decimals)."""
-    match = re.search(r"\d[\d .,]*", text or "")
-    if not match:
-        return None
-    number = match.group().strip().replace(" ", "").rstrip(".,")
-    if "." in number and "," in number:
-        decimal = "," if number.rfind(",") > number.rfind(".") else "."
-        thousands = "." if decimal == "," else ","
-        number = number.replace(thousands, "").replace(decimal, ".")
-    elif re.fullmatch(r"\d{1,3}([.,]\d{3})+", number):
-        number = re.sub(r"[.,]", "", number)
-    else:
-        number = number.replace(",", ".")
-    try:
-        return float(number)
-    except ValueError:
-        return None
 
 
 def lines(text: str) -> list[str]:
@@ -61,11 +40,6 @@ def _birth_date(value: str) -> date | None:
     return parse_date(value)
 
 
-def _number(value: float) -> str:
-    text = f"{value:,.2f}".rstrip("0").rstrip(".")
-    return text.replace(",", " ").replace(".", ",").replace(" ", ".")
-
-
 @dataclass
 class Outcome:
     status: str  # passed | failed | skipped
@@ -78,6 +52,9 @@ def run_check(check: Check, values: Mapping[str, str], today: date | None = None
 
     def get(name: str | None) -> str:
         return (values.get(name or "") or "").strip()
+
+    if check.when and not any(get(name) for name in check.when):
+        return Outcome("skipped", "not applicable: " + ", ".join(check.when) + " empty")
 
     if check.type == "required":
         missing = [name for name in (check.fields or [check.field or ""]) if not get(name)]
@@ -101,11 +78,13 @@ def run_check(check: Check, values: Mapping[str, str], today: date | None = None
         if amount is None:
             return Outcome("failed", f"not an amount: {value}")
         ok = amount >= limit if check.type == "min_amount" else amount <= limit
-        return Outcome("passed" if ok else "failed", f"{_number(amount)} (limit {_number(limit)})")
+        return Outcome(
+            "passed" if ok else "failed", f"{format_amount(amount)} (limit {format_amount(limit)})"
+        )
     if check.type in ("min_count", "max_count"):
         count = len(lines(value))
         ok = count >= limit if check.type == "min_count" else count <= limit
-        return Outcome("passed" if ok else "failed", f"{count} (limit {_number(limit)})")
+        return Outcome("passed" if ok else "failed", f"{count} (limit {format_amount(limit)})")
     if check.type == "contains_any":
         text = f" {words(value)} "
         ok = any(f" {words(phrase)} " in text for phrase in check.any_of if words(phrase))

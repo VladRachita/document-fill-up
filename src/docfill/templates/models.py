@@ -55,6 +55,17 @@ class ListSpec(BaseModel):
         return self
 
 
+class CombSpec(BaseModel):
+    """A value written one character per box, e.g. a date in 8 boxes (``dd/mm/yyyy``) or an
+    amount in digit boxes aligned to the right."""
+
+    boxes: list[str] = Field(min_length=1, max_length=60)
+    # text: as typed; digits: the digits only; amount: a whole number (``90.000 lei`` -> 90000);
+    # date: ddmmyyyy.
+    format: Literal["text", "digits", "amount", "date"] = "text"
+    align: Literal["left", "right"] = "left"
+
+
 def list_cells(spec: dict[str, Any] | ListSpec) -> list[list[str]]:
     """The PDF fields of each row of a list, whichever way the list was declared."""
     data = spec.model_dump() if isinstance(spec, ListSpec) else spec
@@ -105,14 +116,33 @@ class StandardDocumentSpec(BaseModel):
     # Section boxes ticked when any listed field has a value, e.g. the "4.1 Acte și fapte"
     # box of Anexa 2a when any of its items is ticked: {"CheckBox15": ["change_name", ...]}.
     ticks: dict[str, list[str]] = Field(default_factory=dict)
+    # One character per box: {"profit_tax_start": {"boxes": ["13", ...], "format": "date"}}.
+    combs: dict[str, CombSpec] = Field(default_factory=dict)
+    # A choice ticking one of several check boxes: {"vat_period": {"lunară": "BBox23", ...}}.
+    box_choices: dict[str, dict[str, str]] = Field(default_factory=dict)
+    # PDF fields left empty unless a field has a value, e.g. the block of a beneficial owner:
+    # {"p2_beneficial_owner": ["33", "31", ...]}.
+    filled_when: dict[str, list[str]] = Field(default_factory=dict)
+    # One copy per person having any of these roles (e.g. ["board_role"]: a sworn statement for
+    # each administrator), written with the plain person fields ({{ last_name }}...).
+    per_person: list[str] = Field(default_factory=list, max_length=10)
 
     @model_validator(mode="after")
     def _check(self) -> StandardDocumentSpec:
+        from docfill.extraction.fields import PERSON_FIELDS
+
+        unknown_roles = [name for name in self.per_person if name not in PERSON_FIELDS]
+        if unknown_roles:
+            raise ValueError(f"per_person takes fields of a person: {unknown_roles}")
         if self.kind == "text":
             if not self.body or not self.body.strip():
                 raise ValueError("a text standard document needs a non-empty 'body'")
             if self.pdf_data or self.field_map:
                 raise ValueError("'pdf_data' and 'field_map' only apply to pdf_form documents")
+            if self.combs or self.box_choices or self.filled_when:
+                raise ValueError(
+                    "'combs', 'box_choices' and 'filled_when' only apply to pdf_form documents"
+                )
             try:
                 validate_body(self.body)
             except TemplateError as exc:
@@ -128,15 +158,28 @@ class StandardDocumentSpec(BaseModel):
             if not any(kind == "text" for kind in pdf_fields.values()):
                 raise ValueError("the PDF has no fillable text fields")
             if not self.field_map and not self.lists:
-                self.field_map = {n: n for n, kind in pdf_fields.items() if kind == "text"}
+                self.field_map = {
+                    n: n for n, kind in pdf_fields.items() if kind == "text" and "#" not in n
+                }
             listed = {
                 cell for spec in self.lists.values() for row in list_cells(spec) for cell in row
             }
+            listed |= {box for spec in self.combs.values() for box in spec.boxes}
+            listed |= {box for options in self.box_choices.values() for box in options.values()}
+            listed |= {name for names in self.filled_when.values() for name in names}
             unknown = (set(self.field_map) | listed | set(self.choices) | set(self.ticks)) - set(
                 pdf_fields
             )
             if unknown:
                 raise ValueError(f"unknown PDF fields: {sorted(unknown)[:10]}")
+            not_boxes = {
+                box
+                for options in self.box_choices.values()
+                for box in options.values()
+                if pdf_fields.get(box) != "checkbox"
+            }
+            if not_boxes:
+                raise ValueError(f"box_choices must name check boxes: {sorted(not_boxes)[:10]}")
             for expression in self.field_map.values():
                 try:
                     if "{{" in expression:
@@ -161,6 +204,14 @@ class StandardDocumentSpec(BaseModel):
             options["choices"] = {k: dict(v) for k, v in self.choices.items()}
         if self.ticks:
             options["ticks"] = {k: list(v) for k, v in self.ticks.items()}
+        if self.combs:
+            options["combs"] = {k: v.model_dump() for k, v in self.combs.items()}
+        if self.box_choices:
+            options["box_choices"] = {k: dict(v) for k, v in self.box_choices.items()}
+        if self.filled_when:
+            options["filled_when"] = {k: list(v) for k, v in self.filled_when.items()}
+        if self.per_person:
+            options["per_person"] = list(self.per_person)
         return options
 
     def checksum(self) -> str:
@@ -204,11 +255,17 @@ class StandardDocument(Base):
     )
 
     def expressions(self) -> list[str]:
-        """Field expressions in document order (placeholders or PDF field mappings)."""
+        """Field expressions in document order (placeholders or PDF field mappings); the fields
+        of line conditions of text documents are included."""
         if self.kind == "text":
-            from docfill.templates.placeholders import PLACEHOLDER_RE
+            from docfill.templates.placeholders import CONDITION_RE, PLACEHOLDER_RE
 
-            return [match.group()[2:-2] for match in PLACEHOLDER_RE.finditer(self.body or "")]
+            expressions = []
+            for line in (self.body or "").splitlines():
+                if match := CONDITION_RE.match(line):
+                    expressions += match["names"].split("|")
+                expressions += [m.group()[2:-2] for m in PLACEHOLDER_RE.finditer(line)]
+            return expressions
         return [expr for value in self.field_map.values() for expr in _expressions_in(value)]
 
     def option(self, key: str, default: Any = None) -> Any:
@@ -238,25 +295,66 @@ class StandardDocument(Base):
     def ticks(self) -> dict[str, list[str]]:
         return self.option("ticks", {})
 
+    @property
+    def combs(self) -> dict[str, dict[str, Any]]:
+        return self.option("combs", {})
+
+    @property
+    def box_choices(self) -> dict[str, dict[str, str]]:
+        return self.option("box_choices", {})
+
+    @property
+    def filled_when(self) -> dict[str, list[str]]:
+        return self.option("filled_when", {})
+
+    @property
+    def per_person(self) -> list[str]:
+        return self.option("per_person", [])
+
     def pdf_field_names(self) -> list[str]:
-        """Every PDF field this document fills (mapped fields and list cells)."""
+        """Every PDF field this document fills (mapped fields, list cells, boxes)."""
         names = list(self.field_map) + [name for name in self.ticks if name not in self.field_map]
         for spec in self.lists.values():
             names += [cell for row in list_cells(spec) for cell in row]
-        return names
+        for spec in self.combs.values():
+            names += list(spec["boxes"])
+        for options in self.box_choices.values():
+            names += list(options.values())
+        return list(dict.fromkeys(name.split("#")[0] for name in names))
 
     def field_names(self) -> list[str]:
+        """The docfill fields this document uses, in document order (computed values such as
+        ``domicile_line`` included; see :mod:`docfill.computed`)."""
         names: list[str] = []
         for expression in self.expressions():
             name, _ = parse_expression(expression)
             if name not in names:
                 names.append(name)
-        names += [name for name in self.lists if name not in names]
+        for extra in (self.lists, self.combs, self.box_choices, self.filled_when):
+            names += [name for name in extra if name not in names]
         return names
 
     def required_fields(self) -> list[str]:
+        """Fields that must have a value (the inputs of required computed values)."""
+        from docfill.computed import expand_required
+
         optional = set(self.optional_fields or [])
-        return [name for name in self.field_names() if name not in optional]
+        required = [name for name in self.field_names() if name not in optional]
+        return [name for name in expand_required(required) if name not in optional]
+
+    def input_fields(self) -> list[str]:
+        """The fields a person provides: computed values replaced by their inputs. A document
+        made for each person also asks for the fields (and roles) of the other persons."""
+        from docfill.computed import expand
+        from docfill.extraction.fields import PERSON_FIELDS, PERSON_PREFIXES
+
+        names = expand(self.field_names())
+        if not self.per_person:
+            return names
+        names += [role for role in self.per_person if role not in names]
+        for prefix in PERSON_PREFIXES[1:]:
+            names += [prefix + name for name in names if name in PERSON_FIELDS]
+        return list(dict.fromkeys(names))
 
     def current_checksum(self) -> str:
         return compute_checksum(
@@ -285,7 +383,7 @@ class StandardDocument(Base):
             "kind": self.kind,
             "version": self.version,
             "doc_type": self.doc_type,
-            "fields": self.field_names(),
+            "fields": self.input_fields(),
             "required_fields": self.required_fields(),
             "checksum": self.checksum,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

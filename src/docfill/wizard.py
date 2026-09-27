@@ -16,8 +16,16 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from docfill.computed import COMPUTED, with_computed
 from docfill.extraction.derive import complete_values
-from docfill.extraction.fields import FIELDS, GROUPS
+from docfill.extraction.fields import (
+    FIELDS,
+    GROUPS,
+    PERSON_FIELDS,
+    person_prefix,
+    person_view,
+    persons_with,
+)
 from docfill.models import ExtractedField, ExtractionResult
 from docfill.templates.models import StandardDocument
 from docfill.templates.placeholders import apply, preview_lines, render_body
@@ -30,6 +38,8 @@ SPECIAL_LABELS = {"today": "Date (today)"}
 def field_label(name: str) -> str:
     if name in FIELDS:
         return FIELDS[name].label
+    if name in COMPUTED:
+        return COMPUTED[name].label
     return SPECIAL_LABELS.get(name, name.replace("_", " ").capitalize())
 
 
@@ -100,15 +110,18 @@ def field_rows(
     remember: set[str] = set()
     choices: dict[str, list[str]] = {}
     for template in templates:
-        names += [n for n in template.field_names() if n not in names]
-        required |= set(template.required_fields())
+        names += [n for n in template.input_fields() if n not in names]
+        if not template.per_person:  # per person: what is missing depends on the roles (preview)
+            required |= set(template.required_fields())
         for name, value in template.defaults.items():
             defaults.setdefault(name, value)
         remember |= set(template.remember)
         for pdf_field, options in template.choices.items():
             expression = template.field_map.get(pdf_field, "")
             choices[expression.split("|")[0].strip()] = list(options)
-    names += [n for n in [*extra_fields, *extra_required] if n not in names]
+        for name, options in template.box_choices.items():
+            choices.setdefault(name, list(options))
+    names += [n for n in dict.fromkeys([*extra_fields, *extra_required]) if n not in names]
 
     rows: list[FieldRow] = []
     for name in names:
@@ -120,7 +133,7 @@ def field_rows(
             group=spec.group if spec else ("filing" if name == "today" else "other"),
             kind=spec.kind if spec else "text",
             remember=name in remember,
-            choices=choices.get(name, []),
+            choices=choices.get(name) or (list(spec.options) if spec else []),
         )
         best = extraction.fields.get(name)
         if best and best.confidence >= min_confidence:
@@ -147,7 +160,7 @@ def other_fields(
     templates: StandardDocument | Sequence[StandardDocument], extraction: ExtractionResult
 ) -> list[dict[str, Any]]:
     """Extracted data the reference documents do not use (shown for transparency)."""
-    used = {name for template in _templates(templates) for name in template.field_names()}
+    used = {name for template in _templates(templates) for name in template.input_fields()}
     return [
         {"name": name, "label": field_label(name), **asdict(Candidate.of(extracted))}
         for name, extracted in extraction.fields.items()
@@ -156,7 +169,29 @@ def other_fields(
 
 
 def build_preview(template: StandardDocument, values: Mapping[str, str]) -> dict[str, Any]:
-    """Live preview of one filled reference document (``values`` already cleaned)."""
+    """Live preview of one filled reference document (``values`` already cleaned). A document
+    made for each person shows the first copy; its missing fields are those of every copy,
+    named for their person (``p2_id_number``)."""
+    if not template.per_person:
+        return _preview(template, values)
+    persons = persons_with(values, template.per_person)
+    copies = [(person, _preview(template, person_view(values, person))) for person in persons]
+    preview = copies[0][1]
+    preview["missing"] = list(
+        dict.fromkeys(
+            person_prefix(person) + name if name in PERSON_FIELDS else name
+            for person, copy in copies
+            for name in copy["missing"]
+        )
+    )
+    preview["persons"] = persons
+    if len(persons) > 1:
+        preview["title"] = f"{template.title} (× {len(persons)}: one for each person)"
+    return preview
+
+
+def _preview(template: StandardDocument, values: Mapping[str, str]) -> dict[str, Any]:
+    values = with_computed(values)
     missing = [name for name in template.required_fields() if name not in values]
     names = template.field_names()
     filled = [name for name in names if name in values]
@@ -188,7 +223,7 @@ def build_preview(template: StandardDocument, values: Mapping[str, str]) -> dict
                     "field": expression.split("|")[0].strip(),
                 }
             )
-        for name in template.lists:
+        for name in [*template.lists, *template.combs, *template.box_choices]:
             rows.append(
                 {
                     "pdf_field": name,
@@ -197,17 +232,30 @@ def build_preview(template: StandardDocument, values: Mapping[str, str]) -> dict
                     "field": name,
                 }
             )
+        hidden = {  # blocks printed only when their condition field has a value
+            pdf_field
+            for name, pdf_fields in template.filled_when.items()
+            if not (values.get(name) or "").strip()
+            for pdf_field in pdf_fields
+        }
+        for row in rows:
+            if row["pdf_field"] in hidden:
+                row["value"] = None
         preview["form_fields"] = rows
     return preview
 
 
-def assist(values: dict[str, str]) -> dict[str, Any]:
-    """Live help for the values being edited: problems found and derivable suggestions."""
+def assist(values: dict[str, str], derived: Sequence[str] = ()) -> dict[str, Any]:
+    """Live help for the values being edited: problems found and derivable suggestions.
+
+    ``derived`` names the values that were themselves derived earlier (not typed): they are
+    derived again from the current values, so correcting a CNP updates the date of birth."""
+    given = {name: value for name, value in values.items() if name not in set(derived)}
     return {
         "issues": validate_values(values),
         "derived": {
             name: {"value": value, "reason": reason}
-            for name, (value, reason) in complete_values(values).items()
+            for name, (value, reason) in complete_values(given).items()
         },
     }
 

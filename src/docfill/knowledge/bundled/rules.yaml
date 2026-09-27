@@ -325,3 +325,86 @@ rules:
     legal_basis:
       - citation: Legea nr. 227/2015 privind Codul fiscal
         note: activitățile independente și profesiile libere
+
+  # ------------------------------------------------------------------ persoanele implicate
+  # Persoana 1 este solicitantul; persoanele 2 și 3 sunt citite din celelalte acte de identitate.
+  # O persoană cu un rol (acționar, administrator, director general, beneficiar real) trebuie
+  # identificată complet în actul constitutiv și în declarația privind beneficiarii reali.
+  - key: persoana-1-identificata
+    title: Persoana 1 este identificată complet
+    applies_to: {entities: [srl, srl-d, sa], operations: [infiintare, modificare]}
+    severity: error
+    check:
+      type: required
+      when: [shares, board_role, general_director, beneficial_owner]
+      fields: [last_name, first_name, cnp, citizenship, date_of_birth, place_of_birth, city,
+               id_type, id_series, id_number, id_issued_by, id_issue_date]
+    message: >
+      Persoana 1 are un rol (acționar, administrator, director general sau beneficiar real):
+      completați-i toate datele de identificare.
+    legal_basis: &identificare
+      - citation: Legea nr. 31/1990 privind societățile
+        article: art. 7 lit. a), art. 8 lit. a)
+        note: actul constitutiv cuprinde datele de identificare ale asociaților / acționarilor și ale administratorilor
+      - citation: Legea nr. 129/2019 pentru prevenirea și combaterea spălării banilor și finanțării terorismului
+        article: art. 56
+
+  - key: persoana-2-identificata
+    title: Persoana 2 este identificată complet
+    applies_to: {entities: [srl, srl-d, sa], operations: [infiintare, modificare]}
+    severity: error
+    check:
+      type: required
+      when: [p2_shares, p2_board_role, p2_general_director, p2_beneficial_owner]
+      fields: [p2_last_name, p2_first_name, p2_cnp, p2_citizenship, p2_date_of_birth,
+               p2_place_of_birth, p2_city, p2_id_type, p2_id_series, p2_id_number,
+               p2_id_issued_by, p2_id_issue_date]
+    message: >
+      Persoana 2 are un rol (acționar, administrator, director general sau beneficiar real):
+      completați-i toate datele de identificare (încărcați actul ei de identitate).
+    legal_basis: *identificare
+
+  - key: persoana-3-identificata
+    title: Persoana 3 este identificată complet
+    applies_to: {entities: [srl, srl-d, sa], operations: [infiintare, modificare]}
+    severity: error
+    check:
+      type: required
+      when: [p3_shares, p3_board_role, p3_general_director, p3_beneficial_owner]
+      fields: [p3_last_name, p3_first_name, p3_cnp, p3_citizenship, p3_date_of_birth,
+               p3_place_of_birth, p3_city, p3_id_type, p3_id_series, p3_id_number,
+               p3_id_issued_by, p3_id_issue_date]
+    message: >
+      Persoana 3 are un rol (acționar, administrator, director general sau beneficiar real):
+      completați-i toate datele de identificare (încărcați actul ei de identitate).
+    legal_basis: *identificare
+
+  - key: beneficiar-real-declarat
+    title: Cel puțin un beneficiar real este declarat
+    applies_to: {entities: [srl, srl-d, sa], operations: [infiintare]}
+    severity: error
+    check:
+      type: required_any
+      fields: [beneficial_owner, p2_beneficial_owner, p3_beneficial_owner]
+    message: >
+      Declarația privind beneficiarii reali trebuie să indice cel puțin un beneficiar real:
+      alegeți, pentru persoana respectivă, modalitatea de exercitare a controlului.
+    legal_basis:
+      - citation: Legea nr. 129/2019 pentru prevenirea și combaterea spălării banilor și finanțării terorismului
+        article: art. 4 alin. (2), art. 56
+
+  - key: vector-fiscal-impozit
+    title: Vectorul fiscal indică impozitul datorat
+    applies_to: {entities: [srl, srl-d, sa], operations: [infiintare]}
+    severity: warning
+    check:
+      type: required_any
+      fields: [profit_tax, profit_tax_start, micro_tax, micro_tax_start]
+    message: >
+      În cererea de înregistrare fiscală (Anexa 1) bifați impozitul pe profit sau impozitul pe
+      veniturile microîntreprinderilor, după condițiile îndeplinite de societate.
+    legal_basis:
+      - citation: Legea nr. 227/2015 privind Codul fiscal
+        note: Titlul II (impozitul pe profit) și Titlul III (impozitul pe veniturile microîntreprinderilor)
+      - citation: Ordinul nr. 2.509/5.672/C/2022
+        article: anexa nr. 1

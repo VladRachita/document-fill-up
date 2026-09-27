@@ -4,6 +4,16 @@
 Rendering is a single regex substitution over the stored text: everything outside the
 placeholders is copied verbatim, and inserted values are never re-interpreted, so the output
 is always exactly the standard document plus the filled values.
+
+A line can start with a condition; it is kept only when the condition holds (the marker itself
+is removed), so one document covers the variants of a model (e.g. a board of directors or a sole
+administrator):
+
+* ``[[p2_shares]] ...`` - the field has a value;
+* ``[[general_director|p2_general_director]] ...`` - any of the fields has a value;
+* ``[[administration=administrator unic]] ...`` - the field has this value (case and accents
+  ignored);
+* ``[[!name]]`` / ``[[!name=value]]`` - the opposite.
 """
 
 from __future__ import annotations
@@ -24,6 +34,10 @@ FILTERS: dict[str, Callable[[str], str]] = {
     "lower": str.lower,
     "title": str.title,
 }
+CONDITION_RE = re.compile(
+    r"^(?P<indent>[ \t]*)\[\[(?P<negate>!?)(?P<names>[A-Za-z_][A-Za-z0-9_]*"
+    r"(?:\|[A-Za-z_][A-Za-z0-9_]*)*)(?:=(?P<value>[^\]\n]*))?\]\][ \t]?"
+)
 BLANK = "_" * 20
 MAX_VALUE_LENGTH = 300
 
@@ -39,16 +53,57 @@ def parse_expression(expression: str) -> tuple[str, str | None]:
 
 
 def validate_body(body: str) -> list[str]:
-    """Check the placeholder syntax and return the referenced field names (in order)."""
-    names: list[str] = []
+    """Check the placeholder and condition syntax and return the referenced field names (in
+    order, those of conditions included)."""
+    for line in body.splitlines():
+        if line.lstrip().startswith("[[") and not CONDITION_RE.match(line):
+            raise TemplateError(f"Malformed condition: {line.strip()[:60]!r}")
+        match = CONDITION_RE.match(line)
+        if match and match["value"] is not None and "|" in match["names"]:
+            raise TemplateError(f"A condition with '=' takes one field: {line.strip()[:60]!r}")
     for match in PLACEHOLDER_RE.finditer(body):
         parse_expression(match.group()[2:-2])
-        if match["name"] not in names:
-            names.append(match["name"])
     leftover = PLACEHOLDER_RE.sub("", body)
     if "{{" in leftover or "}}" in leftover:
         raise TemplateError("Malformed placeholder: every '{{' needs a matching '}}'")
+    return referenced_names(body)
+
+
+def referenced_names(body: str) -> list[str]:
+    """Field names used by the placeholders and the line conditions, in document order."""
+    names: list[str] = []
+    for line in body.splitlines():
+        found = []
+        if match := CONDITION_RE.match(line):
+            found += match["names"].split("|")
+        found += [m["name"] for m in PLACEHOLDER_RE.finditer(line)]
+        names += [name for name in dict.fromkeys(found) if name not in names]
     return names
+
+
+def line_condition(line: str, values: Mapping[str, str]) -> tuple[bool, str]:
+    """Whether ``line`` is kept, and the line without its condition marker."""
+    match = CONDITION_RE.match(line)
+    if not match:
+        return True, line
+    names = match["names"].split("|")
+    if match["value"] is not None:
+        holds = _fold(values.get(names[0]) or "") == _fold(match["value"])
+    else:
+        holds = any((values.get(name) or "").strip() for name in names)
+    if match["negate"]:
+        holds = not holds
+    return holds, match["indent"] + line[match.end() :]
+
+
+def select_lines(body: str, values: Mapping[str, str]) -> str:
+    """The lines whose condition holds, without the markers."""
+    kept = []
+    for line in body.splitlines():
+        visible, text = line_condition(line, values)
+        if visible:
+            kept.append(text)
+    return "\n".join(kept)
 
 
 def clean_fill_value(value: object) -> str:
@@ -81,10 +136,17 @@ def choose(mapping: Mapping[str, str], value: str) -> str | None:
     if value.startswith("/"):
         return value
     wanted = _fold(value)
+    if not wanted:
+        return None
     for key, state in mapping.items():
-        if _fold(key) == wanted or _fold(key).startswith(wanted) and wanted:
+        if _fold(key) == wanted:
             return state
-    return None
+    for key, state in mapping.items():
+        if _fold(key).startswith(wanted):
+            return state
+    # "prin opțiune" for "4.3 prin opțiune (art. 316 ...)": only when a single option matches
+    contained = [state for key, state in mapping.items() if wanted in _fold(key)]
+    return contained[0] if len(contained) == 1 else None
 
 
 def _fold(text: str) -> str:
@@ -106,6 +168,8 @@ def render_body(body: str, values: Mapping[str, str], blank: str = BLANK) -> str
     def replace(match: re.Match[str]) -> str:
         return apply(match.group()[2:-2], values) or blank
 
+    if "[[" in body:
+        body = select_lines(body, values)
     return PLACEHOLDER_RE.sub(replace, body)
 
 
@@ -113,7 +177,7 @@ def preview_lines(body: str, values: Mapping[str, str], blank: str = BLANK) -> l
     """Structured rendering for live previews: one entry per line with its kind (see
     :func:`classify_line`) and segments marking which text comes from which field."""
     lines: list[dict] = []
-    for line in body.splitlines():
+    for line in select_lines(body, values).splitlines():
         kind, text = classify_line(line)
         segments: list[dict] = []
         position = 0

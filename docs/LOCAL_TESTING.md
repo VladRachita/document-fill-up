@@ -136,6 +136,15 @@ fresh database.
    are flagged for review.
 8. **Expired card.** `ci_muresan_clean.jpg`: the expiry date is flagged "The identity card has
    expired".
+9. **An SA with several persons.** Choose **SA** and **înființare**: six forms are ticked (Anexa
+   2a, Anexa 4, Anexa 1, the beneficial owner declaration, the administrators' statements, the
+   act constitutiv). Upload `ci_popescu_clean.jpg` and `ci_stefanescu_clean.jpg`: in *Scan &
+   clean* they are persons 1 and 2. In *Review fields*, give each 450 shares (share capital
+   90.000 lei, 900 shares), make person 1 *președinte* and person 2 *membru*, mark both as
+   beneficial owners (*art. 4 alin. (2) lit. a) pct. 1*). Watch the derived values (associates,
+   *consiliu de administrație*), the statement preview becoming "× 2" and the legal checks
+   asking for what is still missing. Save: one PDF per form and one statement per
+   administrator.
 
 ## 5. Watch what it learned
 

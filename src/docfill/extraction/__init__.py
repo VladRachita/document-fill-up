@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping
 
 from docfill.config import Settings, get_settings
+from docfill.extraction.clauses import extract_clauses
 from docfill.extraction.derive import complete_values, derive_fields
 from docfill.extraction.fields import FIELDS, GROUPS, FieldSpec, field_labels
 from docfill.extraction.ner import NERExtractor
@@ -47,6 +48,7 @@ class FieldExtractor:
         learned = self.learned_labels(doc_type) if self.learned_labels else None
         found = extract_labeled(document.text, document.source, doc_type, learned)
         found += extract_identity(document.text, document.source, doc_type)
+        found += extract_clauses(document.text, document.source, doc_type)
         found += extract_patterns(document.text, document.source)
         if self.ner:
             found += self.ner.extract(document.text, document.source)
@@ -97,6 +99,7 @@ __all__ = [
     "NERExtractor",
     "complete_values",
     "derive_fields",
+    "extract_clauses",
     "extract_identity",
     "extract_labeled",
     "extract_patterns",

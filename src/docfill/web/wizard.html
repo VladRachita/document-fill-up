@@ -257,9 +257,9 @@
       </div>
       <div class="card">
         <h2>3. Source documents</h2>
-        <p class="hint">Where the information comes from: identity card, birth certificate, an already filled form… PDF, Word (.docx), PNG or JPEG. Photos and scans are read with OCR.</p>
+        <p class="hint">Where the information comes from: identity card, birth certificate, an already filled form… PDF, Word (.docx, .doc), PNG or JPEG. Photos and scans are read with OCR.</p>
         <label class="drop" id="drop">
-          <input type="file" id="file-input" multiple accept=".pdf,.docx,.png,.jpg,.jpeg">
+          <input type="file" id="file-input" multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
           <strong>Drop files here or click to choose</strong>
           <span class="muted" style="font-size:13px">.pdf · .docx · .png · .jpg · .jpeg</span>
         </label>
@@ -379,13 +379,18 @@ const SOURCE_LABELS = {
   default: "Default", manual: "Set by you", system: "System",
 };
 const GROUPS = [
-  ["person", "Person"], ["birth", "Birth"], ["domicile", "Domicile"], ["id_card", "Identity card"],
-  ["company", "Company"], ["filing", "Request"], ["changes", "Changes (mențiuni)"],
-  ["closure", "Closure (radiere)"], ["contact", "Contact person"],
+  ["person", "Person 1 (applicant)"], ["birth", "Person 1: birth"], ["domicile", "Person 1: domicile"],
+  ["id_card", "Person 1: identity card"], ["person2", "Person 2"], ["person3", "Person 3"],
+  ["roles", "Shareholders, management, beneficial owners"],
+  ["company", "Company"], ["articles", "Articles of incorporation (act constitutiv)"],
+  ["fiscal", "Tax registration (Anexa 1, vector fiscal)"], ["filing", "Request"],
+  ["changes", "Changes (mențiuni)"], ["closure", "Closure (radiere)"], ["contact", "Contact person"],
   ["billing", "Billing"], ["filer", "Filed by"], ["parents", "Parents"], ["other", "Other"],
 ];
+const PERSONS = [[1, "Person 1 (applicant)"], [2, "Person 2"], [3, "Person 3"]];
 const LIST_HINTS = {
   caen_activities: "6201 Activități de realizare a soft-ului la comandă",
+  control_members: "1. POPESCU ANA, CNP ..., domiciliată în ..., expert contabil",
   caen_third_party: "4321 Lucrări de instalații electrice",
   attached_documents: "Act constitutiv | 1/01.10.2026 | 5",
   associates: "POPESCU ION | 1871114321239 | 50%",
@@ -748,7 +753,7 @@ function applyReview(result) {
 }
 
 function documentsPayload() {
-  return state.documents.map((d) => ({ source: d.source, text: d.text, doc_type: d.doc_type, detected_type: d.detected_type }));
+  return state.documents.map((d) => ({ source: d.source, text: d.text, doc_type: d.doc_type, detected_type: d.detected_type, person: d.person || 1 }));
 }
 
 let reextractSeq = 0;
@@ -783,9 +788,15 @@ function renderDocuments() {
     onchange: (event) => { doc.doc_type = event.target.value; renderDocuments(); scheduleReextract(); } },
     state.docTypes.map((t) => el("option", { value: t.name, selected: t.name === doc.doc_type }, t.label)));
   const corrected = doc.doc_type !== doc.detected_type;
+  const person = el("select", { id: "doc-person-select", "aria-label": "Whose document",
+    title: "Each identity card (or personal statement) fills one person; documents with the same CNP go to the same person",
+    onchange: (event) => { doc.person = Number(event.target.value); scheduleReextract(); } },
+    PERSONS.map(([value, label]) => el("option", { value, selected: value === (doc.person || 1) }, label)));
   put($("doc-type"),
     el("label", { for: "doc-type-select", class: "muted", style: "font-size:13px" }, "Document type"),
     select,
+    el("label", { for: "doc-person-select", class: "muted", style: "font-size:13px" }, "Person"),
+    person,
     doc.type_method === "form fields"
       ? el("span", { class: "pill ok", title: "The form's fields match a registered standard document" }, "recognised from its form fields")
       : el("span", { class: `pill ${confidenceClass(doc.type_confidence || 0)}`, title: "Detected by the document classifier (ML)" },
@@ -809,7 +820,7 @@ function renderDocuments() {
 }
 
 function renderFoundChips() {
-  const found = state.rows.filter((row) => valueOf(row.name) || row.required);
+  const found = state.rows.filter((row) => valueOf(row.name) || isRequired(row));
   put($("found-chips"), found.slice(0, 60).map((row) => {
     const value = valueOf(row.name);
     return el("span", { class: value ? "pill ok" : "pill bad", title: row.label },
@@ -823,7 +834,7 @@ function fieldIssues(row) {
   const issues = [...(state.issues[row.name] || [])];
   const empty = !valueOf(row.name);
   for (const result of legalFailed()) {
-    if (result.field !== row.name || (empty && row.required)) continue;  // "Required" says it already
+    if (result.field !== row.name || (empty && isRequired(row))) continue;  // "Required" says it already
     issues.push(`⚖ ${result.message}`);
   }
   const found = row.found;
@@ -833,9 +844,15 @@ function fieldIssues(row) {
   return issues;
 }
 
+// Required by a document, or missing in one of the live previews (e.g. the identity of an
+// administrator, whose sworn statement is made only once they have a board role).
+function isRequired(row) {
+  return row.required || state.previews.some((p) => (p.missing || []).includes(row.name));
+}
+
 function needsAttention(row) {
   const value = valueOf(row.name);
-  if (row.required && !value) return true;
+  if (isRequired(row) && !value) return true;
   if (fieldIssues(row).length) return true;
   if (state.manual[row.name]) return false;
   if (state.derivedFrom[row.name]) return true;
@@ -891,7 +908,7 @@ function renderFields() {
       const rows = visible.filter((row) => (row.group || "other") === key);
       if (!rows.length) return null;
       const all = state.rows.filter((row) => (row.group || "other") === key);
-      const missing = all.filter((row) => row.required && !valueOf(row.name)).length;
+      const missing = all.filter((row) => isRequired(row) && !valueOf(row.name)).length;
       const problems = all.filter((row) => fieldIssues(row).length).length;
       return el("details", { class: "group", open: true, "data-group": key },
         el("summary", {}, title,
@@ -914,8 +931,10 @@ function inputFor(row) {
       el("span", { class: "muted", style: "margin-left:8px;font-size:13px" }, "ticked"));
   }
   if (row.choices && row.choices.length) {
+    // a value that is not one of the choices (typed, read from a document) stays selectable
+    const choices = value && !row.choices.includes(value) ? [...row.choices, value] : row.choices;
     return el("select", { id }, el("option", { value: "" }, "—"),
-      row.choices.map((choice) => el("option", { value: choice, selected: choice === value }, choice)));
+      choices.map((choice) => el("option", { value: choice, selected: choice === value }, choice)));
   }
   if (row.kind === "list") {
     const area = el("textarea", { id, class: "list", placeholder: LIST_HINTS[row.name] || "one per line", spellcheck: "false" });
@@ -923,7 +942,7 @@ function inputFor(row) {
     return area;
   }
   const input = el("input", { type: "text", id, autocomplete: "off",
-    placeholder: row.kind === "date" ? "dd.mm.yyyy" : row.required ? "Required, not found in the documents" : "Optional" });
+    placeholder: row.kind === "date" ? "dd.mm.yyyy" : isRequired(row) ? "Required, not found in the documents" : "Optional" });
   input.value = value;
   return input;
 }
@@ -935,15 +954,17 @@ function renderField(row) {
   const meta = el("div", { class: "meta" });
   const issues = el("div", { class: "issues" });
   const evidence = el("blockquote", { hidden: true });
+  const requiredTag = el("span", { class: "req-tag" });
 
   function paint() {
     const current = valueOf(row.name);
+    requiredTag.textContent = isRequired(row) ? "Required" : "Optional";
     const manual = !!state.manual[row.name];
     const derived = state.derivedFrom[row.name];
     const problems = fieldIssues(row);
-    card.classList.toggle("missing", row.required && !current);
-    card.classList.toggle("attention", !manual && needsAttention(row) && !(row.required && !current));
-    put(issues, row.required && !current ? el("div", {}, "Required: not found in the documents. Type it in or pick a candidate.") : null,
+    card.classList.toggle("missing", isRequired(row) && !current);
+    card.classList.toggle("attention", !manual && needsAttention(row) && !(isRequired(row) && !current));
+    put(issues, isRequired(row) && !current ? el("div", {}, "Required: not found in the documents. Type it in or pick a candidate.") : null,
       problems.map((p) => el("div", {}, p)));
     const items = [];
     if (manual) {
@@ -988,7 +1009,7 @@ function renderField(row) {
       el("label", { for: `f-${row.name}` }, row.label),
       el("code", {}, row.name),
       row.remember ? el("span", { class: "pill", title: "Your own details: remembered for next time" }, "remembered") : null,
-      el("span", { class: "req-tag" }, row.required ? "Required" : "Optional")),
+      requiredTag),
     wrapper, issues, meta, evidence, altWrap);
   card.repaint = paint;
   paint();
@@ -1027,7 +1048,7 @@ function renderOther() {
 }
 
 function missingRequired() {
-  return state.rows.filter((row) => row.required && !valueOf(row.name));
+  return state.rows.filter((row) => isRequired(row) && !valueOf(row.name));
 }
 
 function renderProgress() {
@@ -1064,16 +1085,26 @@ async function refreshPreview() {
   if (!state.selected.length) return;
   const seq = ++previewSeq;
   try {
-    const body = await (await postJSON("/wizard/preview", { templates: state.selected, procedure: state.procedure, values: state.values })).json();
+    const body = await (await postJSON("/wizard/preview", { templates: state.selected, procedure: state.procedure,
+      values: state.values, derived: Object.keys(state.derivedFrom) })).json();
     if (seq !== previewSeq) return;
     state.previews = body.previews;
     state.issues = body.issues || {};
     state.legal = body.legal || [];
     let derivedChanged = false;
-    for (const [name, suggestion] of Object.entries(body.derived || {})) {
-      if (!rowByName(name) || state.manual[name] || valueOf(name)) continue;
+    const suggested = body.derived || {};
+    for (const [name, suggestion] of Object.entries(suggested)) {
+      // fill an empty field, or follow the source of a value derived earlier (a corrected CNP)
+      if (!rowByName(name) || state.manual[name] || (valueOf(name) && !state.derivedFrom[name])) continue;
+      if (state.values[name] === suggestion.value && state.derivedFrom[name] === suggestion.reason) continue;
       state.values[name] = suggestion.value;
       state.derivedFrom[name] = suggestion.reason;
+      derivedChanged = true;
+    }
+    for (const name of Object.keys(state.derivedFrom)) {  // its source was removed
+      if (suggested[name] || state.manual[name]) continue;
+      state.values[name] = "";
+      delete state.derivedFrom[name];
       derivedChanged = true;
     }
     if (!state.filenameTouched) state.filename = body.suggested_filename;

@@ -107,12 +107,23 @@ def test_seed_is_consistent_and_everything_starts_as_draft(context):
 
 def test_procedure_view_lists_forms_documents_and_rules(kb):
     view = kb.procedure_view("sa.infiintare")
-    assert view["templates"] == ["onrc-anexa-2a", "onrc-anexa-4"]
+    assert view["templates"] == [
+        "onrc-anexa-2a",
+        "onrc-anexa-4",
+        "cerere-inregistrare-fiscala",
+        "onrc-declaratie-beneficiari-reali",
+        "declaratie-administrator",
+        "act-constitutiv-sa",
+    ]
     assert view["entity"]["abbreviation"] == "SA"
     assert {"sa-capital-minim", "sa-actionari-minim", "firma-sa"} <= {
         r["key"] for r in view["rules"]
     }
-    assert any(d["doc_type"] == "act_constitutiv" for d in view["documents"])
+    # the act constitutiv is filled by docfill for an SA: a form, not a document to attach
+    assert not any(d.get("doc_type") == "act_constitutiv" for d in view["documents"])
+    assert any(d.get("doc_type") == "dovada_sediu" for d in view["documents"])
+    srl = kb.procedure_view("srl.infiintare")
+    assert any(d.get("doc_type") == "act_constitutiv" for d in srl["documents"])
     assert "rule/sa-capital-minim" in view["unverified"]
     # forms docfill does not have yet are listed, not hidden
     assert kb.procedure_view("pfa.radiere")["templates"] == []
@@ -533,6 +544,22 @@ def test_api_laws_search_and_teaching(client):
 # --------------------------------------------------------------------------- CLI
 
 
+PERSON_1 = {
+    "last_name": "Popescu",
+    "first_name": "Ion",
+    "cnp": "1871114321239",
+    "citizenship": "Română",
+    "date_of_birth": "14.11.1987",
+    "place_of_birth": "Sibiu",
+    "city": "Cluj-Napoca",
+    "id_type": "CI",
+    "id_series": "AX",
+    "id_number": "123456",
+    "id_issued_by": "SPCLEP Cluj-Napoca",
+    "id_issue_date": "22.06.2022",
+}
+
+
 def test_cli_knowledge(tmp_path):
     runner = CliRunner()
     db = ["--db", f"sqlite:///{tmp_path / 'cli.db'}"]
@@ -542,7 +569,7 @@ def test_cli_knowledge(tmp_path):
 
     assert run("templates", "seed").exit_code == 0
     seeded = run("knowledge", "seed")
-    assert seeded.exit_code == 0 and "62 created" in seeded.stdout
+    assert seeded.exit_code == 0 and "68 created" in seeded.stdout
     assert "srl.infiintare" in run("knowledge", "list", "--kind", "procedure").stdout
     check = run("knowledge", "check", "sa.infiintare", "-s", "share_capital=100", "--json")
     assert check.exit_code == 1  # an error-level check failed
@@ -557,6 +584,13 @@ def test_cli_knowledge(tmp_path):
         "associates=A\nB",
         "-s",
         "company_name=X SA",
+        "-s",
+        "beneficial_owner=art. 4 alin. (2) lit. a) pct. 1",
+        *(
+            item
+            for pair in PERSON_1.items()
+            for item in ("-s", "=".join(pair))  # a beneficial owner is fully identified
+        ),
     )
     assert ok.exit_code == 0, ok.stdout
 

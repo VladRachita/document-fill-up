@@ -16,10 +16,28 @@ procedures:
     title: Înființare SRL (înmatriculare)
     description: Înmatricularea unei societăți cu răspundere limitată în registrul comerțului.
     forms: &forms_infiintare_societate
-      - title: Cerere de înregistrare - persoane juridice (Anexa 2a, înmatriculare)
+      - &form_anexa_2a
+        title: Cerere de înregistrare - persoane juridice (Anexa 2a, înmatriculare)
         template: onrc-anexa-2a
-      - title: Declarație privind îndeplinirea condițiilor de funcționare (Anexa 4)
+      - &form_anexa_4
+        title: Declarație privind îndeplinirea condițiilor de funcționare (Anexa 4)
         template: onrc-anexa-4
+      - &form_anexa_1_fiscal
+        title: Cerere de înregistrare fiscală (Anexa 1 la Ordinul nr. 2.509/5.672/C/2022)
+        template: cerere-inregistrare-fiscala
+        note: Vectorul fiscal al societății; se depune odată cu cererea de înregistrare.
+      - &form_beneficiari_reali
+        title: Declarație privind beneficiarii reali (ONRC Formular nr. 3)
+        template: onrc-declaratie-beneficiari-reali
+        note: >
+          Legea nr. 129/2019, art. 56. Beneficiarii reali sunt persoanele 1-3 marcate ca
+          beneficiar real.
+      - &form_declaratie_administrator
+        title: Declarațiile pe propria răspundere ale administratorilor (condițiile legale)
+        template: declaratie-administrator
+        note: >
+          Câte una pentru fiecare administrator (persoanele cu un rol în consiliu / administrator
+          unic; solicitantul, dacă nu este marcat niciun administrator).
     documents: &documents_infiintare_srl
       - title: Actul constitutiv
         doc_type: act_constitutiv
@@ -29,10 +47,6 @@ procedures:
         note: Contract de comodat / închiriere sau act de proprietate, cu acordul proprietarului.
       - title: Actele de identitate ale asociaților și administratorilor
         doc_type: id_card
-      - title: Declarația privind beneficiarul real
-        doc_type: declaratie_beneficiar_real
-        legal_basis:
-          - citation: Legea nr. 129/2019 pentru prevenirea și combaterea spălării banilor și finanțării terorismului
       - title: Specimenul de semnătură al administratorului
         doc_type: specimen_semnatura
         required: false
@@ -64,6 +78,10 @@ procedures:
         template: onrc-anexa-4
         required: false
         note: Când se schimbă sediul sau activitățile desfășurate.
+      - title: Declarație privind beneficiarii reali (ONRC Formular nr. 3)
+        template: onrc-declaratie-beneficiari-reali
+        required: false
+        note: Când se schimbă beneficiarii reali (bifați „modificare” în declarație).
     documents: &documents_modificare_societate
       - title: Hotărârea adunării generale / decizia asociatului unic
         doc_type: hotarare_aga
@@ -75,10 +93,6 @@ procedures:
         doc_type: dovada_sediu
         required: false
         note: La schimbarea sediului social sau deschiderea unui punct de lucru.
-      - title: Declarația privind beneficiarul real
-        doc_type: declaratie_beneficiar_real
-        required: false
-        note: Când se schimbă beneficiarii reali.
       - title: Actele justificative ale fiecărei mențiuni
         note: De exemplu actele de identitate ale noilor asociați sau administratori.
     fields: &fields_modificare [company_name, company_registration_number, company_cui]
@@ -131,8 +145,6 @@ procedures:
         doc_type: dovada_sediu
       - title: Actele de identitate ale asociaților și administratorilor
         doc_type: id_card
-      - title: Declarația privind beneficiarul real
-        doc_type: declaratie_beneficiar_real
       - title: Declarațiile privind îndeplinirea condițiilor de întreprinzător debutant
         note: Conform OUG nr. 6/2011 (verificați regimul în vigoare).
       - title: Specimenul de semnătură al administratorului
@@ -184,18 +196,22 @@ procedures:
     operation: infiintare
     title: Înființare SA (înmatriculare)
     description: Înmatricularea unei societăți pe acțiuni în registrul comerțului.
-    forms: *forms_infiintare_societate
+    forms:
+      - *form_anexa_2a
+      - *form_anexa_4
+      - *form_anexa_1_fiscal
+      - *form_beneficiari_reali
+      - *form_declaratie_administrator
+      - title: Actul constitutiv al SA administrate în sistem unitar (model ONRC)
+        template: act-constitutiv-sa
+        note: >
+          Fondatorii sunt persoanele 1-3 care subscriu acțiuni. Pentru o SA în sistem dualist
+          sau cu fondatori persoane juridice, redactați actul separat.
     documents:
-      - title: Actul constitutiv (contract de societate și / sau statut)
-        doc_type: act_constitutiv
       - title: Dovada sediului social
         doc_type: dovada_sediu
       - title: Actele de identitate ale acționarilor fondatori și administratorilor
         doc_type: id_card
-      - title: Declarația privind beneficiarul real
-        doc_type: declaratie_beneficiar_real
-        legal_basis:
-          - citation: Legea nr. 129/2019 pentru prevenirea și combaterea spălării banilor și finanțării terorismului
       - title: Dovada vărsării capitalului social
         note: În condițiile Legii nr. 31/1990 pentru capitalul subscris la constituire.
       - title: Raportul de evaluare a aporturilor în natură
@@ -224,9 +240,6 @@ procedures:
       - title: Dovada publicării convocatorului / a hotărârii
         required: false
         note: Dacă este cazul.
-      - title: Declarația privind beneficiarul real
-        doc_type: declaratie_beneficiar_real
-        required: false
       - title: Actele justificative ale fiecărei mențiuni
     fields: *fields_modificare
     required_fields: *required_modificare

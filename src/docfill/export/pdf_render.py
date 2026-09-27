@@ -13,7 +13,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
@@ -72,6 +72,7 @@ def _styles(regular: str, bold: str) -> dict[str, ParagraphStyle]:
             fontSize=11,
             leading=15,
             spaceAfter=8,
+            alignment=TA_JUSTIFY,  # legal documents are justified
         ),
     }
 
@@ -120,10 +121,10 @@ def render_text_pdf(
     document = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        leftMargin=2.2 * cm,
-        rightMargin=2.2 * cm,
-        topMargin=2 * cm,
-        bottomMargin=2 * cm,
+        leftMargin=2.5 * cm,
+        rightMargin=2.5 * cm,
+        topMargin=2.5 * cm,
+        bottomMargin=2.5 * cm,
         title=metadata.get("title", ""),
         subject=metadata.get("subject", ""),
         keywords=metadata.get("keywords", ""),

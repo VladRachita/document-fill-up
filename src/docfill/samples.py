@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import math
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
@@ -16,7 +17,7 @@ from datetime import date
 from PIL import Image, ImageDraw, ImageFont
 
 from docfill.mrz import make_td2
-from docfill.ro import cnp_control_digit
+from docfill.ro import cnp_control_digit, county_name
 
 _FONT_CANDIDATES = {
     "sans": ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "DejaVuSans.ttf", "arial.ttf"),
@@ -153,4 +154,61 @@ def ro_id_card(person: Person | None = None, noise: bool = True) -> Image.Image:
 def ro_id_card_jpeg(person: Person | None = None, quality: int = 88) -> bytes:
     buffer = io.BytesIO()
     ro_id_card(person).save(buffer, format="JPEG", quality=quality)
+    return buffer.getvalue()
+
+
+# --------------------------------------------------------------------------- sworn statement
+
+
+def _spaced(text: str) -> str:
+    """Card style ``Str.Florilor nr.5 bl.A2`` -> document style ``Str. Florilor nr. 5, bl. A2``."""
+    text = re.sub(r"\.(?=\S)", ". ", text)
+    return re.sub(r"\s+(?=(?:bl|sc|et|ap)\.)", ", ", text)
+
+
+def sworn_statement_text(
+    person: Person | None = None,
+    company: str = "EXEMPLU INVEST S.A.",
+    capacity: str = "administrator",
+    signed: date = date(2026, 9, 25),
+) -> list[str]:
+    """The paragraphs of an administrator's sworn statement (declarație pe propria răspundere)
+    written the way the filers of the trade register write it: the person is identified in one
+    sentence (CNP, domicile, birth, identity card), then the declaration."""
+    person = person or Person()
+    county = county_name(person.county_code) or person.county_code
+    birth_county = county_name(person.birth_county_code) or person.birth_county_code
+    a = "ă" if person.sex == "F" else ""  # "născut" / "născută"...
+    name = f"{person.last_name} {person.first_name}"
+    return [
+        "DECLARAȚIE PE PROPRIE RĂSPUNDERE",
+        f"{name}, CNP {person.cnp}, cu domiciliul în {_spaced(person.locality)}, "
+        f"{_spaced(person.street_line)}, jud. {county}, țara România, cetățenia Română, "
+        f"născut{a} în {_spaced(person.birth_locality)}, jud. {birth_county}, țara România, "
+        f"la data de {person.birth:%d.%m.%Y}, identificat{a} prin CI, seria {person.series}, "
+        f"nr. {person.number}, emisă de {person.issued_by}, la data de {person.issued:%d.%m.%Y}, "
+        f"valabilă până la data de {person.expires:%d.%m.%Y}, în calitate de {capacity} numit{a} "
+        f"al societății {company} (în curs de constituire).",
+        "Declar pe proprie răspundere, cunoscând prevederile articolului 326 din Codul Penal "
+        "privind falsul în declarații, că îndeplinesc toate condițiile legale pentru a deține "
+        f"calitatea de {capacity}, aşa cum sunt acestea prevăzute de Legea societăților nr. "
+        "31/1990, republicată, cu modificările şi completările ulterioare, şi nu mă aflu în "
+        "nicio situație de incapacitate sau incompatibilitate prevăzută de lege.",
+        "Dau prezenta declarație fiindu-mi necesară la Oficiul Național al Registrului "
+        "Comerțului pentru înmatricularea societății mai sus-menționate.",
+        f"Data: {signed:%d.%m.%Y}",
+        f"Nume şi prenume: {name}",
+        "Semnătura:",
+    ]
+
+
+def sworn_statement_docx(person: Person | None = None, **kwargs) -> bytes:
+    """:func:`sworn_statement_text` as a Word document."""
+    from docx import Document
+
+    document = Document()
+    for paragraph in sworn_statement_text(person, **kwargs):
+        document.add_paragraph(paragraph)
+    buffer = io.BytesIO()
+    document.save(buffer)
     return buffer.getvalue()

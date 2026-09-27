@@ -218,6 +218,9 @@ class Check(_Model):
 
     Except ``required`` / ``required_any``, a check whose field is empty is skipped (not
     failed): missing values are the job of those checks and of the forms' required fields.
+
+    ``when`` limits any check to the cases where one of its fields has a value, e.g. a person's
+    identity is required only for a person holding shares or sitting on the board.
     """
 
     type: CheckType
@@ -227,9 +230,13 @@ class Check(_Model):
     any_of: list[str] = Field(default_factory=list, max_length=50)
     other: str | None = Field(default=None, pattern=FIELD_PATTERN)
     pattern: str | None = Field(default=None, max_length=300)
+    when: list[str] = Field(default_factory=list, max_length=30)
 
     @model_validator(mode="after")
     def _complete(self) -> Check:
+        for name in self.when:
+            if not re.fullmatch(FIELD_PATTERN, name):
+                raise ValueError(f"invalid field name in 'when': {name!r}")
         if self.type in ("required", "required_any"):
             if not self.fields and not self.field:
                 raise ValueError(f"a '{self.type}' check needs 'fields' (or 'field')")
@@ -282,7 +289,8 @@ class RuleSpec(_Entry):
     message: str = Field(min_length=3, max_length=500)
 
     def references(self) -> dict[str, list[str]]:
-        return {"entity": list(self.applies_to.entities), "field": self.check.targets()}
+        fields = [*self.check.targets(), *self.check.when]
+        return {"entity": list(self.applies_to.entities), "field": fields}
 
     def text(self) -> str:
         return f"{super().text()}\n{self.message}"

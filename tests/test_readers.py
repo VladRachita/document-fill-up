@@ -27,13 +27,17 @@ def test_detect_type_by_content():
     [
         (b"plain text", "notes.txt"),
         (b"random bytes", "a.pdf"),
-        (b"\xd0\xcf\x11\xe0legacy", "old.doc"),
         (b"\xd0\xcf\x11\xe0legacy", "old.docx"),
+        (b"\xd0\xcf\x11\xe0legacy", "sheet.xls"),
     ],
 )
 def test_detect_type_rejects_unsupported(data, name):
     with pytest.raises(UnsupportedDocumentError):
         detect_type(data, name)
+
+
+def test_detect_type_legacy_word():
+    assert detect_type(b"\xd0\xcf\x11\xe0legacy", "old.doc") is DocumentType.DOC
 
 
 def test_read_rejects_empty_and_oversized(settings):
