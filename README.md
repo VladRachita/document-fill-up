@@ -104,15 +104,19 @@ answers (good and bad scans) and scenarios to watch docfill learn from your corr
 docfill serve                 # open http://127.0.0.1:8000
 ```
 
-1. **Documents.** Choose **what you are doing**: the legal form (SRL, SRL-D, SA, PFA, PFI, II,
-   IF) and the operation (înființare, modificare, radiere). docfill ticks the forms of that
-   procedure (to open an SRL: Anexa 2a, Anexa 4, Anexa 1, the beneficial owner declaration and
-   the administrators' statements, all filled from the same data; for an SA the act constitutiv
-   too), lists
-   the **documents of the file** (dosar) and its legal checks, and shows which knowledge is not
-   verified yet. Then drop the source files: **the identity card of each person** (applicant,
-   shareholders, administrators), birth certificate, act constitutiv, an already filled form...
-   *Fill in by hand* is also possible.
+1. **Documents.** Three short choices:
+   * **What you are doing** (optional): the legal form (SRL, SRL-D, SA, PFA, PFI, II, IF) and
+     the operation (înființare, modificare, radiere). The procedure's legal checks and the
+     **documents of the file** (dosar) are one click away, with the knowledge not verified yet.
+   * **Which documents you need**: the documents of that procedure as cards, the required ones
+     ticked. Tick one, a few or all (*All*, *Required only*, *None*); forms docfill does not
+     have yet are shown with their official link, any other standard document can be added.
+     Without a procedure, pick any documents. The next steps ask only for what the ticked
+     documents need, and only their legal checks run.
+   * **What to upload**, which follows the documents ticked: the applicant's identity card,
+     and the identity card of every other person involved when a ticked document needs them
+     (associates, administrators, beneficial owners), an already filled form or a document
+     identifying a person (PDF, Word, photo or scan). *Fill in by hand* is also possible.
 2. **Scan & clean.** For each file: the **detected document type** with its confidence (change
    it if wrong; the classifier learns from it), **whose document it is** (person 1, 2 or 3: each
    identity card is a person, documents with the same CNP go to the same person), the text read

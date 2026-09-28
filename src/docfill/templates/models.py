@@ -385,6 +385,7 @@ class StandardDocument(Base):
             "doc_type": self.doc_type,
             "fields": self.input_fields(),
             "required_fields": self.required_fields(),
+            "per_person": list(self.per_person),
             "checksum": self.checksum,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

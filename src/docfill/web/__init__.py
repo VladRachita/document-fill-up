@@ -121,14 +121,25 @@ def _document_json(analysis: DocumentAnalysis) -> dict[str, Any]:
     }
 
 
-def dossier(procedure: ProcedureSpec, doc_types: set[str], created: set[str]) -> dict[str, Any]:
-    """The file to submit: the forms (created by docfill or still to obtain) and the supporting
-    documents, ticked off when an uploaded file was recognised as that type."""
+def dossier(
+    procedure: ProcedureSpec,
+    doc_types: set[str],
+    created: set[str],
+    available: set[str] | None = None,
+) -> dict[str, Any]:
+    """The file to submit: the forms (created by docfill, available but not chosen this time,
+    or still to obtain) and the supporting documents, ticked off when an uploaded file was
+    recognised as that type."""
+    available = created if available is None else available
     return {
         "procedure": procedure.key,
         "title": procedure.title,
         "forms": [
-            {**form.model_dump(), "created": bool(form.template and form.template in created)}
+            {
+                **form.model_dump(),
+                "created": bool(form.template and form.template in created),
+                "available": bool(form.template and form.template in available),
+            }
             for form in procedure.forms
         ],
         "documents": [
@@ -143,6 +154,17 @@ def person_name(values: dict[str, str], person: int) -> str:
     return " ".join(
         filter(None, (values.get(prefix + "last_name"), values.get(prefix + "first_name")))
     ).upper()
+
+
+def relevant(
+    results: list[RuleResult], templates: list[StandardDocument], procedure: ProcedureSpec
+) -> list[RuleResult]:
+    """The legal checks about the documents being filled: a check whose field none of the
+    chosen documents (nor the procedure) asks for is left out, e.g. the beneficial owners when
+    the beneficial owner declaration is not filled this time."""
+    asked = {name for template in templates for name in template.input_fields()}
+    asked |= set(procedure.fields) | set(procedure.required_fields)
+    return [result for result in results if not result.field or result.field in asked]
 
 
 def failed_errors(results: list[RuleResult]) -> list[RuleResult]:
@@ -242,7 +264,7 @@ def register_wizard(
         chosen = load(repo, payload.templates)
         spec = procedure_of(payload.procedure)
         values, _ = docfill.collect_values(None, payload.values)
-        legal = knowledge.evaluate(spec.key, values) if spec else []
+        legal = relevant(knowledge.evaluate(spec.key, values), chosen, spec) if spec else []
         return {
             "previews": [build_preview(template, values) for template in chosen],
             "suggested_filename": suggest_filename(chosen, values).removesuffix(".pdf"),
@@ -258,7 +280,7 @@ def register_wizard(
         chosen = load(repo, payload.templates)
         spec = procedure_of(payload.procedure)
         values, _ = docfill.collect_values(None, payload.values)
-        legal = knowledge.evaluate(spec.key, values) if spec else []
+        legal = relevant(knowledge.evaluate(spec.key, values), chosen, spec) if spec else []
         if spec and not payload.allow_missing:
             missing = [name for name in spec.required_fields if name not in values]
             if missing:
@@ -310,7 +332,8 @@ def register_wizard(
         if spec:
             provided = {d.doc_type for d in payload.documents if d.doc_type}
             response["legal"] = [result.as_dict() for result in legal]
-            response["dossier"] = dossier(spec, provided, {t.name for t in chosen})
+            available = {t.name for t in repo.list()}
+            response["dossier"] = dossier(spec, provided, {t.name for t in chosen}, available)
             response["knowledge"] = knowledge.record_case(spec.key, legal, provided)
         return response
 

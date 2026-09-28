@@ -27,7 +27,7 @@ from docfill.knowledge.specs import Check
 from docfill.knowledge.store import KnowledgeEntry
 from docfill.knowledge.texts import article_number, citation_key, split_passages
 from docfill.ro import cnp_control_digit
-from docfill.templates import bundled_specs_dir
+from docfill.templates import TemplateRepository, bundled_specs_dir
 from docfill.templates import load_directory as load_templates
 from docfill.wizard import field_rows
 
@@ -489,6 +489,47 @@ def test_wizard_requires_the_procedure_fields(client):
     assert "share_capital" in refused.json()["missing"]
     rows = client.post("/wizard/reextract", json={**request, "documents": []}).json()["rows"]
     assert {"share_capital", "associates"} <= {r["name"] for r in rows if r["required"]}
+
+
+def test_legal_checks_follow_the_chosen_documents(client, context):
+    with context.sessions() as session:
+        repository = TemplateRepository(session)
+        for spec in load_templates(bundled_specs_dir()):
+            repository.save(spec)
+    values = {**SA_VALUES, "company_name": "Exemplu SRL", "share_capital": "1.000 lei"}
+
+    def rules(*templates):
+        request = {"templates": list(templates), "procedure": "srl.infiintare", "values": values}
+        return {r["rule"] for r in client.post("/wizard/preview", json=request).json()["legal"]}
+
+    # only Anexa 2a: nothing about beneficial owners or the fiscal vector
+    only_2a = rules("onrc-anexa-2a")
+    assert "beneficiar-real-declarat" not in only_2a and "vector-fiscal-impozit" not in only_2a
+    assert {"asociati-obligatoriu", "capital-obligatoriu"} <= only_2a  # asked by the procedure
+    # with the beneficial owner declaration and Anexa 1 ticked, their checks come back
+    both = rules(
+        "onrc-anexa-2a", "onrc-declaratie-beneficiari-reali", "cerere-inregistrare-fiscala"
+    )
+    assert {"beneficiar-real-declarat", "vector-fiscal-impozit"} <= both
+
+    export = {
+        "templates": ["onrc-anexa-2a"],
+        "procedure": "srl.infiintare",
+        "values": values,
+        "allow_missing": True,
+        "legal_acknowledged": True,
+        "filename": "srl",
+    }
+    body = client.post("/wizard/export", json=export).json()
+    forms = {f["template"]: f for f in body["dossier"]["forms"]}
+    assert forms["onrc-anexa-2a"]["created"] and forms["onrc-anexa-2a"]["available"]
+    statement = forms["declaratie-administrator"]
+    assert not statement["created"] and statement["available"]  # in docfill, not ticked
+    assert [
+        t["per_person"]
+        for t in client.get("/templates").json()
+        if t["name"] == "declaratie-administrator"
+    ] == [["board_role"]]
 
 
 def test_api_feed_verify_and_retire(client):
