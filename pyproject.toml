@@ -56,6 +56,7 @@ docfill = [
     "py.typed",
     "standard_documents/*.yaml",
     "standard_documents/*.pdf",
+    "standard_documents/*.doc",
     "knowledge/bundled/*.yaml",
     "web/*.html",
 ]

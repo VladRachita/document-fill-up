@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 class DocumentType(str, Enum):
     PDF = "pdf"
     DOCX = "docx"
+    DOC = "doc"
     IMAGE = "image"
 
 

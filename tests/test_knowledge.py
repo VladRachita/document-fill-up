@@ -27,7 +27,7 @@ from docfill.knowledge.specs import Check
 from docfill.knowledge.store import KnowledgeEntry
 from docfill.knowledge.texts import article_number, citation_key, split_passages
 from docfill.ro import cnp_control_digit
-from docfill.templates import bundled_specs_dir
+from docfill.templates import TemplateRepository, bundled_specs_dir
 from docfill.templates import load_directory as load_templates
 from docfill.wizard import field_rows
 
@@ -107,12 +107,23 @@ def test_seed_is_consistent_and_everything_starts_as_draft(context):
 
 def test_procedure_view_lists_forms_documents_and_rules(kb):
     view = kb.procedure_view("sa.infiintare")
-    assert view["templates"] == ["onrc-anexa-2a", "onrc-anexa-4"]
+    assert view["templates"] == [
+        "onrc-anexa-2a",
+        "onrc-anexa-4",
+        "cerere-inregistrare-fiscala",
+        "onrc-declaratie-beneficiari-reali",
+        "declaratie-administrator",
+        "act-constitutiv-sa",
+    ]
     assert view["entity"]["abbreviation"] == "SA"
     assert {"sa-capital-minim", "sa-actionari-minim", "firma-sa"} <= {
         r["key"] for r in view["rules"]
     }
-    assert any(d["doc_type"] == "act_constitutiv" for d in view["documents"])
+    # the act constitutiv is filled by docfill for an SA: a form, not a document to attach
+    assert not any(d.get("doc_type") == "act_constitutiv" for d in view["documents"])
+    assert any(d.get("doc_type") == "dovada_sediu" for d in view["documents"])
+    srl = kb.procedure_view("srl.infiintare")
+    assert any(d.get("doc_type") == "act_constitutiv" for d in srl["documents"])
     assert "rule/sa-capital-minim" in view["unverified"]
     # forms docfill does not have yet are listed, not hidden
     assert kb.procedure_view("pfa.radiere")["templates"] == []
@@ -480,6 +491,47 @@ def test_wizard_requires_the_procedure_fields(client):
     assert {"share_capital", "associates"} <= {r["name"] for r in rows if r["required"]}
 
 
+def test_legal_checks_follow_the_chosen_documents(client, context):
+    with context.sessions() as session:
+        repository = TemplateRepository(session)
+        for spec in load_templates(bundled_specs_dir()):
+            repository.save(spec)
+    values = {**SA_VALUES, "company_name": "Exemplu SRL", "share_capital": "1.000 lei"}
+
+    def rules(*templates):
+        request = {"templates": list(templates), "procedure": "srl.infiintare", "values": values}
+        return {r["rule"] for r in client.post("/wizard/preview", json=request).json()["legal"]}
+
+    # only Anexa 2a: nothing about beneficial owners or the fiscal vector
+    only_2a = rules("onrc-anexa-2a")
+    assert "beneficiar-real-declarat" not in only_2a and "vector-fiscal-impozit" not in only_2a
+    assert {"asociati-obligatoriu", "capital-obligatoriu"} <= only_2a  # asked by the procedure
+    # with the beneficial owner declaration and Anexa 1 ticked, their checks come back
+    both = rules(
+        "onrc-anexa-2a", "onrc-declaratie-beneficiari-reali", "cerere-inregistrare-fiscala"
+    )
+    assert {"beneficiar-real-declarat", "vector-fiscal-impozit"} <= both
+
+    export = {
+        "templates": ["onrc-anexa-2a"],
+        "procedure": "srl.infiintare",
+        "values": values,
+        "allow_missing": True,
+        "legal_acknowledged": True,
+        "filename": "srl",
+    }
+    body = client.post("/wizard/export", json=export).json()
+    forms = {f["template"]: f for f in body["dossier"]["forms"]}
+    assert forms["onrc-anexa-2a"]["created"] and forms["onrc-anexa-2a"]["available"]
+    statement = forms["declaratie-administrator"]
+    assert not statement["created"] and statement["available"]  # in docfill, not ticked
+    assert [
+        t["per_person"]
+        for t in client.get("/templates").json()
+        if t["name"] == "declaratie-administrator"
+    ] == [["board_role"]]
+
+
 def test_api_feed_verify_and_retire(client):
     added = client.post("/knowledge/entries", json={"yaml": rule_yaml(entities="[sa]")})
     assert added.status_code == 200
@@ -533,6 +585,22 @@ def test_api_laws_search_and_teaching(client):
 # --------------------------------------------------------------------------- CLI
 
 
+PERSON_1 = {
+    "last_name": "Popescu",
+    "first_name": "Ion",
+    "cnp": "1871114321239",
+    "citizenship": "Română",
+    "date_of_birth": "14.11.1987",
+    "place_of_birth": "Sibiu",
+    "city": "Cluj-Napoca",
+    "id_type": "CI",
+    "id_series": "AX",
+    "id_number": "123456",
+    "id_issued_by": "SPCLEP Cluj-Napoca",
+    "id_issue_date": "22.06.2022",
+}
+
+
 def test_cli_knowledge(tmp_path):
     runner = CliRunner()
     db = ["--db", f"sqlite:///{tmp_path / 'cli.db'}"]
@@ -542,7 +610,7 @@ def test_cli_knowledge(tmp_path):
 
     assert run("templates", "seed").exit_code == 0
     seeded = run("knowledge", "seed")
-    assert seeded.exit_code == 0 and "62 created" in seeded.stdout
+    assert seeded.exit_code == 0 and "68 created" in seeded.stdout
     assert "srl.infiintare" in run("knowledge", "list", "--kind", "procedure").stdout
     check = run("knowledge", "check", "sa.infiintare", "-s", "share_capital=100", "--json")
     assert check.exit_code == 1  # an error-level check failed
@@ -557,6 +625,13 @@ def test_cli_knowledge(tmp_path):
         "associates=A\nB",
         "-s",
         "company_name=X SA",
+        "-s",
+        "beneficial_owner=art. 4 alin. (2) lit. a) pct. 1",
+        *(
+            item
+            for pair in PERSON_1.items()
+            for item in ("-s", "=".join(pair))  # a beneficial owner is fully identified
+        ),
     )
     assert ok.exit_code == 0, ok.stdout
 

@@ -27,13 +27,13 @@ import unicodedata
 import uuid
 from collections import defaultdict
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Float, Integer, String, Text, delete, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
-from docfill.extraction.fields import FIELDS
+from docfill.extraction.fields import FIELDS, base_field
 from docfill.extraction.rules import general_labels
 from docfill.models import ExtractedField
 from docfill.templates.models import Base
@@ -359,6 +359,8 @@ class LearningStore:
         general = general_labels()
         with self._sessions() as session:
             for reviewed in review.fields:
+                # persons 2 and 3 teach the same as the applicant: a CNP is a CNP
+                reviewed = replace(reviewed, name=base_field(reviewed.name))
                 outcome = outcome_of(reviewed)
                 if outcome is None:
                     continue

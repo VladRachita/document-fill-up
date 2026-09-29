@@ -12,10 +12,21 @@ knows each procedure (forms, documents of the file, legal checks with the articl
 from) and can be **fed and corrected over time**: laws, rules, procedures and document types,
 each versioned and verified by a named person (see [Legal knowledge](#legal-knowledge-romania)).
 
-The source is typically the **Romanian identity card (CI)** (a birth certificate, an act
-constitutiv or an already filled form can be added); the results are the official **ONRC
-Anexa 2a** (cerere de înregistrare: înmatriculare, înscriere mențiuni, radiere) and **ONRC
-Anexa 4** (declarație condiții de funcționare) PDF forms.
+The source is typically the **Romanian identity card (CI)** of each person involved (a birth
+certificate, an act constitutiv, a sworn statement or an already filled form can be added); the
+results are the files of the dossier, each saved as its own PDF:
+
+| Result | What it is |
+|---|---|
+| **ONRC Anexa 2a** | cerere de înregistrare (înmatriculare, înscriere mențiuni, radiere) - official PDF form |
+| **ONRC Anexa 4** | declarație privind îndeplinirea condițiilor de funcționare - official PDF form |
+| **Anexa 1 - cerere de înregistrare fiscală** | the fiscal vector (Ordinul nr. 2.509/5.672/C/2022) - official PDF form |
+| **ONRC Formular nr. 3** | declarație privind beneficiarii reali (Legea nr. 129/2019) - official PDF form |
+| **Declarație pe proprie răspundere - administrator** | one for each administrator, in the wording filers submit |
+| **Act constitutiv SA (sistem unitar)** | the ONRC model, filled: founders, capital and shares, board, director, censors |
+
+These are the **[reference documents](#reference-documents)**: kept exactly as they were given and
+checked by the tests after every change.
 
 ```
  CI photo / scan, birth certificate, filled forms, PDF / DOCX / PNG / JPG
@@ -47,7 +58,7 @@ Anexa 4** (declarație condiții de funcționare) PDF forms.
 
 | Stage | Libraries |
 |---|---|
-| Reading | `pypdf`, `pypdfium2`, `python-docx`, `Pillow`, `pytesseract` + Tesseract OCR |
+| Reading | `pypdf`, `pypdfium2`, `python-docx`, `Pillow`, `pytesseract` + Tesseract OCR, `antiword` / LibreOffice (legacy `.doc`) |
 | Cleaning | `ftfy`, regular expressions, Luhn / IBAN mod-97 checks |
 | Machine learning | `scikit-learn` (document type classifier, TF-IDF search of laws), `spaCy` NER, `pycountry` |
 | Legal knowledge | versioned YAML entries (legal forms, procedures, declarative rules, document types), fed laws split into articles |
@@ -58,12 +69,13 @@ Anexa 4** (declarație condiții de funcționare) PDF forms.
 
 ## Installation
 
-System packages: **Tesseract OCR with Romanian** and a TrueType font with full Unicode coverage
-(DejaVu is auto-detected) so names like *Ștefănescu* or *Țară* render.
+System packages: **Tesseract OCR with Romanian**, a TrueType font with full Unicode coverage
+(DejaVu is auto-detected) so names like *Ștefănescu* or *Țară* render, and **antiword** (or
+LibreOffice) to read legacy Word `.doc` files.
 
 ```bash
 # Debian / Ubuntu
-sudo apt install tesseract-ocr tesseract-ocr-ron tesseract-ocr-eng fonts-dejavu-core
+sudo apt install tesseract-ocr tesseract-ocr-ron tesseract-ocr-eng fonts-dejavu-core antiword
 # macOS
 brew install tesseract tesseract-lang
 
@@ -92,18 +104,28 @@ answers (good and bad scans) and scenarios to watch docfill learn from your corr
 docfill serve                 # open http://127.0.0.1:8000
 ```
 
-1. **Documents.** Choose **what you are doing**: the legal form (SRL, SRL-D, SA, PFA, PFI, II,
-   IF) and the operation (înființare, modificare, radiere). docfill ticks the forms of that
-   procedure (e.g. *Anexa 2a* and *Anexa 4* together: they are filled from the same data), lists
-   the **documents of the file** (dosar) and its legal checks, and shows which knowledge is not
-   verified yet. Then drop the source files (identity card, birth certificate, act constitutiv,
-   an already filled form...). *Fill in by hand* is also possible.
+1. **Documents.** Three short choices:
+   * **What you are doing** (optional): the legal form (SRL, SRL-D, SA, PFA, PFI, II, IF) and
+     the operation (înființare, modificare, radiere). The procedure's legal checks and the
+     **documents of the file** (dosar) are one click away, with the knowledge not verified yet.
+   * **Which documents you need**: the documents of that procedure as cards, the required ones
+     ticked. Tick one, a few or all (*All*, *Required only*, *None*); forms docfill does not
+     have yet are shown with their official link, any other standard document can be added.
+     Without a procedure, pick any documents. The next steps ask only for what the ticked
+     documents need, and only their legal checks run.
+   * **What to upload**, which follows the documents ticked: the applicant's identity card,
+     and the identity card of every other person involved when a ticked document needs them
+     (associates, administrators, beneficial owners), an already filled form or a document
+     identifying a person (PDF, Word, photo or scan). *Fill in by hand* is also possible.
 2. **Scan & clean.** For each file: the **detected document type** with its confidence (change
-   it if wrong; the classifier learns from it), the text read from the file next to the
+   it if wrong; the classifier learns from it), **whose document it is** (person 1, 2 or 3: each
+   identity card is a person, documents with the same CNP go to the same person), the text read
+   from the file next to the
    cleaned text (**fix OCR mistakes there, fields are re-extracted as you type**), what was
    removed or redacted.
-3. **Review fields.** Fields are grouped (Person, Birth, Domicile, Identity card, Company,
-   Request, Contact person, Billing, Filed by). **Needs attention** shows only what has to be
+3. **Review fields.** Fields are grouped (Person 1 - the applicant, Person 2, Person 3,
+   Shareholders / management / beneficial owners, Company, Articles of incorporation, Tax
+   registration, Request, Contact person, Billing, Filed by). **Needs attention** shows only what has to be
    looked at: missing required values, validation problems, low confidence. Every value shows
    its confidence, how it was found (label, machine-readable zone, pattern, filled form, ML
    model, derived, remembered, default) and **where** it was found; other candidates are one
@@ -117,7 +139,8 @@ docfill serve                 # open http://127.0.0.1:8000
 4. **Save PDF.** The **file checklist** shows the forms docfill created, those still to prepare
    and the supporting documents (ticked when an uploaded file was recognised as that document).
    A failed legal check of level *error* must be fixed or explicitly acknowledged. Choose the
-   file name; one PDF per reference document is saved in the output folder
+   file name; one PDF per reference document (one per administrator for the statements) is saved
+   in the output folder
    (`DOCFILL_OUTPUT_DIR`, never overwritten) and downloaded. The page shows what docfill learned
    from the review, including the checks you overrode (recorded so rules get reviewed).
 
@@ -146,6 +169,41 @@ values (old certificates) cannot be read by Tesseract; the wizard asks for them.
 
 **Filled forms as a source.** A filled Anexa 2a (or any registered PDF form) is recognised from
 its form fields and read back through its field map, so a finished Anexa 2a fills Anexa 4.
+
+**Identification clause.** Declarations, powers of attorney, AGA decisions and acts identify a
+person in one sentence: `POPESCU ION, CNP …, cu domiciliul în Mun. Cluj-Napoca, Str. Florilor
+nr. 5, bl. A2, jud. Cluj, țara România, cetățenia Română, născut în Mun. Sibiu, jud. Sibiu, la
+data de …, identificat prin CI, seria AX, nr. …, emisă de …, la data de …, valabilă până la data
+de …, în calitate de administrator al societății … S.R.L.` docfill cuts it at its keywords and reads every piece (the
+act constitutiv wording `D-nul/d-na …, născut(ă) la data de …, domiciliat(ă) în …, posesor(e) al
+CI seria … nr. …` too). Names in capitals are family name first, as Romanian documents print
+them (`Nume și prenume: POPESCU ION` is *Popescu* / *Ion*).
+
+## Several persons
+
+Opening a company involves several people: the applicant who signs the forms, the shareholders,
+the administrators, the beneficial owners. docfill keeps **three persons**:
+
+| Person | Fields | Filled from |
+|---|---|---|
+| 1 - the applicant | `last_name`, `cnp`, `city`... | the first identity card |
+| 2 | `p2_last_name`, `p2_cnp`, `p2_city`... | the second identity card |
+| 3 | `p3_last_name`, `p3_cnp`, `p3_city`... | the third identity card |
+
+A document with the CNP of a person already read goes to that person; the person of every
+document can be changed in the wizard. Every person's CNP, date of birth and identity card are
+checked, and derived values (date of birth and sex from the CNP...) are derived for each. The
+**roles** of each person decide where they appear:
+
+| Role (field) | Effect |
+|---|---|
+| `shares` | a founder in the act constitutiv, with the value and share of the capital computed; the list of associates is derived |
+| `board_role` (președinte / membru / administrator unic / administrator) | a member of the board or the sole administrator (the administration type is derived); a sworn statement is made for them |
+| `general_director` | appointed general director in the act constitutiv |
+| `beneficial_owner` (how control is exercised, art. 4 alin. (2) Legea 129/2019) | a block of the beneficial owner declaration, with the matching box ticked |
+
+Legal checks make sure that every person with a role is fully identified and that at least one
+beneficial owner is declared.
 
 ## Learning: fewer errors over time
 
@@ -183,15 +241,16 @@ and verify over time. Open it at **http://127.0.0.1:8000/knowledge**, or use
 |---|---|---|
 | `entity` | a legal form | SRL, SRL-D, SA (societăți), PFA, PFI, II, IF (persoane fizice) |
 | `procedure` | a legal form × an operation: where it is filed (ONRC / ANAF), the official forms (which docfill fills, and where to get the others), the documents of the file, extra fields to collect, legal basis | 21: every form × înființare / modificare / radiere |
-| `rule` | a legal check with its legal basis | 26, e.g. SA capital ≥ 90.000 lei and ≥ 2 shareholders (Legea 31/1990 art. 10), SRL ≤ 50 associates (art. 12), legal form in the firm name, PFA / II holder ≥ 18 years, IF ≥ 2 members, CAEN classes per PFA / II / IF, at least one change ticked (mențiuni), a reason for closing, the PFI's profession |
-| `doc_type` | a document the classifier learns to recognise | act constitutiv, dovada sediului, hotărâre AGA / decizie asociat unic, certificat de înregistrare, declarație beneficiar real, specimen de semnătură, acord de constituire IF, document privind dreptul de exercitare a profesiei |
+| `rule` | a legal check with its legal basis | 31, e.g. SA capital ≥ 90.000 lei and ≥ 2 shareholders (Legea 31/1990 art. 10), SRL ≤ 50 associates (art. 12), legal form in the firm name, PFA / II holder ≥ 18 years, IF ≥ 2 members, CAEN classes per PFA / II / IF, at least one change ticked (mențiuni), a reason for closing, the PFI's profession, every person with a role fully identified, at least one beneficial owner (Legea 129/2019), a tax on profit or on micro-enterprise revenue in the fiscal vector |
+| `doc_type` | a document the classifier learns to recognise | act constitutiv, dovada sediului, hotărâre AGA / decizie asociat unic, certificat de înregistrare, declarație beneficiar real, specimen de semnătură, acord de constituire IF, document privind dreptul de exercitare a profesiei, cerere de înregistrare fiscală (built in: identity card, birth certificate, Anexa 2a, Anexa 4, administrator statement) |
 
 Which forms docfill fills:
 
 | Procedure | Filed at | Forms filled by docfill | Official forms still to add |
 |---|---|---|---|
-| SRL, SRL-D, SA înființare | ONRC | Anexa 2a (înmatriculare) + Anexa 4 | - (the beneficial owner declaration is listed as a document) |
-| SRL, SRL-D, SA modificare | ONRC | Anexa 2a (înscriere mențiuni: section 4, 4.1 changes, 4.2 documents) + Anexa 4 when needed | - |
+| SRL, SRL-D înființare | ONRC | Anexa 2a (înmatriculare) + Anexa 4 + Anexa 1 (cerere de înregistrare fiscală) + declarația privind beneficiarii reali + declarațiile administratorilor | - (the act constitutiv of an SRL is a document to attach) |
+| SA înființare | ONRC | the same + the act constitutiv (sistem unitar, ONRC model) | - |
+| SRL, SRL-D, SA modificare | ONRC | Anexa 2a (înscriere mențiuni: section 4, 4.1 changes, 4.2 documents) + Anexa 4 and the beneficial owner declaration when needed | - |
 | SRL, SRL-D, SA radiere | ONRC | Anexa 2a (radiere: section 6, reason) | - |
 | PFA, II, IF înființare | ONRC | Anexa 4 | Anexa 2b (cerere de înregistrare persoane fizice) |
 | PFA, II, IF modificare / radiere | ONRC | - | Anexa 2b |
@@ -235,7 +294,8 @@ rules:
 
 Checks: `required`, `min_amount` / `max_amount` (`90.000 lei`), `min_count` / `max_count` (one
 item per line), `contains_any` (`S.R.L.` == `SRL`), `contains_field`, `min_age` (from the CNP),
-`pattern`, `lines_pattern`, `one_of`. A procedure lists its forms (`template:` the docfill
+`pattern`, `lines_pattern`, `one_of`; any check can apply only `when` a field has a value (e.g.
+the identity of person 2 is required when they hold shares or sit on the board). A procedure lists its forms (`template:` the docfill
 standard document, or none when docfill cannot fill it yet) and its documents (`doc_type:` to
 tick them off automatically); see `src/docfill/knowledge/bundled/` for complete examples.
 
@@ -275,19 +335,38 @@ field_map:                             # PDF field -> docfill field (filters all
   InmFirma: company_name | upper
   DataCerere: today
   # composed: "pg. 4 text 27": "{{ last_name | upper }} {{ first_name | upper }}"
+  # one box of a field shown in several boxes: "71#1": contact_email, "71#2": contact_phone
 lists:                                 # repeated rows, one per line in the wizard
   caen_activities: {rows: 18, columns: ["clasa_caen.0.{i}", "clasa_caen_desc.0.{i}"]}
 choices:                               # option buttons: value -> button state
   # CheckBox90_2: {poștă: /v1, curier: /v2, mijloace electronice: /v3}
 ticks:                                 # section boxes ticked when any listed field has a value
   # CheckBox15: [change_name, change_seat, change_activity]
+combs:                                 # one character per box
+  # micro_tax_start: {boxes: ["21", ..., "28"], format: date}          # ddmmyyyy
+  # estimated_turnover: {boxes: ["61", ..., "68"], format: amount, align: right}
+box_choices:                           # a choice ticking one of several check boxes
+  # vat_period: {lunară: BBox23, trimestrială: BBox20}
+filled_when:                           # PDF fields left empty unless the field has a value
+  # p2_beneficial_owner: ["33", "31", ...]   (the block of beneficial owner 2)
 defaults: {id_type: CI, country: România}
 remember: [represented_by, billing_iban]   # the filer's own details
 optional_fields: [building, entrance, floor, apartment]
 ```
 
 **Text documents** with `{{ placeholders }}` (`# ` headings, `---` rules, filters `upper`,
-`lower`, `title`, `{{ today }}`) rendered to PDF with ReportLab.
+`lower`, `title`, `{{ today }}`) rendered to PDF with ReportLab. A line can start with a
+**condition** so one document covers the variants of a model: `[[p2_shares]] …` (the field has
+a value), `[[general_director|p2_general_director]] …` (any of them), `[[administration=
+administrator unic]] …` (this value), `[[!field]] …` (the opposite). `per_person: [board_role]`
+makes one copy for each person with that role, written with the plain fields (`{{ last_name }}`).
+
+**Computed values** are composed when a document is filled, never typed: `domicile_line`
+(`Mun. Cluj-Napoca, Str. Florilor nr. 5, bl. A2, …, jud. Cluj`), `company_seat_line`,
+`share_value`, `shares_value` / `shares_percent` (per person), `main_activity`,
+`main_caen_group`, `secondary_activities`, and words agreeing with the person's sex
+(`born_word`: *născut* / *născută*). The wizard asks for their inputs instead (see
+`src/docfill/computed.py`); every one exists for persons 2 and 3 (`p2_domicile_line`...).
 
 Adding a new official form:
 
@@ -296,6 +375,26 @@ docfill forms blank filled_example.pdf blank.pdf   # remove every value (safe to
 docfill forms inspect blank.pdf --suggest          # fields, printed labels, suggested mapping
 docfill templates add my-form.yaml
 ```
+
+## Reference documents
+
+The documents docfill must fill are kept in `src/docfill/standard_documents/` **exactly as they
+were given** (the official PDFs are not re-saved or blanked; they carry no values):
+
+| File | Standard document |
+|---|---|
+| `onrc-anexa-2a.pdf` | `onrc-anexa-2a`, `onrc-anexa-2a-mentiuni`, `onrc-anexa-2a-radiere` |
+| `onrc-anexa-4.pdf` | `onrc-anexa-4` |
+| `anexa-1-inregistrare-fiscala.pdf` | `cerere-inregistrare-fiscala` |
+| `onrc-declaratie-beneficiari-reali.pdf` | `onrc-declaratie-beneficiari-reali` |
+| `model-act-constitutiv-sa-sistem-unitar.doc` | `act-constitutiv-sa` (a text document: every paragraph of the model without blanks is copied verbatim) |
+
+`tests/test_reference_forms.py` checks, after every change, that each file is unchanged (SHA-256)
+and that filling it from known input (fictitious people) gives the **expected document**: every
+value in its box, the right boxes ticked, the blocks that must stay empty left empty, the act
+constitutiv identical to the model where the model has no blanks, and the administrator's
+statement identical, paragraph by paragraph, to the statements filers submit. A new official
+version of a form is added as a new file and a new version of the standard document.
 
 ## Command line
 
@@ -360,24 +459,28 @@ Environment variables (or `.env`, see `.env.example`):
 
 ```
 src/docfill/
-  readers/             PDF (text, form values, OCR of scans), DOCX, images; multi-variant OCR
+  readers/             PDF (text, form values, OCR of scans), DOCX, legacy DOC, images; OCR
   sanitize.py          text cleaning and redaction
   doctypes.py          document type classifier (scikit-learn), incl. types taught as knowledge
   knowledge/           legal knowledge: specs, declarative rules, versioned store, laws + search,
     bundled/           Romanian legal forms, procedures, rules and document types (YAML)
-  extraction/          field catalog, label rules, patterns (CNP, MRZ...), NER, derivations
+  extraction/          field catalog (persons 1-3), label rules, patterns (CNP, MRZ...), the
+                       identification clause, NER, derivations
+  computed.py          values composed when filling (domicile line, share value...)
   ro.py, mrz.py        Romanian knowledge (counties, CNP, addresses, places) and MRZ parsing
   validation.py        cross-checks and live validation
   learning.py          review outcomes, calibration, learned labels, memory
   templates/           standard documents: placeholders, DB model, repository, YAML loader
-  standard_documents/  bundled standard documents (ONRC Anexa 2a: înmatriculare, mențiuni,
-                       radiere; Anexa 4; blank official PDFs + YAML)
+  standard_documents/  the reference documents (official PDFs, the ONRC act model) + YAML:
+                       Anexa 2a (înmatriculare, mențiuni, radiere), Anexa 4, Anexa 1,
+                       beneficial owners, administrator statement, act constitutiv SA
   export/              PDF forms (fill, blank, inspect) and text rendering
   pipeline.py, app.py  read -> clean -> detect -> extract -> fill; wiring with learning
   wizard.py, web/      review logic, the web wizard and the knowledge page
   samples.py           synthetic documents (fictitious Romanian identity card)
   cli.py, api.py       Typer CLI and FastAPI app
-tests/                 pytest suite (fictitious data only)
+tests/                 pytest suite (fictitious data only); test_reference_forms.py checks
+                       every reference document
 ```
 
 ## Development
@@ -392,7 +495,8 @@ ruff check src tests examples && ruff format --check src tests examples
 ## Limitations and next steps
 
 * **Forms not in docfill yet.** docfill fills the ONRC Anexa 2a (înmatriculare, înscriere
-  mențiuni, radiere) and Anexa 4. **Anexa 2b** (PFA / II / IF) and **ANAF form 070** (PFI) are
+  mențiuni, radiere), Anexa 4, Anexa 1 (cerere de înregistrare fiscală), the beneficial owner
+  declaration, the administrators' statements and the act constitutiv of an SA. **Anexa 2b** (PFA / II / IF) and **ANAF form 070** (PFI) are
   listed with their official download link but not bundled yet (see the table in
   [Legal knowledge](#legal-knowledge-romania)); until they are added, those procedures cannot
   produce the request PDF.
@@ -408,4 +512,9 @@ ruff check src tests examples && ruff format --check src tests examples
   the wizard, the corrections are learned.
 * CAEN activity names are typed (or read from a filled Anexa 4); a CAEN Rev. 3 list could fill
   the name from the code.
-* Legacy `.doc` files are not supported (save as `.docx`).
+* Three persons at most (the three blocks of the beneficial owner declaration); founders that
+  are companies, an SA administered in the dualist system (directorat + consiliu de
+  supraveghere) and a capital partly paid at registration are not in the act constitutiv
+  template: write those acts separately.
+* Only the act constitutiv of an SA is filled (the ONRC model given as reference); the act
+  constitutiv of an SRL is a document to attach.

@@ -1,0 +1,257 @@
+# ONRC Formular nr. 3 - Declarație privind beneficiarii reali (Legea nr. 129/2019, art. 56).
+# The PDF is the official form with every value removed.
+#
+# IV. "Subsemnatul(a)" is the legal representative: person 1 (the applicant). The three blocks
+# of beneficial owners are persons 1, 2 and 3; a block is printed only for a person marked as a
+# beneficial owner (their "beneficial owner" field says how control is exercised, which ticks the
+# matching box). The e-mail and the phone number of VI share one PDF field: 71#1 and 71#2 address
+# each box. VIII is completed by the trade register office.
+name: onrc-declaratie-beneficiari-reali
+title: ONRC Formular nr. 3 - Declarație privind beneficiarii reali
+description: >
+  Declarația privind beneficiarii reali ai persoanei juridice: reprezentantul legal (IV), până la
+  trei beneficiari reali cu modalitatea de exercitare a controlului, cine depune declarația (V),
+  persoana pentru comunicări (VI) și acordul privind prelucrarea datelor (VII).
+kind: pdf_form
+doc_type: declaratie_beneficiar_real
+pdf_file: onrc-declaratie-beneficiari-reali.pdf
+
+field_map:
+  "38": orc_office
+  # II. Type of declaration
+  Box1: request_registration
+  Box2: request_mentions
+  # IV. Subsemnatul(a) - the legal representative
+  "3_2": last_name | upper
+  "3": first_name | upper
+  "7": id_type
+  "8": id_series
+  "4": id_number
+  "6": cnp
+  "9": company_name | upper
+  "5": company_registration_number
+  "10": company_cui
+  "11": company_euid
+  # Beneficial owner 1 = person 1
+  "13": last_name | upper
+  "13_2": first_name | upper
+  "14": date_of_birth
+  "15": place_of_birth
+  "16": birth_county
+  "20": cnp
+  "21": id_type
+  "21_2": id_series
+  "21_3": id_number
+  "19": citizenship
+  "17": country
+  "18": city
+  "25": street
+  "26": street_number
+  "27": building
+  "28": entrance
+  "22": floor
+  "23": apartment
+  "29": region
+  "24": control_description
+  # Beneficial owner 2 = person 2
+  "33": p2_last_name | upper
+  "31": p2_first_name | upper
+  "34": p2_date_of_birth
+  "30": p2_place_of_birth
+  "32": p2_birth_county
+  "32_2": p2_cnp
+  "32_3": p2_id_type
+  "41": p2_id_series
+  "43": p2_id_number
+  "35": p2_citizenship
+  "36": p2_country
+  "37": p2_city
+  "58": p2_street
+  "44": p2_street_number
+  "45": p2_building
+  "47": p2_entrance
+  "47_2": p2_floor
+  "47_3": p2_apartment
+  "39": p2_region
+  "40": p2_control_description
+  # Beneficial owner 3 = person 3
+  "46": p3_last_name | upper
+  "50": p3_first_name | upper
+  "42_2": p3_date_of_birth
+  "49": p3_place_of_birth
+  "42": p3_birth_county
+  "62": p3_cnp
+  "48": p3_id_type
+  "48_2": p3_id_series
+  "51": p3_id_number
+  "54": p3_citizenship
+  "56": p3_country
+  "55": p3_city
+  "52": p3_street
+  "53": p3_street_number
+  "59": p3_building
+  "60": p3_entrance
+  "60_2": p3_floor
+  "60_3": p3_apartment
+  "57": p3_region
+  "52_2": p3_control_description
+  # V. Filed by (the proxy, when it is not the legal representative)
+  "63": filer_last_name | upper
+  "63_2": filer_first_name | upper
+  "82": filer_id_type
+  "83": filer_id_series
+  "84": filer_id_number
+  "64": filer_cnp
+  "81": filer_basis
+  "80": filer_basis_number
+  "85": filer_basis_date
+  # VI. Person for communications
+  "70": contact_last_name
+  "75": contact_first_name
+  "71#1": contact_email
+  "71#2": contact_phone
+  # VII. Personal data (name, date) and the date of the declaration
+  "79": "{{ last_name | upper }} {{ first_name | upper }}"
+  "73": today
+  "74": today
+
+box_choices:
+  beneficial_owner:
+    "art. 4 alin. (2) lit. a) pct. 1 (deținere / control direct sau indirect, peste 25%)": Box11
+    "art. 4 alin. (2) lit. a) pct. 2 (funcție de conducere de nivel superior)": Box71
+    "art. 4 alin. (2) lit. d) pct. 1": Box81
+    "art. 4 alin. (2) lit. d) pct. 2": Box91
+    "art. 4 alin. (2) lit. d) pct. 3": Box101
+    "art. 4 alin. (2) lit. d) pct. 4": Box111
+  p2_beneficial_owner:
+    "art. 4 alin. (2) lit. a) pct. 1 (deținere / control direct sau indirect, peste 25%)": Box9_06012023_0
+    "art. 4 alin. (2) lit. a) pct. 2 (funcție de conducere de nivel superior)": Box9_06012023_1
+    "art. 4 alin. (2) lit. d) pct. 1": Box9_06012023_2
+    "art. 4 alin. (2) lit. d) pct. 2": Box9_06012023_3
+    "art. 4 alin. (2) lit. d) pct. 3": Box9_06012023_4
+    "art. 4 alin. (2) lit. d) pct. 4": Box9_06012023_5
+  p3_beneficial_owner:
+    "art. 4 alin. (2) lit. a) pct. 1 (deținere / control direct sau indirect, peste 25%)": Box9_06012023_6
+    "art. 4 alin. (2) lit. a) pct. 2 (funcție de conducere de nivel superior)": Box9_06012023_7
+    "art. 4 alin. (2) lit. d) pct. 1": Box9_06012023_8
+    "art. 4 alin. (2) lit. d) pct. 2": Box9_06012023_9
+    "art. 4 alin. (2) lit. d) pct. 3": Box9_06012023_10
+    "art. 4 alin. (2) lit. d) pct. 4": Box9_06012023_11
+  bo_filed_by:
+    reprezentantul legal: 07Box1111
+    împuternicit: Box121
+
+# The address of an identity card is the domicile ("domiciliu" box of each block).
+ticks:
+  Box5: [beneficial_owner]
+  Box8: [p2_beneficial_owner]
+  Box10: [p3_beneficial_owner]
+
+# A block of the declaration is printed only for a person who is a beneficial owner.
+filled_when:
+  beneficial_owner:
+    ["13", "13_2", "14", "15", "16", "20", "21", "21_2", "21_3", "19", "17", "18", "25", "26",
+     "27", "28", "22", "23", "29", "24"]
+  p2_beneficial_owner:
+    ["33", "31", "34", "30", "32", "32_2", "32_3", "41", "43", "35", "36", "37", "58", "44",
+     "45", "47", "47_2", "47_3", "39", "40"]
+  p3_beneficial_owner:
+    ["46", "50", "42_2", "49", "42", "62", "48", "48_2", "51", "54", "56", "55", "52", "53",
+     "59", "60", "60_2", "60_3", "57", "52_2"]
+
+defaults:
+  id_type: CI
+  country: România
+  birth_country: România
+  citizenship: Română
+
+remember:
+  - contact_last_name
+  - contact_first_name
+  - contact_phone
+  - contact_email
+  - filer_last_name
+  - filer_first_name
+  - filer_id_type
+  - filer_id_series
+  - filer_id_number
+  - filer_cnp
+  - filer_basis
+
+optional_fields:
+  - request_registration
+  - request_mentions
+  - company_registration_number
+  - company_cui
+  - company_euid
+  - date_of_birth
+  - place_of_birth
+  - birth_county
+  - citizenship
+  - country
+  - city
+  - street
+  - street_number
+  - building
+  - entrance
+  - floor
+  - apartment
+  - region
+  - control_description
+  - beneficial_owner
+  - p2_last_name
+  - p2_first_name
+  - p2_date_of_birth
+  - p2_place_of_birth
+  - p2_birth_county
+  - p2_cnp
+  - p2_id_type
+  - p2_id_series
+  - p2_id_number
+  - p2_citizenship
+  - p2_country
+  - p2_city
+  - p2_street
+  - p2_street_number
+  - p2_building
+  - p2_entrance
+  - p2_floor
+  - p2_apartment
+  - p2_region
+  - p2_control_description
+  - p2_beneficial_owner
+  - p3_last_name
+  - p3_first_name
+  - p3_date_of_birth
+  - p3_place_of_birth
+  - p3_birth_county
+  - p3_cnp
+  - p3_id_type
+  - p3_id_series
+  - p3_id_number
+  - p3_citizenship
+  - p3_country
+  - p3_city
+  - p3_street
+  - p3_street_number
+  - p3_building
+  - p3_entrance
+  - p3_floor
+  - p3_apartment
+  - p3_region
+  - p3_control_description
+  - p3_beneficial_owner
+  - bo_filed_by
+  - filer_last_name
+  - filer_first_name
+  - filer_id_type
+  - filer_id_series
+  - filer_id_number
+  - filer_cnp
+  - filer_basis
+  - filer_basis_number
+  - filer_basis_date
+  - contact_last_name
+  - contact_first_name
+  - contact_email
+  - contact_phone

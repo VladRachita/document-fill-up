@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from docfill.extraction.fields import FIELDS
+from docfill.extraction.fields import FIELDS, PERSON_PREFIXES
 from docfill.models import ExtractionResult
 from docfill.ro import check_cnp, parse_date
 from docfill.sanitize import _iban_valid
@@ -27,7 +27,18 @@ def _letters(text: str) -> str:
 
 
 def cross_check(result: ExtractionResult) -> ExtractionResult:
-    fields = result.fields
+    """Check each person's CNP, date of birth, sex, names (against the MRZ) and identity card."""
+    for prefix in PERSON_PREFIXES:
+        _check_person(result, prefix)
+    return result
+
+
+def _check_person(result: ExtractionResult, prefix: str) -> None:
+    fields = {
+        name[len(prefix) :]: found
+        for name, found in result.fields.items()
+        if name.startswith(prefix) and (prefix or not name.startswith(PERSON_PREFIXES[1:]))
+    }
 
     def flag(name: str, message: str, cap: float | None = None) -> None:
         field = fields.get(name)
@@ -68,7 +79,8 @@ def cross_check(result: ExtractionResult) -> ExtractionResult:
     # printed name vs. machine readable zone (MRZ has no diacritics, hyphens become spaces)
     for name in ("last_name", "first_name"):
         field = fields.get(name)
-        mrz = next((c for c in result.candidates.get(name, []) if c.source == "mrz"), None)
+        pool = result.candidates.get(prefix + name, [])
+        mrz = next((c for c in pool if c.source == "mrz"), None)
         if field is None or mrz is None or field.source == "mrz":
             continue
         if _letters(field.value) == _letters(mrz.value):
@@ -83,7 +95,11 @@ def cross_check(result: ExtractionResult) -> ExtractionResult:
         flag("id_issue_date", "Issue date is not before the expiry date")
     if expiry_date and expiry_date < date.today():
         flag("id_expiry_date", "The identity card has expired")
-    return result
+
+    # six digits read as a postal code that are in fact the identity card number
+    postal, number = fields.get("postal_code"), fields.get("id_number")
+    if postal and number and postal.value.strip() == number.value.strip():
+        flag("postal_code", "Same digits as the identity card number", INVALID_CONFIDENCE)
 
 
 def validate_values(values: dict[str, str]) -> dict[str, list[str]]:
@@ -115,21 +131,34 @@ def validate_values(values: dict[str, str]) -> dict[str, list[str]]:
                 if not re.match(r"\d{4}\b", line):
                     add(name, f"CAEN line should start with a 4-digit class: {line[:30]}")
 
-    if cnp := values.get("cnp", "").strip():
-        info = check_cnp(cnp)
-        if not info.valid:
-            add("cnp", f"Invalid CNP: {info.reason}")
-        else:
-            birth = parse_date(values.get("date_of_birth", "") or "")
-            if birth and info.birth_date and birth != info.birth_date:
-                add("date_of_birth", "Differs from the date of birth in the CNP")
-            sex = (values.get("sex") or "").strip().upper()
-            if sex in ("M", "F") and info.sex and sex != info.sex:
-                add("sex", "Differs from the sex encoded in the CNP")
-    issued = parse_date(values.get("id_issue_date", "") or "")
-    expires = parse_date(values.get("id_expiry_date", "") or "")
-    if issued and expires and issued >= expires:
-        add("id_issue_date", "Issue date is not before the expiry date")
-    if expires and expires < date.today():
-        add("id_expiry_date", "The identity card has expired")
+    for prefix in PERSON_PREFIXES:
+
+        def get(name: str, prefix: str = prefix) -> str:
+            return (values.get(prefix + name) or "").strip()
+
+        if cnp := get("cnp"):
+            info = check_cnp(cnp)
+            if not info.valid:
+                add(prefix + "cnp", f"Invalid CNP: {info.reason}")
+            else:
+                birth = parse_date(get("date_of_birth"))
+                if birth and info.birth_date and birth != info.birth_date:
+                    add(prefix + "date_of_birth", "Differs from the date of birth in the CNP")
+                sex = get("sex").upper()
+                if sex in ("M", "F") and info.sex and sex != info.sex:
+                    add(prefix + "sex", "Differs from the sex encoded in the CNP")
+        issued = parse_date(get("id_issue_date"))
+        expires = parse_date(get("id_expiry_date"))
+        if issued and expires and issued >= expires:
+            add(prefix + "id_issue_date", "Issue date is not before the expiry date")
+        if expires and expires < date.today():
+            add(prefix + "id_expiry_date", "The identity card has expired")
+        shares = get("shares")
+        if shares and not re.fullmatch(r"\d[\d.]*", shares):
+            add(prefix + "shares", "A number of shares (e.g. 450)")
+
+    if (turnover := (values.get("estimated_turnover") or "").strip()) and len(
+        re.sub(r"\D", "", turnover.split(",")[0])
+    ) > 8:
+        add("estimated_turnover", "The form has 8 digit boxes: at most 99.999.999 lei")
     return issues

@@ -474,3 +474,37 @@ def split_room(street: str) -> tuple[str, str] | None:
     if not match or not match["street"]:
         return None
     return match["street"].strip(" ,"), " ".join(match["room"].split()).lower()
+
+
+# --------------------------------------------------------------------------- amounts
+
+
+def parse_amount(text: str) -> float | None:
+    """``90.000 lei``, ``90 000``, ``1.500,50 RON``, ``200`` -> a number (Romanian notation:
+    ``.`` groups thousands, ``,`` marks decimals)."""
+    match = re.search(r"\d[\d .,]*", text or "")
+    if not match:
+        return None
+    number = match.group().strip().replace(" ", "").rstrip(".,")
+    if "." in number and "," in number:
+        decimal = "," if number.rfind(",") > number.rfind(".") else "."
+        thousands = "." if decimal == "," else ","
+        number = number.replace(thousands, "").replace(decimal, ".")
+    elif re.fullmatch(r"\d{1,3}([.,]\d{3})+", number):
+        number = re.sub(r"[.,]", "", number)
+    else:
+        number = number.replace(",", ".")
+    try:
+        return float(number)
+    except ValueError:
+        return None
+
+
+def format_amount(value: float) -> str:
+    """``90000`` -> ``90.000``, ``0.1`` -> ``0,1`` (Romanian notation)."""
+    text = f"{value:,.2f}"
+    if text.endswith(".00"):
+        text = text[:-3]
+    elif text.endswith("0"):
+        text = text[:-1]
+    return text.replace(",", " ").replace(".", ",").replace(" ", ".")

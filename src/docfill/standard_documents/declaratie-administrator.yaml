@@ -1,0 +1,34 @@
+# Declarație pe proprie răspundere a administratorului: he or she meets the legal conditions to be
+# an administrator (Legea nr. 31/1990) - filed with the registration of the company.
+#
+# One statement per administrator (per_person: every person with a board role; the applicant
+# when nobody has one), written with that person's data as read from their identity card. The
+# wording and layout follow the statements the filers submit; "născut" and "identificat" agree
+# with the person's sex (from the CNP); "administrator numit" agrees with "administrator".
+name: declaratie-administrator
+title: Declarație pe proprie răspundere - administrator
+description: >
+  Declarația pe proprie răspundere a fiecărui administrator numit că îndeplinește condițiile
+  legale pentru a deține această calitate (Legea nr. 31/1990), pentru înmatricularea societății:
+  identificarea completă a persoanei (CNP, domiciliu, naștere, act de identitate) și firma.
+kind: text
+doc_type: declaratie_administrator
+per_person: [board_role]
+body: |
+  # DECLARAȚIE PE PROPRIE RĂSPUNDERE
+
+  {{ last_name | upper }} {{ first_name | upper }}, CNP {{ cnp }}, cu domiciliul în {{ domicile_line }}, țara {{ country }}, cetățenia {{ citizenship }}, {{ born_word }} în {{ place_of_birth }}, jud. {{ birth_county }}, țara {{ birth_country }}, la data de {{ date_of_birth }}, {{ identified_word }} prin {{ id_type }}, seria {{ id_series }}, nr. {{ id_number }}, emisă de {{ id_issued_by }}, la data de {{ id_issue_date }}, valabilă până la data de {{ id_expiry_date }}, în calitate de administrator numit al societății {{ company_name | upper }} (în curs de constituire).
+
+  Declar pe proprie răspundere, cunoscând prevederile articolului 326 din Codul Penal privind falsul în declarații, că îndeplinesc toate condițiile legale pentru a deține calitatea de administrator, aşa cum sunt acestea prevăzute de Legea societăților nr. 31/1990, republicată, cu modificările şi completările ulterioare, şi nu mă aflu în nicio situație de incapacitate sau incompatibilitate prevăzută de lege.
+
+  Dau prezenta declarație fiindu-mi necesară la Oficiul Național al Registrului Comerțului pentru înmatricularea societății mai sus-menționate.
+
+  Data: {{ today }}
+  Nume şi prenume: {{ last_name | upper }} {{ first_name | upper }}
+  Semnătura:
+
+defaults:
+  id_type: CI
+  country: România
+  birth_country: România
+  citizenship: Română

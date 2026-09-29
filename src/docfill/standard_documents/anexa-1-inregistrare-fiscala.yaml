@@ -1,0 +1,117 @@
+# Anexa nr. 1 la Ordinul nr. 2.509/5.672/C/2022 - Cerere de înregistrare fiscală (anexă la cererea
+# de înregistrare în registrul comerțului): the fiscal vector of the new company. The PDF is the
+# official form (a scan with form fields) with every value removed.
+#
+# Dates are written one digit per box (dd/mm/yyyy), the estimated turnover in the 8 digit boxes
+# aligned to the right. The "Nr. / Data" at the top are the registration number and date given
+# by the office: left empty.
+name: cerere-inregistrare-fiscala
+title: Anexa 1 - Cerere de înregistrare fiscală (vector fiscal)
+description: >
+  Cererea de înregistrare fiscală depusă odată cu cererea de înregistrare în registrul
+  comerțului: persoană juridică / fizică, impozitul pe profit sau pe veniturile
+  microîntreprinderilor, impozitul pe salarii și contribuțiile sociale, TVA (cifra de afaceri
+  estimată, înregistrare, perioadă fiscală, TVA la încasare) și persoana care face declarația.
+kind: pdf_form
+doc_type: cerere_inregistrare_fiscala
+pdf_file: anexa-1-inregistrare-fiscala.pdf
+
+field_map:
+  # 1. Impozit pe profit
+  BBox4: profit_tax
+  # 2. Impozit pe veniturile microîntreprinderilor
+  BBox5_bg25012023: micro_tax
+  # 3. Impozit pe veniturile din salarii și contribuții sociale
+  BBox6: payroll_taxes
+  BBox7: payroll_up_to_3_employees
+  BBox8: payroll_revenue_under_100k
+  BBox10: salary_tax
+  BBox12: cas_employee
+  BBox15: cass_employee
+  BBox14: cam_employer
+  # 4. Taxa pe valoarea adăugată
+  BBox16: vat
+  BBox20_2: vat_cash_accounting
+  # The person making the declaration
+  "3": "{{ last_name | upper }} {{ first_name | upper }}"
+  "4": capacity
+
+# Section boxes ticked as soon as anything of the section is filled in.
+ticks:
+  BBox4: [profit_tax_start, profit_tax_period]
+  BBox5_bg25012023: [micro_tax_start]
+  BBox6:
+    - payroll_up_to_3_employees
+    - payroll_revenue_under_100k
+    - payroll_period
+    - salary_tax
+    - salary_tax_start
+    - cas_employee
+    - cas_employee_start
+    - cass_employee
+    - cass_employee_start
+    - cam_employer
+    - cam_employer_start
+  BBox10: [salary_tax_start]
+  BBox12: [cas_employee_start]
+  BBox15: [cass_employee_start]
+  BBox14: [cam_employer_start]
+  BBox16: [estimated_turnover, vat_registration, vat_period, vat_cash_accounting]
+
+combs:
+  profit_tax_start: {boxes: ["13", "14", "15", "16", "17", "18", "19", "20"], format: date}
+  micro_tax_start: {boxes: ["21", "22", "23", "24", "25", "26", "27", "28"], format: date}
+  salary_tax_start: {boxes: ["29", "30", "31", "32", "33", "34", "35", "36"], format: date}
+  cas_employee_start: {boxes: ["37", "38", "39", "40", "41", "42", "43", "44"], format: date}
+  cass_employee_start: {boxes: ["45", "46", "47", "48", "49", "50", "51", "52"], format: date}
+  cam_employer_start: {boxes: ["53", "54", "55", "56", "57", "58", "59", "60"], format: date}
+  estimated_turnover:
+    boxes: ["61", "62", "63", "64", "65", "66", "67", "68"]
+    format: amount
+    align: right
+  # Date of the declaration
+  today: {boxes: ["5", "6", "7", "8", "9", "10", "11", "12"], format: date}
+
+box_choices:
+  taxpayer_type:
+    persoană juridică: BBox1
+    persoană fizică: BBox3
+  profit_tax_period:
+    trimestrială: BBox2
+    anuală: BBox5
+  payroll_period:
+    lunară: BBo11
+    trimestrială: BBox9
+  vat_registration:
+    "4.2 depășirea plafonului de scutire (art. 316 alin. (1) lit. a) pct. 1)": BBox21
+    "4.3 prin opțiune (art. 316 alin. (1) lit. a) pct. 2)": BBox24
+  vat_period:
+    lunară: BBox23
+    trimestrială: BBox20
+
+defaults:
+  taxpayer_type: persoană juridică
+
+optional_fields:
+  - profit_tax
+  - profit_tax_start
+  - profit_tax_period
+  - micro_tax
+  - micro_tax_start
+  - payroll_taxes
+  - payroll_up_to_3_employees
+  - payroll_revenue_under_100k
+  - payroll_period
+  - salary_tax
+  - salary_tax_start
+  - cas_employee
+  - cas_employee_start
+  - cass_employee
+  - cass_employee_start
+  - cam_employer
+  - cam_employer_start
+  - vat
+  - estimated_turnover
+  - vat_registration
+  - vat_period
+  - vat_cash_accounting

@@ -161,6 +161,16 @@
   .tpl input { margin-top: 4px; }
   .tpl .t-title { font-weight: 600; }
   .tpl .t-desc { color: var(--muted); font-size: 13px; }
+  .tpl .t-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tpl.off-docfill { cursor: default; border-style: dashed; }
+  .tpl.off-docfill .t-title { font-weight: 500; color: var(--muted); }
+  .tpl-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; font-size: 13.5px; color: var(--muted); }
+  .tpl-tools .count { margin-right: auto; }
+  .tpl-group { margin: 12px 0 6px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  details.more-tpl { margin-top: 12px; }
+  details.more-tpl > summary { cursor: pointer; color: var(--accent); font-size: 13.5px; font-weight: 500; margin-bottom: 8px; }
+  .upload-hint { font-size: 13.5px; margin: 0 0 12px; }
+  .upload-hint ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }
   .doctype { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
   .doctype select { width: auto; min-width: 260px; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
@@ -206,6 +216,8 @@
   .proc h3 { margin: 0 0 4px; font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .proc .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
   @media (max-width: 900px) { .proc .cols { grid-template-columns: 1fr; } }
+  .proc-details { margin-top: 10px; }
+  .proc-details > summary { cursor: pointer; color: var(--accent); font-size: 13.5px; font-weight: 500; }
   .proc h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
   ul.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
   ul.check li { display: flex; gap: 8px; align-items: flex-start; }
@@ -242,7 +254,7 @@
   <section class="step" data-step="1">
     <div class="card" id="case-card" style="margin-bottom:16px">
       <h2>1. What are you doing?</h2>
-      <p class="hint">Choose the legal form and the operation. docfill selects the official forms, lists the documents of the file (dosar) and checks the values against the legal rules.</p>
+      <p class="hint">Choose the legal form and the operation: docfill proposes the documents of that procedure, lists the documents of the file (dosar) and checks the values against the legal rules. To fill a document on its own, skip this and pick it below.</p>
       <div class="case-grid">
         <div><p class="pick-label">Legal form</p><div id="entity-picker"></div></div>
         <div><p class="pick-label">Operation</p><div class="picker" id="operation-picker"></div></div>
@@ -251,17 +263,18 @@
     </div>
     <div class="grid-2">
       <div class="card">
-        <h2>2. Reference documents</h2>
-        <p class="hint">The standard documents to fill; choose several to fill them from the same data (e.g. Anexa 2a and Anexa 4). They are used exactly as stored; only their fields are filled in.</p>
+        <h2>2. Which documents do you need?</h2>
+        <p class="hint" id="template-hint">Tick only the documents you need this time: one, a few or all of them. They are filled from the same data; the next steps ask only for what the ticked documents need.</p>
+        <div class="tpl-tools" id="template-tools"></div>
         <div class="tpl-list" id="template-list"></div>
       </div>
       <div class="card">
-        <h2>3. Source documents</h2>
-        <p class="hint">Where the information comes from: identity card, birth certificate, an already filled form… PDF, Word (.docx), PNG or JPEG. Photos and scans are read with OCR.</p>
+        <h2>3. What to upload</h2>
+        <div class="upload-hint" id="upload-hint"></div>
         <label class="drop" id="drop">
-          <input type="file" id="file-input" multiple accept=".pdf,.docx,.png,.jpg,.jpeg">
+          <input type="file" id="file-input" multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
           <strong>Drop files here or click to choose</strong>
-          <span class="muted" style="font-size:13px">.pdf · .docx · .png · .jpg · .jpeg</span>
+          <span class="muted" style="font-size:13px">.pdf · .docx · .doc · .png · .jpg · .jpeg · photos and scans are read with OCR</span>
         </label>
         <ul class="files" id="file-list"></ul>
       </div>
@@ -379,13 +392,18 @@ const SOURCE_LABELS = {
   default: "Default", manual: "Set by you", system: "System",
 };
 const GROUPS = [
-  ["person", "Person"], ["birth", "Birth"], ["domicile", "Domicile"], ["id_card", "Identity card"],
-  ["company", "Company"], ["filing", "Request"], ["changes", "Changes (mențiuni)"],
-  ["closure", "Closure (radiere)"], ["contact", "Contact person"],
+  ["person", "Person 1 (applicant)"], ["birth", "Person 1: birth"], ["domicile", "Person 1: domicile"],
+  ["id_card", "Person 1: identity card"], ["person2", "Person 2"], ["person3", "Person 3"],
+  ["roles", "Shareholders, management, beneficial owners"],
+  ["company", "Company"], ["articles", "Articles of incorporation (act constitutiv)"],
+  ["fiscal", "Tax registration (Anexa 1, vector fiscal)"], ["filing", "Request"],
+  ["changes", "Changes (mențiuni)"], ["closure", "Closure (radiere)"], ["contact", "Contact person"],
   ["billing", "Billing"], ["filer", "Filed by"], ["parents", "Parents"], ["other", "Other"],
 ];
+const PERSONS = [[1, "Person 1 (applicant)"], [2, "Person 2"], [3, "Person 3"]];
 const LIST_HINTS = {
   caen_activities: "6201 Activități de realizare a soft-ului la comandă",
+  control_members: "1. POPESCU ANA, CNP ..., domiciliată în ..., expert contabil",
   caen_third_party: "4321 Lucrări de instalații electrice",
   attached_documents: "Act constitutiv | 1/01.10.2026 | 5",
   associates: "POPESCU ION | 1871114321239 | 50%",
@@ -546,7 +564,7 @@ async function loadTemplates() {
     showBanner("No procedures in the knowledge base yet. Run: docfill knowledge seed", "info");
   }
   const remembered = (storage.get("docfill.templates") || []).filter((n) => templates.some((t) => t.name === n));
-  state.selected = remembered.length ? remembered : templates.slice(0, 1).map((t) => t.name);
+  state.selected = remembered;
   const procedure = state.cases.procedures.find((p) => p.key === storage.get("docfill.procedure"));
   if (procedure) selectProcedure(procedure.key, false);
   renderCases();
@@ -623,15 +641,11 @@ function renderProcedurePanel() {
       ? el("div", { class: "warnbox", style: "margin-top:10px" },
           "docfill cannot fill any form of this procedure yet. Download the official form (link below), add it to docfill (docfill forms inspect + docfill templates add), then reference it in the procedure on the Knowledge page.")
       : null,
-    el("div", { class: "cols" },
+    el("details", { class: "proc-details" },
+      el("summary", {}, `Legal checks (${procedure.rules.length}) and documents of the file (${docs.length})`),
+      el("div", { class: "cols" },
       el("div", {},
-        el("h4", {}, "Forms"),
-        el("ul", { class: "check" }, procedure.forms.map((f) => el("li", {},
-          el("span", { class: `ic ${f.available ? "ok" : f.required ? "no" : "opt"}` }, f.available ? "✓" : "✗"),
-          el("div", {}, f.title + (f.required ? "" : " (if applicable)"),
-            el("small", {}, f.available ? `filled by docfill${f.note ? " · " + f.note : ""}` : (f.note || "not in docfill yet")),
-            !f.available && f.url ? el("small", {}, el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
-        el("h4", { style: "margin-top:12px" }, `Legal checks (${procedure.rules.length})`),
+        el("h4", {}, `Legal checks (${procedure.rules.length})`),
         el("ul", { class: "check" }, procedure.rules.map((r) => el("li", {},
           el("span", { class: `ic ${r.severity === "error" ? "no" : "opt"}` }, "⚖"),
           el("div", {}, r.title, r.status !== "verified" ? el("small", {}, "not verified yet") : null))))),
@@ -642,36 +656,106 @@ function renderProcedurePanel() {
           el("div", {}, d.title + (d.required ? "" : " (if applicable)"), d.note ? el("small", {}, d.note) : null)))),
         el("h4", { style: "margin-top:12px" }, "Legal basis"),
         el("div", { class: "cite" }, procedure.legal_basis.map((ref) => el("div", {}, el("b", {}, ref.citation), ref.article ? `, ${ref.article}` : ""))),
-        (procedure.notes || []).map((note) => el("div", { class: "cite", style: "margin-top:6px" }, `Note: ${note}`))))));
+        (procedure.notes || []).map((note) => el("div", { class: "cite", style: "margin-top:6px" }, `Note: ${note}`)))))));
 }
 
-function renderTemplates() {
-  put($("template-list"), state.templates.map((t) => {
-    const on = state.selected.includes(t.name);
-    const input = el("input", { type: "checkbox", id: `tpl-${t.name}`, checked: on,
-      onchange: (event) => toggleTemplate(t.name, event.target.checked) });
-    return el("label", { class: `tpl ${on ? "on" : ""}`, for: `tpl-${t.name}` }, input,
-      el("div", {}, el("div", { class: "t-title" }, `${t.title} (v${t.version})`),
-        el("div", { class: "t-desc" }, t.description || ""),
-        el("div", { class: "t-desc" }, `${t.fields.length} fields, ${t.required_fields.length} required`)));
-  }));
-  updateScanButton();
+function fieldCount(t) {
+  // a document made for each administrator asks the same fields of every person: count one
+  const fields = (t.per_person || []).length ? t.fields.filter((f) => !/^p[23]_/.test(f)) : t.fields;
+  return `${fields.length} fields${(t.per_person || []).length ? " per person" : ""}`;
 }
 
-function toggleTemplate(name, on) {
-  state.selected = on ? [...state.selected, name] : state.selected.filter((n) => n !== name);
-  state.selected = state.templates.map((t) => t.name).filter((n) => state.selected.includes(n));
+// A standard document to tick: the procedure's own title and note when it is one of its forms.
+function templateCard(t, form) {
+  const on = state.selected.includes(t.name);
+  const input = el("input", { type: "checkbox", id: `tpl-${t.name}`, checked: on,
+    onchange: (event) => toggleTemplate(t.name, event.target.checked) });
+  const badges = [
+    form ? el("span", { class: `pill ${form.required ? "accent" : ""}` }, form.required ? "required in the file" : "if applicable") : null,
+    (t.per_person || []).length ? el("span", { class: "pill accent", title: "One PDF for each person with this role" }, "one per administrator") : null,
+    el("span", { class: "pill", title: `${t.required_fields.length} required` }, fieldCount(t)),
+  ];
+  return el("label", { class: `tpl ${on ? "on" : ""}`, for: `tpl-${t.name}` }, input,
+    el("div", {}, el("div", { class: "t-title" }, form ? form.title : t.title),
+      el("div", { class: "t-desc" }, form && form.note ? form.note : t.description || ""),
+      el("div", { class: "t-badges" }, badges)));
+}
+
+function setSelection(names) {
+  state.selected = state.templates.map((t) => t.name).filter((n) => names.includes(n));
   storage.set("docfill.templates", state.selected);
   state.rows = []; state.previews = []; state.maxStep = 1;
   renderTemplates();
   renderSteps();
 }
 
+function renderTemplates() {
+  const procedure = currentProcedure();
+  const byName = Object.fromEntries(state.templates.map((t) => [t.name, t]));
+  const forms = procedure ? procedure.forms.filter((f) => f.template && byName[f.template]) : [];
+  const inProcedure = new Set(forms.map((f) => f.template));
+  const others = state.templates.filter((t) => !inProcedure.has(t.name));
+  const offered = procedure ? forms.map((f) => f.template) : others.map((t) => t.name);
+  const chosen = state.selected.length;
+
+  $("template-hint").textContent = procedure
+    ? `The documents of “${procedure.title}”. Tick only those you need this time: one, a few or all of them. They are filled from the same data; the next steps ask only for what the ticked documents need.`
+    : "No procedure chosen: tick the documents to fill (one or several). Choose what you are doing above to see the documents of a procedure and its legal checks.";
+  put($("template-tools"),
+    el("span", { class: "count" }, chosen ? `${chosen} document${chosen === 1 ? "" : "s"} to fill` : "Nothing ticked yet"),
+    procedure ? el("button", { type: "button", class: "btn small", onclick: () => setSelection([...state.selected, ...offered]) }, "All") : null,
+    procedure ? el("button", { type: "button", class: "btn small", title: "The forms the file requires",
+      onclick: () => setSelection(procedure.templates) }, "Required only") : null,
+    el("button", { type: "button", class: "btn small", onclick: () => setSelection([]) }, "None"));
+
+  const missing = procedure ? procedure.forms.filter((f) => !f.template || !byName[f.template]) : [];
+  const moreOn = others.some((t) => state.selected.includes(t.name));
+  put($("template-list"),
+    procedure ? forms.map((f) => templateCard(byName[f.template], f)) : others.map((t) => templateCard(t)),
+    missing.length ? el("div", { class: "tpl-group" }, "To prepare separately (not in docfill yet)") : null,
+    missing.map((f) => el("div", { class: "tpl off-docfill" }, el("span", { class: "ic" }, "○"),
+      el("div", {}, el("div", { class: "t-title" }, f.title),
+        el("div", { class: "t-desc" }, f.note || "", f.url ? el("span", {}, " ", el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
+    procedure && others.length ? el("details", { class: "more-tpl", open: moreOn },
+      el("summary", {}, `Other documents docfill can fill (${others.length})`),
+      el("div", { class: "tpl-list" }, others.map((t) => templateCard(t)))) : null);
+  renderUploadHint();
+  updateScanButton();
+}
+
+// What to upload for the ticked documents.
+function renderUploadHint() {
+  const chosen = state.templates.filter((t) => state.selected.includes(t.name));
+  if (!chosen.length) {
+    put($("upload-hint"), el("p", { class: "muted", style: "margin:0" },
+      "Tick the documents you need first: what to upload follows your choice."));
+    return;
+  }
+  const others = chosen.some((t) => t.fields.some((f) => /^p[23]_/.test(f)));
+  const administrators = chosen.some((t) => (t.per_person || []).length);
+  const roles = [administrators ? "administrator" : null,
+    chosen.some((t) => t.fields.includes("p2_beneficial_owner")) ? "beneficial owner" : null,
+    chosen.some((t) => t.fields.includes("p2_shares")) ? "founder" : null].filter(Boolean);
+  put($("upload-hint"),
+    el("p", { class: "hint", style: "margin-bottom:4px" }, `For the ${chosen.length === 1 ? "document" : `${chosen.length} documents`} you ticked, upload:`),
+    el("ul", {},
+      el("li", {}, el("strong", {}, "The identity card (CI) of the applicant"), ": the person signing the documents (person 1). A photo, a scan or a PDF."),
+      others ? el("li", {}, el("strong", {}, "The identity card of every other person involved"),
+        roles.length ? ` (each ${roles.join(", ")})` : "",
+        ": one file per person, up to 3 people; they become persons 2 and 3 in the order you add them (you can change it in the next step).") : null,
+      el("li", {}, "Optional: an already filled form, a client sheet or any document identifying a person (PDF, Word): its data is read too."),
+      currentProcedure() ? el("li", {}, "Optional: the documents of the file (proof of the registered office…): they are ticked off on the final checklist.") : null));
+}
+
+function toggleTemplate(name, on) {
+  setSelection(on ? [...state.selected, name] : state.selected.filter((n) => n !== name));
+}
+
 function updateScanButton() {
-  const needsProcedure = hasProcedures() && !state.procedure;
-  $("scan-btn").disabled = needsProcedure || !state.selected.length || !state.files.length;
-  $("manual-btn").disabled = needsProcedure || !state.selected.length;
-  $("scan-btn").title = needsProcedure ? "Choose what you are doing first" : "";
+  const nothing = !state.selected.length;
+  $("scan-btn").disabled = nothing || !state.files.length;
+  $("manual-btn").disabled = nothing;
+  $("scan-btn").title = nothing ? "Tick at least one document to fill" : !state.files.length ? "Add the files to read" : "";
 }
 
 function addFiles(fileList) {
@@ -748,7 +832,7 @@ function applyReview(result) {
 }
 
 function documentsPayload() {
-  return state.documents.map((d) => ({ source: d.source, text: d.text, doc_type: d.doc_type, detected_type: d.detected_type }));
+  return state.documents.map((d) => ({ source: d.source, text: d.text, doc_type: d.doc_type, detected_type: d.detected_type, person: d.person || 1 }));
 }
 
 let reextractSeq = 0;
@@ -783,9 +867,15 @@ function renderDocuments() {
     onchange: (event) => { doc.doc_type = event.target.value; renderDocuments(); scheduleReextract(); } },
     state.docTypes.map((t) => el("option", { value: t.name, selected: t.name === doc.doc_type }, t.label)));
   const corrected = doc.doc_type !== doc.detected_type;
+  const person = el("select", { id: "doc-person-select", "aria-label": "Whose document",
+    title: "Each identity card (or personal statement) fills one person; documents with the same CNP go to the same person",
+    onchange: (event) => { doc.person = Number(event.target.value); scheduleReextract(); } },
+    PERSONS.map(([value, label]) => el("option", { value, selected: value === (doc.person || 1) }, label)));
   put($("doc-type"),
     el("label", { for: "doc-type-select", class: "muted", style: "font-size:13px" }, "Document type"),
     select,
+    el("label", { for: "doc-person-select", class: "muted", style: "font-size:13px" }, "Person"),
+    person,
     doc.type_method === "form fields"
       ? el("span", { class: "pill ok", title: "The form's fields match a registered standard document" }, "recognised from its form fields")
       : el("span", { class: `pill ${confidenceClass(doc.type_confidence || 0)}`, title: "Detected by the document classifier (ML)" },
@@ -809,7 +899,7 @@ function renderDocuments() {
 }
 
 function renderFoundChips() {
-  const found = state.rows.filter((row) => valueOf(row.name) || row.required);
+  const found = state.rows.filter((row) => valueOf(row.name) || isRequired(row));
   put($("found-chips"), found.slice(0, 60).map((row) => {
     const value = valueOf(row.name);
     return el("span", { class: value ? "pill ok" : "pill bad", title: row.label },
@@ -823,7 +913,7 @@ function fieldIssues(row) {
   const issues = [...(state.issues[row.name] || [])];
   const empty = !valueOf(row.name);
   for (const result of legalFailed()) {
-    if (result.field !== row.name || (empty && row.required)) continue;  // "Required" says it already
+    if (result.field !== row.name || (empty && isRequired(row))) continue;  // "Required" says it already
     issues.push(`⚖ ${result.message}`);
   }
   const found = row.found;
@@ -833,9 +923,15 @@ function fieldIssues(row) {
   return issues;
 }
 
+// Required by a document, or missing in one of the live previews (e.g. the identity of an
+// administrator, whose sworn statement is made only once they have a board role).
+function isRequired(row) {
+  return row.required || state.previews.some((p) => (p.missing || []).includes(row.name));
+}
+
 function needsAttention(row) {
   const value = valueOf(row.name);
-  if (row.required && !value) return true;
+  if (isRequired(row) && !value) return true;
   if (fieldIssues(row).length) return true;
   if (state.manual[row.name]) return false;
   if (state.derivedFrom[row.name]) return true;
@@ -891,7 +987,7 @@ function renderFields() {
       const rows = visible.filter((row) => (row.group || "other") === key);
       if (!rows.length) return null;
       const all = state.rows.filter((row) => (row.group || "other") === key);
-      const missing = all.filter((row) => row.required && !valueOf(row.name)).length;
+      const missing = all.filter((row) => isRequired(row) && !valueOf(row.name)).length;
       const problems = all.filter((row) => fieldIssues(row).length).length;
       return el("details", { class: "group", open: true, "data-group": key },
         el("summary", {}, title,
@@ -914,8 +1010,10 @@ function inputFor(row) {
       el("span", { class: "muted", style: "margin-left:8px;font-size:13px" }, "ticked"));
   }
   if (row.choices && row.choices.length) {
+    // a value that is not one of the choices (typed, read from a document) stays selectable
+    const choices = value && !row.choices.includes(value) ? [...row.choices, value] : row.choices;
     return el("select", { id }, el("option", { value: "" }, "—"),
-      row.choices.map((choice) => el("option", { value: choice, selected: choice === value }, choice)));
+      choices.map((choice) => el("option", { value: choice, selected: choice === value }, choice)));
   }
   if (row.kind === "list") {
     const area = el("textarea", { id, class: "list", placeholder: LIST_HINTS[row.name] || "one per line", spellcheck: "false" });
@@ -923,7 +1021,7 @@ function inputFor(row) {
     return area;
   }
   const input = el("input", { type: "text", id, autocomplete: "off",
-    placeholder: row.kind === "date" ? "dd.mm.yyyy" : row.required ? "Required, not found in the documents" : "Optional" });
+    placeholder: row.kind === "date" ? "dd.mm.yyyy" : isRequired(row) ? "Required, not found in the documents" : "Optional" });
   input.value = value;
   return input;
 }
@@ -935,15 +1033,17 @@ function renderField(row) {
   const meta = el("div", { class: "meta" });
   const issues = el("div", { class: "issues" });
   const evidence = el("blockquote", { hidden: true });
+  const requiredTag = el("span", { class: "req-tag" });
 
   function paint() {
     const current = valueOf(row.name);
+    requiredTag.textContent = isRequired(row) ? "Required" : "Optional";
     const manual = !!state.manual[row.name];
     const derived = state.derivedFrom[row.name];
     const problems = fieldIssues(row);
-    card.classList.toggle("missing", row.required && !current);
-    card.classList.toggle("attention", !manual && needsAttention(row) && !(row.required && !current));
-    put(issues, row.required && !current ? el("div", {}, "Required: not found in the documents. Type it in or pick a candidate.") : null,
+    card.classList.toggle("missing", isRequired(row) && !current);
+    card.classList.toggle("attention", !manual && needsAttention(row) && !(isRequired(row) && !current));
+    put(issues, isRequired(row) && !current ? el("div", {}, "Required: not found in the documents. Type it in or pick a candidate.") : null,
       problems.map((p) => el("div", {}, p)));
     const items = [];
     if (manual) {
@@ -988,7 +1088,7 @@ function renderField(row) {
       el("label", { for: `f-${row.name}` }, row.label),
       el("code", {}, row.name),
       row.remember ? el("span", { class: "pill", title: "Your own details: remembered for next time" }, "remembered") : null,
-      el("span", { class: "req-tag" }, row.required ? "Required" : "Optional")),
+      requiredTag),
     wrapper, issues, meta, evidence, altWrap);
   card.repaint = paint;
   paint();
@@ -1027,7 +1127,7 @@ function renderOther() {
 }
 
 function missingRequired() {
-  return state.rows.filter((row) => row.required && !valueOf(row.name));
+  return state.rows.filter((row) => isRequired(row) && !valueOf(row.name));
 }
 
 function renderProgress() {
@@ -1064,16 +1164,26 @@ async function refreshPreview() {
   if (!state.selected.length) return;
   const seq = ++previewSeq;
   try {
-    const body = await (await postJSON("/wizard/preview", { templates: state.selected, procedure: state.procedure, values: state.values })).json();
+    const body = await (await postJSON("/wizard/preview", { templates: state.selected, procedure: state.procedure,
+      values: state.values, derived: Object.keys(state.derivedFrom) })).json();
     if (seq !== previewSeq) return;
     state.previews = body.previews;
     state.issues = body.issues || {};
     state.legal = body.legal || [];
     let derivedChanged = false;
-    for (const [name, suggestion] of Object.entries(body.derived || {})) {
-      if (!rowByName(name) || state.manual[name] || valueOf(name)) continue;
+    const suggested = body.derived || {};
+    for (const [name, suggestion] of Object.entries(suggested)) {
+      // fill an empty field, or follow the source of a value derived earlier (a corrected CNP)
+      if (!rowByName(name) || state.manual[name] || (valueOf(name) && !state.derivedFrom[name])) continue;
+      if (state.values[name] === suggestion.value && state.derivedFrom[name] === suggestion.reason) continue;
       state.values[name] = suggestion.value;
       state.derivedFrom[name] = suggestion.reason;
+      derivedChanged = true;
+    }
+    for (const name of Object.keys(state.derivedFrom)) {  // its source was removed
+      if (suggested[name] || state.manual[name]) continue;
+      state.values[name] = "";
+      delete state.derivedFrom[name];
       derivedChanged = true;
     }
     if (!state.filenameTouched) state.filename = body.suggested_filename;
@@ -1186,13 +1296,14 @@ function renderDossier(container, result) {
   const procedure = currentProcedure();
   if (!procedure) { put(container); return; }
   const provided = providedTypes();
-  const forms = result ? result.forms : procedure.forms.map((f) => ({ ...f, created: !!f.template && state.selected.includes(f.template) }));
+  const forms = result ? result.forms : procedure.forms.map((f) => ({ ...f, created: !!f.template && state.selected.includes(f.template) }));  // f.available comes from the procedure
   const docs = result ? result.documents : procedure.documents.map((d) => ({ ...d, provided: !!d.doc_type && provided.has(d.doc_type) }));
   put(container, el("div", { style: "margin-top:12px" },
     el("div", { class: "panel-title" }, `File (dosar): ${procedure.title}`),
     el("ul", { class: "check" },
       forms.filter((f) => f.created || f.required).map((f) => el("li", {}, el("span", { class: `ic ${f.created ? "ok" : "no"}` }, f.created ? "✓" : "✗"),
-        el("div", {}, f.title, el("small", {}, f.created ? "created by docfill" : "to prepare separately (not in docfill yet)",
+        el("div", {}, f.title, el("small", {}, f.created ? "created by docfill"
+          : f.available ? "not ticked this time: prepare it separately or tick it in step 1" : "to prepare separately (not in docfill yet)",
           !f.created && f.url ? el("span", {}, " · ", el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
       docs.map((d) => el("li", {}, el("span", { class: `ic ${d.provided ? "ok" : d.required ? "no" : "opt"}` }, d.provided ? "✓" : d.required ? "□" : "○"),
         el("div", {}, d.title + (d.required ? "" : " (if applicable)"),

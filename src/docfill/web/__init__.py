@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from docfill.app import App
 from docfill.errors import MissingFieldsError
+from docfill.extraction.fields import MAX_PERSONS, person_prefix
 from docfill.knowledge import ProcedureSpec, RuleResult
 from docfill.learning import Review, ReviewedDocument, reviewed_fields_from_rows
 from docfill.models import ExtractionResult
@@ -61,6 +62,8 @@ class DocumentText(BaseModel):
     text: str = Field(max_length=MAX_DOCUMENT_CHARS)
     doc_type: str | None = None
     detected_type: str | None = None
+    # Whose document it is: 1 = the applicant, 2 or 3 = another person (shareholder...).
+    person: int = Field(default=1, ge=1, le=MAX_PERSONS)
 
 
 class ReextractIn(_Templates):
@@ -68,17 +71,17 @@ class ReextractIn(_Templates):
 
 
 class PreviewIn(_Templates):
-    values: dict[str, str] = Field(default_factory=dict, max_length=300)
+    values: dict[str, str] = Field(default_factory=dict, max_length=500)
+    # Fields the page filled by derivation (e.g. from the CNP), not typed by the user.
+    derived: list[str] = Field(default_factory=list, max_length=500)
 
 
 class ExportIn(PreviewIn):
     filename: str | None = Field(default=None, max_length=200)
     allow_missing: bool = False
     # What the wizard showed (rows) and the documents it was based on: used for learning.
-    rows: list[dict[str, Any]] = Field(default_factory=list, max_length=300)
+    rows: list[dict[str, Any]] = Field(default_factory=list, max_length=500)
     documents: list[DocumentText] = Field(default_factory=list, max_length=20)
-    # Fields the page filled by derivation (e.g. from the CNP), not typed by the user.
-    derived: list[str] = Field(default_factory=list, max_length=300)
     # The user saw the failed legal checks of the procedure and goes on anyway.
     legal_acknowledged: bool = False
 
@@ -114,17 +117,29 @@ def _document_json(analysis: DocumentAnalysis) -> dict[str, Any]:
         "type_confidence": prediction.confidence if prediction else None,
         "type_method": prediction.method if prediction else None,
         "type_scores": prediction.scores if prediction else {},
+        "person": analysis.person or 1,
     }
 
 
-def dossier(procedure: ProcedureSpec, doc_types: set[str], created: set[str]) -> dict[str, Any]:
-    """The file to submit: the forms (created by docfill or still to obtain) and the supporting
-    documents, ticked off when an uploaded file was recognised as that type."""
+def dossier(
+    procedure: ProcedureSpec,
+    doc_types: set[str],
+    created: set[str],
+    available: set[str] | None = None,
+) -> dict[str, Any]:
+    """The file to submit: the forms (created by docfill, available but not chosen this time,
+    or still to obtain) and the supporting documents, ticked off when an uploaded file was
+    recognised as that type."""
+    available = created if available is None else available
     return {
         "procedure": procedure.key,
         "title": procedure.title,
         "forms": [
-            {**form.model_dump(), "created": bool(form.template and form.template in created)}
+            {
+                **form.model_dump(),
+                "created": bool(form.template and form.template in created),
+                "available": bool(form.template and form.template in available),
+            }
             for form in procedure.forms
         ],
         "documents": [
@@ -132,6 +147,24 @@ def dossier(procedure: ProcedureSpec, doc_types: set[str], created: set[str]) ->
             for doc in procedure.documents
         ],
     }
+
+
+def person_name(values: dict[str, str], person: int) -> str:
+    prefix = person_prefix(person)
+    return " ".join(
+        filter(None, (values.get(prefix + "last_name"), values.get(prefix + "first_name")))
+    ).upper()
+
+
+def relevant(
+    results: list[RuleResult], templates: list[StandardDocument], procedure: ProcedureSpec
+) -> list[RuleResult]:
+    """The legal checks about the documents being filled: a check whose field none of the
+    chosen documents (nor the procedure) asks for is left out, e.g. the beneficial owners when
+    the beneficial owner declaration is not filled this time."""
+    asked = {name for template in templates for name in template.input_fields()}
+    asked |= set(procedure.fields) | set(procedure.required_fields)
+    return [result for result in results if not result.field or result.field in asked]
 
 
 def failed_errors(results: list[RuleResult]) -> list[RuleResult]:
@@ -206,7 +239,7 @@ def register_wizard(
         spec = procedure_of(procedure)
         uploads = [read_upload(upload, settings.max_file_size) for upload in files]
         analyses = [docfill.analyze_bytes(data, name) for name, data in uploads]
-        extraction = docfill.combine(analyses)
+        extraction = docfill.combine(analyses)  # assigns each identity card to a person
         return {
             "documents": [_document_json(a) for a in analyses],
             **review(chosen, extraction, spec),
@@ -220,7 +253,7 @@ def register_wizard(
         if not payload.documents:
             return review(chosen, None, spec)
         extraction = docfill.extract_texts(
-            (doc.source, doc.text, doc.doc_type) for doc in payload.documents
+            (doc.source, doc.text, doc.doc_type, doc.person) for doc in payload.documents
         )
         return review(chosen, extraction, spec)
 
@@ -231,12 +264,12 @@ def register_wizard(
         chosen = load(repo, payload.templates)
         spec = procedure_of(payload.procedure)
         values, _ = docfill.collect_values(None, payload.values)
-        legal = knowledge.evaluate(spec.key, values) if spec else []
+        legal = relevant(knowledge.evaluate(spec.key, values), chosen, spec) if spec else []
         return {
             "previews": [build_preview(template, values) for template in chosen],
             "suggested_filename": suggest_filename(chosen, values).removesuffix(".pdf"),
             "legal": [result.as_dict() for result in legal],
-            **assist(values),
+            **assist(values, payload.derived),
         }
 
     @app.post("/wizard/export", tags=["wizard"])
@@ -247,7 +280,7 @@ def register_wizard(
         chosen = load(repo, payload.templates)
         spec = procedure_of(payload.procedure)
         values, _ = docfill.collect_values(None, payload.values)
-        legal = knowledge.evaluate(spec.key, values) if spec else []
+        legal = relevant(knowledge.evaluate(spec.key, values), chosen, spec) if spec else []
         if spec and not payload.allow_missing:
             missing = [name for name in spec.required_fields if name not in values]
             if missing:
@@ -257,17 +290,25 @@ def register_wizard(
             raise HTTPException(422, f"Legal checks failed: {problems}")
         results = []
         for template in chosen:  # fail before saving anything if a document is incomplete
-            results.append(docfill.fill(template, None, payload.values, payload.allow_missing))
+            for person, result in docfill.fill_each(
+                template, None, payload.values, payload.allow_missing
+            ):
+                results.append((template, person, result))
         base = safe_filename(payload.filename or suggest_filename(chosen, values))
         base = base.removesuffix(".pdf")
         files = []
-        for template, result in zip(chosen, results, strict=True):
-            name = base if len(chosen) == 1 else f"{base}_{template.name}"
+        for template, person, result in results:
+            name = base if len(results) == 1 else f"{base}_{template.name}"
+            title = template.title
+            if person is not None:  # one copy per person: named after the person
+                who = person_name(values, person)
+                name, title = f"{name}_{who or person}", f"{title} - {who or f'persoana {person}'}"
             path = save_output(settings.output_dir, name, result.pdf)
             files.append(
                 {
                     "template": template.name,
-                    "title": template.title,
+                    "title": title,
+                    "person": person,
                     "filename": path.name,
                     "saved_to": str(path),
                     "url": f"/wizard/files/{path.name}",
@@ -291,7 +332,8 @@ def register_wizard(
         if spec:
             provided = {d.doc_type for d in payload.documents if d.doc_type}
             response["legal"] = [result.as_dict() for result in legal]
-            response["dossier"] = dossier(spec, provided, {t.name for t in chosen})
+            available = {t.name for t in repo.list()}
+            response["dossier"] = dossier(spec, provided, {t.name for t in chosen}, available)
             response["knowledge"] = knowledge.record_case(spec.key, legal, provided)
         return response
 

@@ -2,21 +2,32 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+import re
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
+from typing import Any
 
+from docfill.computed import with_computed
 from docfill.config import Settings, get_settings
 from docfill.doctypes import DocTypeClassifier, Prediction, match_form
 from docfill.errors import MissingFieldsError
 from docfill.export import fill_pdf_form, render_text_pdf
 from docfill.extraction import FieldExtractor, merge_extractions
 from docfill.extraction.derive import complete_values
-from docfill.extraction.fields import FIELDS
+from docfill.extraction.fields import (
+    FIELDS,
+    MAX_PERSONS,
+    PERSON_FIELDS,
+    person_prefix,
+    person_view,
+    persons_with,
+)
 from docfill.extraction.rules import validate
 from docfill.models import ExtractedField, ExtractionResult, RawDocument, SanitizedDocument
 from docfill.readers import read_bytes
+from docfill.ro import parse_amount, parse_date
 from docfill.sanitize import Sanitizer
 from docfill.templates.models import StandardDocument, list_cells
 from docfill.templates.placeholders import (
@@ -30,9 +41,32 @@ from docfill.templates.placeholders import (
 )
 
 
+def comb_characters(value: str | None, spec: Mapping[str, Any]) -> list[str] | None:
+    """The character of each box of a comb (``None`` when the value does not fit)."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    kind = spec.get("format", "text")
+    if kind == "date":
+        parsed = parse_date(value)
+        text = parsed.strftime("%d%m%Y") if parsed else ""
+    elif kind == "amount":
+        amount = parse_amount(value)
+        text = str(round(amount)) if amount is not None else ""
+    elif kind == "digits":
+        text = re.sub(r"\D", "", value)
+    else:
+        text = value
+    boxes = len(spec["boxes"])
+    if not text or len(text) > boxes:
+        return None
+    text = text.rjust(boxes) if spec.get("align") == "right" else text.ljust(boxes)
+    return list(text)
+
+
 def form_values(template: StandardDocument, values: Mapping[str, str]) -> dict[str, str]:
     """PDF field name -> text for a pdf_form standard document (mapped fields, composed
-    fields, option buttons and list rows)."""
+    fields, option buttons, list rows, one-character boxes, blocks filled on a condition)."""
     filled: dict[str, str] = {}
     for pdf_field, expression in template.field_map.items():
         if "{{" in expression:  # "{{ last_name | upper }} {{ first_name | upper }}"
@@ -53,6 +87,18 @@ def form_values(template: StandardDocument, values: Mapping[str, str]) -> dict[s
             for cell, part in zip(row_cells, split_row(row, len(row_cells)), strict=True):
                 if part:
                     filled[cell] = part
+    for name, spec in template.combs.items():
+        chars = comb_characters(values.get(name), spec)
+        for box, char in zip(spec["boxes"], chars or [], strict=bool(chars)):
+            if char.strip():
+                filled[box] = char
+    for name, options in template.box_choices.items():
+        if (value := (values.get(name) or "").strip()) and (box := choose(options, value)):
+            filled[box] = "x"
+    for name, pdf_fields in template.filled_when.items():
+        if not (values.get(name) or "").strip():
+            for pdf_field in pdf_fields:
+                filled.pop(pdf_field, None)
     return filled
 
 
@@ -86,6 +132,16 @@ def read_template_values(
                 rows.append(separator.join(parts).strip(" |"))
         if rows:
             found[name] = ("\n".join(rows), cells[0][0])
+    for name, spec in template.combs.items():
+        chars = "".join((pdf_values.get(box) or "").strip()[:1] for box in spec["boxes"])
+        if spec.get("format") == "date" and re.fullmatch(r"\d{8}", chars):
+            chars = f"{chars[:2]}.{chars[2:4]}.{chars[4:]}"
+        if chars and name not in found:
+            found[name] = (chars, spec["boxes"][0])
+    for name, options in template.box_choices.items():
+        chosen = next((label for label, box in options.items() if pdf_values.get(box)), None)
+        if chosen and name not in found:
+            found[name] = (chosen, options[chosen])
     return found
 
 
@@ -121,6 +177,45 @@ class DocumentAnalysis:
     sanitized: SanitizedDocument
     extraction: ExtractionResult
     doc_type: Prediction | None = None
+    # Whose document it is: 1 = the applicant, 2 and 3 = other persons (their fields are
+    # prefixed p2_ / p3_). ``None`` until assigned (see :meth:`DocFill.assign_persons`).
+    person: int | None = None
+
+
+# Documents that describe one person: each one is assigned its own person (documents with the
+# same CNP go to the same person).
+PERSON_DOC_TYPES = {"id_card", "declaratie_administrator"}
+
+
+# What a document says about the applicant only (the capacity in which they sign the forms):
+# not taken from the documents of other persons.
+APPLICANT_ONLY = {"capacity", "represented_by", "representation_basis", "marital_regime"}
+
+
+def for_person(result: ExtractionResult, person: int) -> ExtractionResult:
+    """The same extraction with the fields of a person renamed for ``person`` (``cnp`` ->
+    ``p2_cnp``); person 1 (the applicant) keeps the plain names."""
+    prefix = person_prefix(person)
+    if not prefix:
+        return result
+
+    def rename(field: ExtractedField) -> ExtractedField:
+        if field.name not in PERSON_FIELDS:
+            return field
+        return field.model_copy(update={"name": prefix + field.name})
+
+    renamed = ExtractionResult()
+    renamed.fields = {
+        field.name: field
+        for field in map(rename, result.fields.values())
+        if field.name not in APPLICANT_ONLY
+    }
+    renamed.candidates = {
+        (prefix + name if name in PERSON_FIELDS else name): [rename(c) for c in pool]
+        for name, pool in result.candidates.items()
+        if name not in APPLICANT_ONLY
+    }
+    return renamed
 
 
 FORM_CONFIDENCE = 0.97
@@ -200,22 +295,71 @@ class DocFill:
         return self.analyze_bytes(path.read_bytes(), path.name)
 
     @staticmethod
-    def combine(analyses: Iterable[DocumentAnalysis]) -> ExtractionResult:
-        """Merge several source documents; the most confident value per field wins."""
-        return merge_extractions(analysis.extraction for analysis in analyses)
+    def assign_persons(analyses: Sequence[DocumentAnalysis]) -> None:
+        """Give every document a person. A document with the CNP of a person already assigned
+        goes to that person (a person's identity card and sworn statement); otherwise each
+        identity card or personal statement is a new person (the first is person 1, the
+        applicant; then persons 2, 3); everything else is person 1. Persons already assigned
+        (e.g. chosen in the wizard) are kept."""
+
+        def cnp_of(analysis: DocumentAnalysis) -> str | None:
+            found = analysis.extraction.fields.get("cnp")
+            return found.value if found and not found.issues else None
+
+        by_cnp = {
+            cnp: analysis.person
+            for analysis in analyses
+            if analysis.person and (cnp := cnp_of(analysis))
+        }
+        taken = {analysis.person for analysis in analyses if analysis.person}
+        for analysis in analyses:
+            if analysis.person:
+                continue
+            doc_type = analysis.doc_type.doc_type if analysis.doc_type else None
+            cnp = cnp_of(analysis)
+            if cnp in by_cnp:
+                analysis.person = by_cnp[cnp]
+                continue
+            analysis.person = 1
+            if doc_type not in PERSON_DOC_TYPES:
+                continue
+            free = next((p for p in range(1, MAX_PERSONS + 1) if p not in taken), None)
+            if free is None:
+                analysis.raw.warnings.append(
+                    f"docfill fills at most {MAX_PERSONS} persons: this identity card was "
+                    "counted as person 1; choose its person in the wizard."
+                )
+                continue
+            analysis.person = free
+            taken.add(free)
+            if cnp:
+                by_cnp[cnp] = free
+
+    @classmethod
+    def combine(cls, analyses: Sequence[DocumentAnalysis]) -> ExtractionResult:
+        """Merge several source documents, each for its person; the most confident value per
+        field wins."""
+        cls.assign_persons(analyses)
+        return merge_extractions(
+            for_person(analysis.extraction, analysis.person or 1) for analysis in analyses
+        )
 
     def extract_texts(
-        self, documents: Iterable[tuple[str, str] | tuple[str, str, str | None]]
+        self,
+        documents: Iterable[
+            tuple[str, str] | tuple[str, str, str | None] | tuple[str, str, str | None, int]
+        ],
     ) -> ExtractionResult:
-        """Re-run extraction on (source, text[, doc_type]) tuples, e.g. after a user corrected
-        the OCR text or the detected document type."""
+        """Re-run extraction on (source, text[, doc_type[, person]]) tuples, e.g. after a user
+        corrected the OCR text, the detected document type or whose document it is."""
         results = []
         for source, text, *rest in documents:
             doc_type = rest[0] if rest and rest[0] else None
+            person = rest[1] if len(rest) > 1 and rest[1] else 1
             document = SanitizedDocument(source=source, text=text)
             if doc_type is None:
                 doc_type = self.classifier.predict(text).doc_type
-            results.append(self.extractor.extract(document, doc_type))
+            results.append(for_person(self.extractor.extract(document, doc_type), person))
         return merge_extractions(results)
 
     # ------------------------------------------------------------------ filling
@@ -263,6 +407,9 @@ class DocFill:
                 values[name], sources[name] = value, "default"
         for name, (value, reason) in complete_values(values).items():
             values[name], sources[name] = value, reason
+        for name, value in with_computed(values).items():
+            if name not in values:
+                values[name], sources[name] = value, "computed"
         missing = [name for name in template.required_fields() if name not in values]
         if missing and not allow_missing:
             raise MissingFieldsError(missing)
@@ -294,6 +441,33 @@ class DocFill:
             warnings=[f"No value for '{name}', left blank" for name in missing],
         )
 
+    def fill_each(
+        self,
+        template: StandardDocument,
+        extraction: ExtractionResult | None = None,
+        overrides: Mapping[str, str] | None = None,
+        allow_missing: bool = False,
+    ) -> list[tuple[int | None, FillResult]]:
+        """Fill ``template`` once, or once per person for a document made for each person (a
+        sworn statement for each administrator): ``[(person or None, result)]``. The missing
+        fields of a person are named for that person (``p2_id_number``)."""
+        if not template.per_person:
+            return [(None, self.fill(template, extraction, overrides, allow_missing))]
+        values, _ = self.collect_values(extraction, overrides)
+        for name, (value, _) in complete_values(values).items():
+            values.setdefault(name, value)
+        results: list[tuple[int | None, FillResult]] = []
+        missing: list[str] = []
+        for person in persons_with(values, template.per_person):
+            result = self.fill(template, None, person_view(values, person), allow_missing=True)
+            prefix = person_prefix(person)
+            result.missing = [prefix + n if n in PERSON_FIELDS else n for n in result.missing]
+            missing += [name for name in result.missing if name not in missing]
+            results.append((person, result))
+        if missing and not allow_missing:
+            raise MissingFieldsError(missing)
+        return results
+
     def process(
         self,
         files: Iterable[tuple[str, bytes]],
@@ -302,7 +476,8 @@ class DocFill:
         allow_missing: bool = False,
     ) -> tuple[FillResult, list[DocumentAnalysis]]:
         analyses = [self.analyze_bytes(data, name) for name, data in files]
-        result = self.fill(template, self.combine(analyses), overrides, allow_missing)
+        combined = self.combine(analyses)
+        result = self.fill(template, combined, overrides, allow_missing)
         read_warnings = [warning for analysis in analyses for warning in analysis.raw.warnings]
         result.warnings = read_warnings + result.warnings
         return result, analyses

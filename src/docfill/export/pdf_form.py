@@ -4,12 +4,17 @@ Filling keeps the form editable (values are stored in the fields) *and* draws ev
 an embedded Unicode font, so Romanian diacritics (ă, â, î, ș, ț) display correctly in every
 viewer. The forms' own ``/Helv`` font cannot encode ș/ț, which is why relying on the viewer to
 regenerate appearances loses them.
+
+When one field is shown in several boxes (its widgets), ``name#1``, ``name#2``... address each
+box separately: some official forms reuse one field for different values (e.g. the e-mail and
+the phone number of the ONRC beneficial owner declaration).
 """
 
 from __future__ import annotations
 
 import io
 import re
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
@@ -160,13 +165,24 @@ def list_text_fields(pdf_data: bytes) -> list[str]:
 
 
 def list_fields(pdf_data: bytes) -> dict[str, str]:
-    """All fillable fields: name -> "text" | "checkbox" | "radio"."""
+    """All fillable fields: name -> "text" | "checkbox" | "radio". A text field shown in
+    several boxes is also listed as ``name#1``, ``name#2``... (one per box)."""
     kinds: dict[str, str] = {}
+    boxes: Counter[str] = Counter()
     for _, annotation in _widgets(_open(pdf_data)):
         kind = _kind(annotation)
-        if kind != "other":
-            kinds.setdefault(_qualified_name(annotation), kind)
-    return kinds
+        if kind == "other":
+            continue
+        name = _qualified_name(annotation)
+        kinds.setdefault(name, kind)
+        if kind == "text":
+            boxes[name] += 1
+            kinds[f"{name}#{boxes[name]}"] = kind
+    return {
+        name: kind
+        for name, kind in kinds.items()
+        if "#" not in name or boxes[name.rsplit("#", 1)[0]] > 1
+    }
 
 
 def read_form_values(pdf_data: bytes) -> dict[str, str]:
@@ -267,8 +283,10 @@ def _appearance_stream(
     size: float,
     multiline: bool,
     font_path: str | None,
+    alignment: int = 0,
 ) -> DecodedStreamObject:
-    """Draw ``text`` with an embedded TrueType font and return it as a form XObject."""
+    """Draw ``text`` with an embedded TrueType font and return it as a form XObject.
+    ``alignment`` is the field's quadding: 0 left, 1 centred, 2 right."""
     from reportlab.pdfbase.pdfmetrics import stringWidth
     from reportlab.pdfgen import canvas
 
@@ -296,7 +314,11 @@ def _appearance_stream(
             pdf.drawString(2, y, line)
             y -= size * 1.15
     else:
-        pdf.drawString(2, max(1.0, (height - size) / 2 + size * 0.22), text)
+        x = 2.0
+        if alignment in (1, 2):
+            free = max(0.0, width - 4 - stringWidth(text, font, size))
+            x += free / 2 if alignment == 1 else free
+        pdf.drawString(x, max(1.0, (height - size) / 2 + size * 0.22), text)
     pdf.save()
 
     page = PdfReader(io.BytesIO(buffer.getvalue())).pages[0]
@@ -325,16 +347,19 @@ def fill_pdf_form(
     into the form. The layout is untouched and the fields stay editable."""
     writer = PdfWriter(clone_from=_open(pdf_data))
     font = str(font_path) if font_path else None
+    boxes: Counter[str] = Counter()
     for page in writer.pages:
         for reference in page.get("/Annots") or []:
             annotation = reference.get_object()
             if annotation.get("/Subtype") != "/Widget":
                 continue
             name = _qualified_name(annotation)
-            if name not in values:
+            boxes[name] += 1
+            key = f"{name}#{boxes[name]}"
+            if key not in values and name not in values:
                 continue
             kind = _kind(annotation)
-            value = str(values[name])
+            value = str(values[key] if key in values else values[name])
             target = annotation if annotation.get("/T") is not None else annotation["/Parent"]
             target = target.get_object()
             if kind == "radio" or value.startswith("/"):  # state of the chosen button, "/v3"
@@ -355,7 +380,14 @@ def fill_pdf_form(
                 width, height = abs(x1 - x0), abs(y1 - y0)
                 multiline = bool(int(_inherited(annotation, "/Ff") or 0) & _MULTILINE_FLAG)
                 stream = _appearance_stream(
-                    writer, value, width, height, _font_size(annotation, height), multiline, font
+                    writer,
+                    value,
+                    width,
+                    height,
+                    _font_size(annotation, height),
+                    multiline,
+                    font,
+                    int(_inherited(annotation, "/Q") or 0),
                 )
                 annotation[NameObject("/AP")] = DictionaryObject(
                     {NameObject("/N"): writer._add_object(stream)}

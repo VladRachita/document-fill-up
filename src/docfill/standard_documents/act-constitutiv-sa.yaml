@@ -1,0 +1,360 @@
+# Actul constitutiv al unei societăți pe acțiuni administrate în sistem unitar: the ONRC model
+# (model-act-constitutiv-sa-sistem-unitar.doc, kept next to this file as the reference). Every
+# paragraph of the model without blanks is copied verbatim; the paragraphs with blanks are filled
+# from the wizard. Where the model offers variants ("sau", "după caz"), the lines start with a
+# condition and only the chosen variant is printed:
+#
+# * founders: the natural persons 1-3 holding shares (founders that are companies are not
+#   supported: add them by hand);
+# * duration: undetermined, or a number of years;
+# * capital: subscribed and fully paid in cash (the model's first variant);
+# * administration: a board of directors (consiliu de administrație) or a sole administrator,
+#   from the board role of each person; general director: the person(s) ticked;
+# * control: censors or a financial auditor, written one per line.
+#
+# Deliberate changes to the model's wording: "cetăţean român/străin" becomes the person's
+# citizenship ("cetăţenie română"), the identity document is the one of the person, and the
+# typo "de le lângă Tribunalul" is written "de pe lângă Tribunalul". A signature block is added.
+name: act-constitutiv-sa
+title: Act constitutiv SA - sistem unitar (model ONRC)
+description: 'Actul constitutiv al societății pe acțiuni administrate în sistem unitar, după modelul ONRC:
+  acționarii fondatori, denumirea și sediul, durata, obiectul de activitate (CAEN), capitalul social și
+  acțiunile, consiliul de administrație / administratorul unic, directorul general, cenzorii / auditorul
+  financiar.'
+kind: text
+doc_type: act_constitutiv
+body: |
+  # ACTUL CONSTITUTIV AL SOCIETĂŢII
+
+  # {{ company_name | upper }}
+
+  ## (SOCIETATE ADMINISTRATĂ ÎN SISTEM UNITAR)
+
+  ## ACŢIONARI FONDATORI:
+
+  [[shares]] D-nul/d-na {{ last_name | upper }} {{ first_name | upper }}, cetăţenie {{ citizenship | lower }}, născut(ă) la data de {{ date_of_birth }}, în {{ place_of_birth }}, jud. {{ birth_county }}, domiciliat(ă) în {{ domicile_line }}, posesor(e) al {{ id_type }}, seria {{ id_series }} nr. {{ id_number }}, eliberat de {{ id_issued_by }}, la data de {{ id_issue_date }}, CNP {{ cnp }},
+
+  [[p2_shares]] D-nul/d-na {{ p2_last_name | upper }} {{ p2_first_name | upper }}, cetăţenie {{ p2_citizenship | lower }}, născut(ă) la data de {{ p2_date_of_birth }}, în {{ p2_place_of_birth }}, jud. {{ p2_birth_county }}, domiciliat(ă) în {{ p2_domicile_line }}, posesor(e) al {{ p2_id_type }}, seria {{ p2_id_series }} nr. {{ p2_id_number }}, eliberat de {{ p2_id_issued_by }}, la data de {{ p2_id_issue_date }}, CNP {{ p2_cnp }},
+
+  [[p3_shares]] D-nul/d-na {{ p3_last_name | upper }} {{ p3_first_name | upper }}, cetăţenie {{ p3_citizenship | lower }}, născut(ă) la data de {{ p3_date_of_birth }}, în {{ p3_place_of_birth }}, jud. {{ p3_birth_county }}, domiciliat(ă) în {{ p3_domicile_line }}, posesor(e) al {{ p3_id_type }}, seria {{ p3_id_series }} nr. {{ p3_id_number }}, eliberat de {{ p3_id_issued_by }}, la data de {{ p3_id_issue_date }}, CNP {{ p3_cnp }},
+
+  ## CAP. I – DENUMIREA SOCIETĂŢII ŞI SEDIUL SOCIAL
+
+  Art. 1.1. Denumirea societăţii este {{ company_name | upper }}, conform dovezii privind disponibilitatea firmei nr. {{ name_reservation_number }}, din {{ name_reservation_date }}, eliberată de Oficiul Registrului Comerţului de pe lângă Tribunalul {{ orc_office }}.
+
+  Art. 1.2. In toate actele, scrisorile sau publicaţiile emanând de la societate, denumirea societăţii va fi urmată de cuvintele “societate pe acţiuni” sau de iniţialele “S.A.”, sediul social, capitalul social, precum şi de numărul de înmatriculare şi codul unic de înregistrare.
+
+  Art.1.3 Sediul social este în {{ company_seat_line }}.
+
+  Art.1.4 Sediul social poate fi mutat în orice alt loc în baza hotărârii adunării generale extraordinare a acţionarilor / deciziei consiliului de administraţie.
+
+  Art.1.5. Societatea va putea înfiinţa sau desfiinţa sedii secundare - sucursale, agenţii, reprezentanţe sau alte asemenea unităţi fără personalitate juridică - în temeiul hotărârii adunării generale extraordinare a acţionarilor / deciziei consiliului de administraţie.
+
+  ## CAP. II – FORMA JURIDICĂ A SOCIETĂŢII
+
+  Art. 2.1. Societatea este persoană juridică română, având forma de societate pe acţiuni şi îşi desfăşoară activitatea în conformitate cu prezentul act constitutiv, cu Legea nr. 31/1990 privind societăţile, republicată, cu modificările şi completările ulterioare, şi cu legislaţia română în vigoare.
+
+  Art. 2.2. Obligaţiile sociale ale societăţii sunt garantate cu patrimoniul social. Fiecare acţionar al societăţii răspunde numai până la concurenţa capitalului social subscris.
+
+  ## CAP. III - DURATA SOCIETĂŢII
+
+  [[!company_duration]] Art.3.1. Durata de funcţionare a societăţii este nedeterminată.
+
+  [[company_duration]] Art.3.1. Durata de funcţionare a societăţii este pe o perioadă de {{ company_duration }} ani și poate fi prelungită în condițiile prevăzute de lege.
+
+  ## CAP. IV – OBIECTUL DE ACTIVITATE
+
+  Art.4.1. Domeniul principal de activitate este {{ main_activity_domain }}, căruia îi corespunde grupa CAEN {{ main_caen_group }}
+
+  - activitatea principală: clasa CAEN {{ main_activity }}
+
+  [[secondary_activities]] - activităţi secundare:
+  [[secondary_activities]] {{ secondary_activities }}
+
+  Art. 4.2. Activitatea societăţii se va putea desfăşura şi în pieţe, târguri şi oboare etc.
+
+  Art. 4.3. Societatea poate desfăşura, inclusiv, activităţi de import-export, reclamă, publicitate a produselor proprii, obţinerea de finanţări pentru desfăşurarea activităţilor menţionate etc.
+
+  Art.4.4. Desfăşurarea tuturor categoriilor de activităţi se va face pe baza autorizaţiilor, avizelor, aprobărilor prevăzute de lege cu încadrarea în standardele de calitate, respectarea normelor igienico-sanitare, de protecţie a muncii, pază contra incendiilor, păstrarea calităţii mediului înconjurător, a normelor privind dreptul de proprietate intelectuală etc.
+
+  ## CAP. V – CAPITALUL SOCIAL
+
+  Art.5.1. La constituire, capitalul social subscris şi vărsat al societăţii este de {{ share_capital_amount }} lei, din care:
+  {{ share_capital_amount }} lei, aport în numerar;
+  fiind împărţit într-un număr de {{ share_count }} acţiuni, cu o valoare nominală de {{ share_value }} lei/acţiune.
+
+  Art.5.2. Capitalul social este deţinut de către acţionari astfel:
+  [[shares]] Nume {{ last_name | upper }} Prenume {{ first_name | upper }}, deţine un număr de {{ shares }} acţiuni, cu o valoare nominală de {{ share_value }} lei/acţiune şi în valoare totală de {{ shares_value }} lei, reprezentând {{ shares_percent }}% din capitalul social subscris şi vărsat, participare la profit {{ shares_percent }}% şi participare la pierderi {{ shares_percent }}%;
+  [[p2_shares]] Nume {{ p2_last_name | upper }} Prenume {{ p2_first_name | upper }}, deţine un număr de {{ p2_shares }} acţiuni, cu o valoare nominală de {{ share_value }} lei/acţiune şi în valoare totală de {{ p2_shares_value }} lei, reprezentând {{ p2_shares_percent }}% din capitalul social subscris şi vărsat, participare la profit {{ p2_shares_percent }}% şi participare la pierderi {{ p2_shares_percent }}%;
+  [[p3_shares]] Nume {{ p3_last_name | upper }} Prenume {{ p3_first_name | upper }}, deţine un număr de {{ p3_shares }} acţiuni, cu o valoare nominală de {{ share_value }} lei/acţiune şi în valoare totală de {{ p3_shares_value }} lei, reprezentând {{ p3_shares_percent }}% din capitalul social subscris şi vărsat, participare la profit {{ p3_shares_percent }}% şi participare la pierderi {{ p3_shares_percent }}%;
+
+  ## CAP.VI. ACŢIUNILE
+
+  Art.6.1. Acţiunile sunt numerotate de la 1 la {{ share_count }}.
+
+  Art.6.2. Toate acţiunile emise de societate sunt {{ share_form }} şi indivizibile. Fiecărui acţionar i se va elibera un certificat de acţionar care atestă calitatea de acţionar şi proprietar al acţiunilor sau, după caz, acţiuni emise în formă materială. Certificatul de acţionar/acţiunea va cuprinde menţiunile prevăzute de lege.
+
+  Art.6.3. Acţiunile au valoare egală şi conferă posesorilor drepturi egale.
+
+  Art.6.4. Societatea va ţine evidenţa acţiunilor şi acţionarilor într-un registru care menţionează numele şi prenumele, codul numeric personal, denumirea, domiciliul sau sediul acţionarilor cu acţiuni nominative precum şi vărsămintele făcute în contul acţiunilor, precum şi celelalte evidenţe prevăzute de art. 177 alin. (1) din Legea nr. 31/1990 privind societăţile, republicată, cu modificările şi completările ulterioare.
+
+  Art. 6.5. Registrele menţionate la art. 6.4. vor fi ţinute prin grija persoanelor abilitate de lege, la sediul societăţii.
+
+  ## CAP.VII. DREPTURI ŞI OBLIGAŢII DECURGÂND DIN ACŢIUNI
+
+  Art.7.1. Fiecare acţiune conferă titularilor acestora dreptul la un vot în adunarea generală a acţionarilor, dreptul de a alege şi de a fi ales în organele de conducere, dreptul de a participa la distribuirea beneficiilor.
+
+  Art.7.2. Deţinerea acţiunii implică adeziunea de drept la dispoziţiile actului constitutiv.
+
+  Art.7.3. Acţionarii nu răspund pentru datoriile societăţii, fiind obligaţi numai să verse capitalul social subscris.
+
+  Art.7.4. Drepturile şi obligaţiile legate de acţiuni urmează acţiunile în cazul trecerii lor în patrimoniul altor persoane.
+
+  ## CAP.VIII. TRANSFERUL ACŢIUNILOR
+
+  Art.8.1. Acţiunile sunt indivizibile cu privire la societate, care nu recunoaşte decât un singur proprietar pentru o acţiune.
+
+  Art.8.2. Dreptul de proprietate asupra acţiunilor se transmite conform dispoziţiilor legale în vigoare.
+
+  ## CAP.IX. ADUNĂRILE GENERALE ALE ACŢIONARILOR
+
+  Art.9.1. Adunările generale ale acţionarilor sunt ordinare şi extraordinare.
+
+  Art.9.2. Adunarea generală ordinară se întruneşte cel puţin o dată pe an, în cel mult 5 luni de la încheierea exerciţiului financiar.
+
+  Art.9.3. Adunarea generală ordinară a acţionarilor are atribuţiile prevăzute de lege.
+
+  Art.9.4. Adunarea generală extraordinară a acţionarilor se întruneşte ori de câte ori este necesar a se lua o hotărâre ce intră în atribuţiile sale.
+
+  Art.9.5. Atribuţiile adunării generale extraordinare a acţionarilor sunt cele prevăzute de lege, cu excepţia celor referitoare la: mutarea sediului, schimbarea obiectului de activitate al societăţii, majorarea capitalului social, înfiinţarea sau desfiinţarea de sedii secundare - sucursale, agenţii, reprezentanţe sau alte asemenea unităţi fără personalitate juridică -, pe care adunarea generală extraordinară, în temeiul art. 114 alin. (1) din Legea nr. 31/1990 privind societăţile, republicată, cu modificările şi completările ulterioare, le deleagă / le poate delega consiliului de administraţie al societăţii.
+
+  ## CAP.X. CONVOCAREA ADUNĂRII GENERALE A ACŢIONARILOR
+
+  Art.10.1 Adunarea generală este convocată de administratorul societăţii ori de câte ori este necesar.
+
+  Art.10.2. Termenul de întrunire nu poate fi mai mic de 30 de zile de la publicarea convocării în Monitorul Oficial al României, Partea a IV-a.
+
+  Art.10.3. Convocarea se publică în Monitorul Oficial al României, Partea a IV-a, şi în unul dintre ziarele de largă răspândire din localitatea în care se află sediul societăţii sau din cea mai apropiată localitate.
+
+  Art.10.4. Prin excepţie de la art. 10.2., dacă toate acţiunile societăţii sunt nominative, convocarea poate fi făcută prin scrisoare recomandată sau, prin scrisoare transmisă pe cale electronică, având încorporată, ataşată sau logic asociată semnătura electronică extinsă, expediată cu cel puţin 30 de zile înainte de data ţinerii adunării, la adresa acţionarului, înscrisă în registrul acţionarilor. Schimbarea adresei nu poate fi opusă societăţii, dacă nu i-a fost comunicată în scris de acţionar.
+
+  Art.10.5. Convocarea va cuprinde locul şi data ţinerii adunării, precum şi ordinea de zi, cu menţionarea explicită a tuturor problemelor care vor face obiectul dezbaterilor adunării. În cazul în care pe ordinea de zi figurează numirea administratorilor sau a membrilor consiliului de supraveghere, în convocare se va menţiona că lista cuprinzând informaţii cu privire la numele, localitatea de domiciliu şi calificarea profesională ale persoanelor propuse pentru funcţia de administrator se află la dispoziţia acţionarilor, putând fi consultată şi completată de aceştia.
+
+  Art.10.6. Când pe ordinea de zi figurează propuneri pentru modificarea actului constitutiv, convocarea va trebui să cuprindă textul integral al propunerilor.
+
+  Art.10.7. Administratorii şi funcţionarii societăţii nu pot reprezenta pe acţionari sub sancţiunea nulităţii hotărârii, dacă fără votul acestora nu s-ar fi obţinut majoritatea cerută.
+
+  Art.10.8. Adunarea generală a acţionarilor se întruneşte la sediul societăţii sau în orice alt loc din ţară sau din străinătate indicat în convocare.
+
+  Art.10.9. În convocarea pentru prima adunare generală se va putea fixa data şi pentru a doua adunare, în cazul în care la prima adunare generală a acţionarilor nu se întruneşte cvorumul necesar.
+
+  Art.10.10. Acţionarii reprezentând întreg capitalul social vor putea, daca nici unul dintre ei nu se opune, să ţină o adunare generală şi să ia orice hotărâre de competenţa adunării, fără respectarea formalităţilor cerute pentru convocarea ei, dacă sunt prezenţi sau reprezentaţi toţi acţionarii.
+
+  ## CAP.XI. ORGANIZAREA ADUNĂRII GENERALE A ACŢIONARILOR
+
+  Art.11.1. Adunările generale sunt valabil constituite şi pot lua hotărâri dacă sunt respectate condiţiile de cvorum prevăzute de Legea nr. 31/1990 privind societăţile, republicată, cu modificările şi completările ulterioare.
+
+  Art.11.2. Adunarea generală a acţionarilor este prezidată de către administratorul societăţii, care va desemna unul până la trei secretari care va/vor verifica lista de prezenta a acţionarilor, va/vor întocmi procesul verbal al adunării şi după caz va/vor împărți buletinele de vot, le va/vor centraliza şi va/vor număra voturile.
+
+  ## CAP.XII. EXERCITAREA DREPTULUI LA VOT ÎN ADUNAREA GENERALĂ A ACŢIONARILOR
+
+  Art.12.1. După constatarea îndeplinirii cerinţelor legale şi ale actului constitutiv privind ţinerea adunării generale se va trece la dezbaterea şi votarea fiecărui punct de pe ordinea de zi.
+
+  Art.12.2. Dreptul de vot nu poate fi cedat. Hotărârile adunărilor generale se iau prin vot deschis. Votul secret este obligatoriu pentru numirea sau revocarea membrilor consiliului de administraţie/administratorului unic, pentru numirea, revocarea cenzorilor şi auditorilor financiari şi pentru luarea hotărârilor referitoare la răspunderea organelor de administrare, de conducere şi control ale societăţii.
+
+  Art.12.3. Hotărârile adunării generale a acţionarilor se iau cu majoritatea prevăzută de Legea nr. 31/1990 privind societăţile, republicată, cu modificările şi completările ulterioare.
+
+  Art.12.4. Hotărârile adunării generale a acţionarilor luate în condiţiile legii şi ale actului constitutiv sunt obligatorii chiar pentru acţionarii absenţi sau care au votat împotrivă, în condiţiile prevăzute de Legea nr. 31/1990 privind societăţile, republicată, cu modificările şi completările ulterioare.
+
+  ## CAP.XIII. ADMINISTRAREA SOCIETĂŢII
+
+  [[administration=consiliu de administrație]] Art.13.1. Societatea este administrată de către un consiliu de administraţie ales de către adunarea generală ordinară a acţionarilor pentru un mandat de {{ board_term_years }} ani.
+  [[administration=administrator unic]] Art.13.1. Societatea este administrată de către un administrator unic ales de către adunarea generală ordinară a acţionarilor pentru un mandat de {{ board_term_years }} ani.
+
+  Art.13.2. Consiliul de administraţie/administratorul unic poate fi revocat sau înlocuit oricând de adunarea generală ordinară a acţionarilor societăţii şi poate fi persoană fizică, cetăţean român sau străin, sau persoană juridică, de naţionalitate română sau străină, poate fi acţionar sau persoană din afara societăţii.
+
+  Art.13.3. Când un post din consiliul de administraţie sau după caz postul de administrator unic devine vacant, adunarea generală ordinară a acţionarilor alege un nou administrator pentru ocuparea postului vacant. Durata pentru care este ales noul administrator, pentru a ocupa postul vacant, va fi egală cu perioada care a rămas până la expirarea mandatului predecesorului său.
+
+  Art.13.4. Consiliul de administraţie/administratorul unic numeşte şi revocă directorul general al societăţii, îi stabileşte atribuţiile şi remuneraţia.
+
+  Art.13.5. În relaţiile cu terţii societatea este reprezentată de către consiliul de administraţie/administratorul unic, având puteri de reprezentare şi angajare a societăţii. În ceea ce priveşte obţinerea sau acordarea de credite, gajarea, vânzarea sau închirierea bunurilor societăţii aceste hotărâri se iau de către consiliul de administraţie/administratorul unic indiferent de valoarea acestor operaţiuni. Consiliul de administraţie/administratorul unic poate delega oricare dintre puterile şi atribuţiile sale directorului general sau altor persoane printr-o împuternicire expresă. Delegarea de atribuţii include delegarea dreptului de reprezentare al societăţii în relaţiile cu terţii, persoane fizice, juridice , instituţii sau autorităţi ale statului.
+
+  [[administration=consiliu de administrație]] Art.13.6. La data prezentului act constitutiv este numit consiliul de administraţie, cu următoarea componenţă:
+  [[administration=administrator unic]] Art.13.6. La data prezentului act constitutiv este numit administrator unic al societăţii cu puteri depline:
+  [[board_role]] - d-nul/d-na {{ last_name | upper }} {{ first_name | upper }}, cetăţenie {{ citizenship | lower }}, domiciliat/ă în {{ domicile_line }}, identificat cu {{ id_type }}, seria {{ id_series }} nr. {{ id_number }} eliberat/ă de {{ id_issued_by }}, la data de {{ id_issue_date }}, născut la data de {{ date_of_birth }} în {{ place_of_birth }}, judeţ/sector {{ birth_county }}, CNP {{ cnp }}, în calitate de {{ board_role }}.
+  [[p2_board_role]] - d-nul/d-na {{ p2_last_name | upper }} {{ p2_first_name | upper }}, cetăţenie {{ p2_citizenship | lower }}, domiciliat/ă în {{ p2_domicile_line }}, identificat cu {{ p2_id_type }}, seria {{ p2_id_series }} nr. {{ p2_id_number }} eliberat/ă de {{ p2_id_issued_by }}, la data de {{ p2_id_issue_date }}, născut la data de {{ p2_date_of_birth }} în {{ p2_place_of_birth }}, judeţ/sector {{ p2_birth_county }}, CNP {{ p2_cnp }}, în calitate de {{ p2_board_role }}.
+  [[p3_board_role]] - d-nul/d-na {{ p3_last_name | upper }} {{ p3_first_name | upper }}, cetăţenie {{ p3_citizenship | lower }}, domiciliat/ă în {{ p3_domicile_line }}, identificat cu {{ p3_id_type }}, seria {{ p3_id_series }} nr. {{ p3_id_number }} eliberat/ă de {{ p3_id_issued_by }}, la data de {{ p3_id_issue_date }}, născut la data de {{ p3_date_of_birth }} în {{ p3_place_of_birth }}, judeţ/sector {{ p3_birth_county }}, CNP {{ p3_cnp }}, în calitate de {{ p3_board_role }}.
+
+  ## CAP.XIV. ATRIBUŢIILE ORGANELOR DE ADMINISTRARE.
+
+  Art.14.1. Principalele atribuţii ale administratorul unic/consiliului de administraţie sunt:
+
+  a. În baza împuternicirii primite de la adunarea generală decide cu privire la: mutarea sediului societăţii, contractarea de credite în numele societăţii, extinderea obiectului de activitate al societăţii, majorarea capitalului social.
+
+  b. stabilirea direcţiilor principale de activitate şi de dezvoltare ale societăţii;
+
+  c. stabilirea politicilor contabile şi a sistemului de control financiar, precum şi aprobarea planificării financiare;
+
+  d. numirea şi revocarea directorilor şi stabilirea remuneraţiei lor;
+
+  e. supravegherea activităţii directorilor;
+
+  f. pregătirea raportului anual, organizarea adunării generale a acţionarilor şi implementarea hotărârilor acesteia;
+
+  g. introducerea cererii pentru deschiderea procedurii insolvenţei societăţii, potrivit Legii nr. 85/2006 privind procedura insolvenţei, cu modificările și completările ulterioare.
+
+  Art.14.2 Consiliul de administraţie/administratorul unic poate delega conducerea societăţii unuia sau mai multor directori, numind pe unul dintre ei director general, stabilind totodată competenţele acestora/acestuia.
+
+  ## CAP.XV. CONDUCEREA EXECUTIVĂ
+
+  Art.15.1 Director al societăţii pe acţiuni este numai acea persoană căreia i-au fost delegate atribuţii de conducere a societăţii. Orice altă persoană, indiferent de denumirea tehnică a postului ocupat în cadrul societăţii, este exclusă de la aplicarea normelor prezentei legi cu privire la directorii societăţii pe acţiuni.
+
+  Art.15.2 Directorii sunt responsabili cu luarea tuturor măsurilor aferente conducerii societăţii, în limitele obiectului de activitate al societăţii şi cu respectarea competenţelor exclusive rezervate de lege sau de actul constitutiv consiliului de administraţie/administratorului unic şi adunării generale a acţionarilor.
+
+  Art.15.3 Consiliul de administraţie/administratorul unic este însărcinat cu supravegherea activităţii directorilor. Orice administrator poate solicita directorilor informaţii cu privire la conducerea operativă a societăţii. Directorii vor informa administratorul unic/consiliul de administraţie asupra operaţiunilor întreprinse şi asupra celor avute în vedere.
+
+  [[general_director|p2_general_director|p3_general_director]] Art.15.4. La data prezentului act constitutiv este numit director general:
+  [[general_director]] - d-nul/d-na {{ last_name | upper }} {{ first_name | upper }}, cetăţenie {{ citizenship | lower }}, domiciliat/ă în {{ domicile_line }}, identificat cu {{ id_type }}, seria {{ id_series }} nr. {{ id_number }} eliberat/ă de {{ id_issued_by }}, la data de {{ id_issue_date }}, născut la data de {{ date_of_birth }} în {{ place_of_birth }}, judeţ/sector {{ birth_county }}, CNP {{ cnp }}.
+  [[p2_general_director]] - d-nul/d-na {{ p2_last_name | upper }} {{ p2_first_name | upper }}, cetăţenie {{ p2_citizenship | lower }}, domiciliat/ă în {{ p2_domicile_line }}, identificat cu {{ p2_id_type }}, seria {{ p2_id_series }} nr. {{ p2_id_number }} eliberat/ă de {{ p2_id_issued_by }}, la data de {{ p2_id_issue_date }}, născut la data de {{ p2_date_of_birth }} în {{ p2_place_of_birth }}, judeţ/sector {{ p2_birth_county }}, CNP {{ p2_cnp }}.
+  [[p3_general_director]] - d-nul/d-na {{ p3_last_name | upper }} {{ p3_first_name | upper }}, cetăţenie {{ p3_citizenship | lower }}, domiciliat/ă în {{ p3_domicile_line }}, identificat cu {{ p3_id_type }}, seria {{ p3_id_series }} nr. {{ p3_id_number }} eliberat/ă de {{ p3_id_issued_by }}, la data de {{ p3_id_issue_date }}, născut la data de {{ p3_date_of_birth }} în {{ p3_place_of_birth }}, judeţ/sector {{ p3_birth_county }}, CNP {{ p3_cnp }}.
+
+  Art.15.5. Directorul general va avea în principiu următoarele atribuţii :
+
+  a. reprezintă societatea în relaţiile cu terţii şi are puteri de decizie în ceea ce priveşte operaţiunile curente ale societăţii;
+
+  b. propune administratorului unic/consiliului de administraţie strategia şi politica comercială şi de dezvoltare a societăţii;
+
+  c. propune administratorului unic/consiliului de administraţie structura organizatorică a societăţii, numărul de posturi, precum şi normativele de constituire a compartimentelor funcţionale şi de producţie;
+
+  d. negociază şi semnează contractul colectiv de muncă la nivel de societate în baza mandatului specific acordat de administratorul unic/consiliul de administraţie ;
+
+  e. încheie contractele de muncă în condiţiile stabilite de către administratorul unic/consiliul de administraţie şi a Codului Muncii şi concediază personalul societăţii;
+
+  f. rezolvă orice problemă încredinţată de administratorul unic/consiliul de administraţie al societăţii.
+
+  ## CAP.XVI. CONTROLUL GESTIUNII SOCIETĂŢII. AUDITORUL FINANCIAR
+
+  [[control_body=cenzori]] Art.16.1. Controlul gestiunii societăţii este asigurat de către cenzorii:
+  [[control_body=auditor financiar]] Art.16.1. La data prezentului act constitutiv este numit auditor financiar:
+  {{ control_members }}
+
+  Art.16.2. Cenzorii sunt numiţi de adunarea generală şi au atribuţiile prevăzute de legislaţia română în vigoare. În caz de deces, imposibilitate fizică sau legală, renunţare sau terminare a mandatului unui cenzor, acesta va fi înlocuit de supleant. Dacă în acest mod numărul cenzorilor nu este completat, cenzorii rămaşi nominalizează alte persoane în posturile rămase libere până la prima adunare generală care poate considera aceste numiri drept provizorii şi numi alţi cenzori sau supleanţi.
+
+  Art.16.3. Situaţiile financiare ale societăţilor supuse obligaţiei legale de auditare vor fi auditate de către auditori financiari - persoane fizice sau persoane juridice, în condiţiile prevăzute de lege.
+
+  Art.16.4. Cenzorii vor prezenta anual adunării generale raportul lor privitor la bilanţ, contul de profit şi pierderi, registrele societăţii şi evaluarea patrimoniului.
+
+  Art.16.5. Cenzorii/auditorul financiar pot:
+
+  să convoace adunarea generală ordinară sau extraordinară în locul administratorilor;
+
+  să asiste la adunările generale ordinare şi extraordinare şi să supună dezbaterii acestora problemele pe care le consideră necesare;
+
+  să constate şi să certifice depunerea garanţiilor de către administratori;
+
+  să participe la reuniunile consiliului de administraţie fără drept de vot;
+
+  Art.16.6. Revocarea cenzorilor poate fi hotărâtă numai de adunarea generală
+
+  Art.16.7. Administratorii sunt obligaţi să pună la dispoziţia cenzorilor, cu cel puţin o lună înaintea datei adunării generale, bilanţul exerciţiului precedent, contul de profit şi pierderi şi raportul lor de gestiune.
+
+  ## CAP.XVII. DIZOLVAREA SOCIETĂŢII
+
+  Art.17.1. Următoarele situaţii duc la dizolvarea societăţii:
+
+  a) imposibilitatea realizării obiectului de activitate al societăţii sau realizarea acestuia;
+
+  b) faliment;
+
+  c) pierderea unei jumătăţi din capitalul social, după ce s-a consumat fondul de rezervă, dacă adunarea generală a acţionarilor nu decide completarea capitalului sau reducerea lui la suma rămasă;
+
+  d) dacă numărul de acţionari va fi sub 2, mai mult de 9 luni;
+
+  e) în orice altă situaţie, pe baza hotărârii adunării generale a acţionarilor.
+
+  Art. 17.2. Când datorită decesului unui acţionar, numărul minim de acţionari va fi sub cel prevăzut de lege, societatea îşi va continua activitatea cu moştenitorii defunctului.
+
+  Art.17.3. Dizolvarea societăţii are ca efect deschiderea procedurii lichidării. Dizolvarea are loc fără lichidare în cazul fuziunii ori divizării totale a societăţii sau în alte cazuri prevăzute de lege.
+
+  Art.17.4. Dizolvarea societăţii trebuie să fie înscrisă în registrul comerţului şi publicată în Monitorul Oficial al României, Partea a IV – a, conform prevederilor legale în vigoare.
+
+  ## CAP.XVIII. LICHIDAREA SOCIETĂŢII
+
+  Art.18.1. Societatea fiind dizolvată, lichidatorii numiţi trebuie să înceapă procedura de lichidare în conformitate cu dispoziţiile Legii nr. 31/1990 privind societăţile, republicată, cu modificările şi completările ulterioare.
+
+  Art.18.2. Lichidatorii vor putea fi persoane fizice sau juridice române sau străine, autorizate în condiţiile legii. Lichidarea societăţii şi repartiţia patrimoniului se fac în condiţiile şi cu respectarea procedurii prevăzute de lege.
+
+  ## CAP.XIX. DISPOZIŢII FINALE
+
+  Art.19.1. Orice litigiu rezultând din sau referitor la prezentul act constitutiv, ori la încălcarea prezentului act constitutiv va fi soluţionat de instanţele judecătoreşti competente.
+
+  Art.19.2. Prevederile prezentului act constitutiv se completează cu dispoziţiile legale referitoare la societăţi şi alte prevederi legale în vigoare.
+
+  ---
+
+  Semnăturile acţionarilor fondatori (data: {{ today }}):
+  [[shares]] {{ last_name | upper }} {{ first_name | upper }} ____________________
+  [[p2_shares]] {{ p2_last_name | upper }} {{ p2_first_name | upper }} ____________________
+  [[p3_shares]] {{ p3_last_name | upper }} {{ p3_first_name | upper }} ____________________
+defaults:
+  share_form: nominative
+  board_term_years: '2'
+optional_fields:
+- last_name
+- first_name
+- citizenship
+- date_of_birth
+- place_of_birth
+- birth_county
+- domicile_line
+- id_type
+- id_series
+- id_number
+- id_issued_by
+- id_issue_date
+- cnp
+- shares
+- shares_value
+- shares_percent
+- board_role
+- general_director
+- p2_last_name
+- p2_first_name
+- p2_citizenship
+- p2_date_of_birth
+- p2_place_of_birth
+- p2_birth_county
+- p2_domicile_line
+- p2_id_type
+- p2_id_series
+- p2_id_number
+- p2_id_issued_by
+- p2_id_issue_date
+- p2_cnp
+- p2_shares
+- p2_shares_value
+- p2_shares_percent
+- p2_board_role
+- p2_general_director
+- p3_last_name
+- p3_first_name
+- p3_citizenship
+- p3_date_of_birth
+- p3_place_of_birth
+- p3_birth_county
+- p3_domicile_line
+- p3_id_type
+- p3_id_series
+- p3_id_number
+- p3_id_issued_by
+- p3_id_issue_date
+- p3_cnp
+- p3_shares
+- p3_shares_value
+- p3_shares_percent
+- p3_board_role
+- p3_general_director
+- company_duration
+- name_reservation_number
+- name_reservation_date
+- secondary_activities

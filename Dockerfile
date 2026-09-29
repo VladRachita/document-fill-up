@@ -1,9 +1,10 @@
 FROM python:3.11-slim
 
-# Tesseract OCR (English + Romanian) and a unicode TrueType font for the exported PDFs.
+# Tesseract OCR (English + Romanian), a unicode TrueType font for the exported PDFs and antiword
+# to read legacy Word (.doc) files.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        tesseract-ocr tesseract-ocr-eng tesseract-ocr-ron fonts-dejavu-core \
+        tesseract-ocr tesseract-ocr-eng tesseract-ocr-ron fonts-dejavu-core antiword \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

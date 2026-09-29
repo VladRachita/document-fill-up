@@ -91,6 +91,28 @@ _ANEXA_4 = (
     "inregistrare sediul social profesional DECLAR PE PROPRIA RASPUNDERE Clasa CAEN Denumire "
     "activitate activitati desfasurate la terti sedii secundare",
 )
+_SWORN_STATEMENT = (
+    (
+        "DECLARAȚIE PE PROPRIE RĂSPUNDERE CNP cu domiciliul în Str. nr. bl. sc. et. ap. "
+        "Sector țara România cetățenia Română născut în Com. jud. țara România la data de "
+        "identificat prin CI seria nr. emisă de SPCEP la data de valabilă până la data de în "
+        "calitate de administrator numit al societății S.R.L. în curs de constituire Declar "
+        "pe proprie răspundere cunoscând prevederile articolului 326 din Codul Penal privind "
+        "falsul în declarații că îndeplinesc toate condițiile legale pentru a deține "
+        "calitatea de administrator așa cum sunt acestea prevăzute de Legea societăților nr. "
+        "31/1990 republicată și nu mă aflu în nicio situație de incapacitate sau "
+        "incompatibilitate prevăzută de lege Dau prezenta declarație fiindu-mi necesară la "
+        "Oficiul Național al Registrului Comerțului pentru înmatricularea societății Data "
+        "Nume și prenume Semnătura"
+    ),
+    (
+        "Declaratie pe propria raspundere Subsemnatul domiciliat in posesor al CI seria nr "
+        "CNP in calitate de administrator cenzor al societatii declar pe propria raspundere "
+        "ca indeplinesc conditiile prevazute de Legea nr. 31/1990 privind societatile pentru "
+        "a fi administrator nu am fost condamnat pentru infractiuni nu ma aflu in situatii de "
+        "incompatibilitate falsul in declaratii articolul 326 Cod penal"
+    ),
+)
 _OTHER = (
     "FACTURĂ FISCALĂ Seria Nr. Data emiterii Furnizor Cumpărător CIF Reg. Com. Denumire produse "
     "sau servicii U.M. Cantitate Preț unitar Valoare TVA Total de plată Semnătura",
@@ -131,6 +153,13 @@ DOC_TYPES: dict[str, DocType] = {
             "ONRC Anexa 4 - sworn statement",
             "Declarație privind îndeplinirea condițiilor de funcționare",
             _ANEXA_4,
+        ),
+        DocType(
+            "declaratie_administrator",
+            "Sworn statement of an administrator",
+            "Declarație pe propria răspundere a administratorului (condiții legale): identifies "
+            "one person (CNP, domicile, identity card), read like their identity card",
+            _SWORN_STATEMENT,
         ),
         DocType(UNKNOWN, "Other document", "Not one of the known types", _OTHER),
     )
