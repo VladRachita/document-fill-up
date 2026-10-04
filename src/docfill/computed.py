@@ -26,6 +26,8 @@ class Computed:
     # Inputs that must have a value when a document requires the computed value.
     required: tuple[str, ...]
     compute: Compute
+    # The field a value printed by a filled form is read back as (a filled Anexa 4 as source).
+    read_as: str | None = None
 
 
 def _get(values: Mapping[str, str], name: str) -> str:
@@ -87,6 +89,29 @@ def _caen_rows(values: Mapping[str, str]) -> list[tuple[str, str]]:
             code, name = split_row(line.strip(), 2)
             rows.append((code, name.strip(" -–")))
     return rows
+
+
+def _no_activity_at_office(values: Mapping[str, str]) -> bool:
+    return bool(_get(values, "office_without_activity"))
+
+
+def _activities_at_office(values: Mapping[str, str]) -> str | None:
+    """Anexa 4, 3.1: the activities of the company, unless the registered office has none."""
+    if _no_activity_at_office(values):
+        return None
+    return _get(values, "caen_activities") or None
+
+
+def _activities_at_third_parties(values: Mapping[str, str]) -> str | None:
+    """Anexa 4, 3.2: the other activities at third parties, after the activities of the company
+    when the registered office has none (the main one first, each class once)."""
+    lines = _get(values, "caen_third_party").splitlines()
+    if _no_activity_at_office(values):
+        lines = _get(values, "caen_activities").splitlines() + lines
+    kept: dict[str, str] = {}
+    for line in filter(None, (line.strip() for line in lines)):
+        kept.setdefault(line.split()[0], line)
+    return "\n".join(kept.values()) or None
 
 
 def _caen_line(row: tuple[str, str]) -> str:
@@ -236,6 +261,22 @@ _SPECS: list[Computed] = [
         ("caen_activities",),
         ("caen_activities",),
         _main_group,
+    ),
+    Computed(
+        "caen_at_office",
+        "Anexa 4, 3.1: activities at the registered office",
+        ("caen_activities", "office_without_activity"),
+        (),
+        _activities_at_office,
+        read_as="caen_activities",
+    ),
+    Computed(
+        "caen_at_third_parties",
+        "Anexa 4, 3.2: activities at third parties",
+        ("caen_activities", "office_without_activity", "caen_third_party"),
+        (),
+        _activities_at_third_parties,
+        read_as="caen_third_party",
     ),
     Computed(
         "secondary_activities",

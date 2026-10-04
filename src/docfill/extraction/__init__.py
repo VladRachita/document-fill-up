@@ -1,5 +1,7 @@
 """Field extraction: labelled values, identity-document patterns (CNP, series/number, MRZ),
-address patterns and ML named-entity recognition, then derivations and cross-checks.
+address patterns and ML named-entity recognition, then derivations and cross-checks. Company
+documents (act constitutiv, proof of the firm name, proof of the registered office) have their
+own reader (:mod:`docfill.extraction.articles`).
 
 Every candidate carries a confidence; for each field the most confident one wins
 (labelled > derived > pattern / NER). Values are only ever *copied* from the source
@@ -12,6 +14,7 @@ from collections.abc import Callable, Iterable, Mapping
 
 from docfill.config import Settings, get_settings
 from docfill.extraction import idcard
+from docfill.extraction.articles import EXTRACTORS
 from docfill.extraction.clauses import extract_clauses
 from docfill.extraction.derive import complete_values, derive_fields
 from docfill.extraction.fields import FIELDS, GROUPS, FieldSpec, field_labels
@@ -46,13 +49,16 @@ class FieldExtractor:
     def candidates(
         self, document: SanitizedDocument, doc_type: str | None = None
     ) -> list[ExtractedField]:
-        learned = self.learned_labels(doc_type) if self.learned_labels else None
-        found = extract_labeled(document.text, document.source, doc_type, learned)
-        found += extract_identity(document.text, document.source, doc_type)
-        found += extract_clauses(document.text, document.source, doc_type)
-        found += extract_patterns(document.text, document.source)
-        if self.ner:
-            found += self.ner.extract(document.text, document.source)
+        if doc_type in EXTRACTORS:  # company documents: their own reader (see articles.py)
+            found = EXTRACTORS[doc_type](document.text, document.source)
+        else:
+            learned = self.learned_labels(doc_type) if self.learned_labels else None
+            found = extract_labeled(document.text, document.source, doc_type, learned)
+            found += extract_identity(document.text, document.source, doc_type)
+            found += extract_clauses(document.text, document.source, doc_type)
+            found += extract_patterns(document.text, document.source)
+            if self.ner:
+                found += self.ner.extract(document.text, document.source)
         if doc_type == "id_card":  # text printed on the card: repaired and checked like its labels
             found = [item for candidate in found for item in idcard.review(candidate)]
         if self.fix_spelling:

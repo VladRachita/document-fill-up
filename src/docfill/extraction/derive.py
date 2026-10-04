@@ -7,6 +7,7 @@
 * company county -> trade register office
 * the shares of each person -> the list of associates; the board roles -> how the company is
   administered; a filer -> who files the beneficial owner declaration
+* a lawyer or a proxy filing the request -> "prin ... conform ..." and the filer's capacity
 
 Person-level derivations run for every person (the applicant, then ``p2_``, ``p3_``).
 """
@@ -70,6 +71,8 @@ def _address_parts(text: str) -> dict[str, str]:
     if looks_romanian_address(text):
         ro = parse_ro_address(text)
         parts.update({k: ro[k] for k in _RO_PARTS if k in ro})
+        if "room" in ro and "street" in parts:  # "ap. 29, camera 1": no box for the room
+            parts["street"] = f"{parts['street']}, {ro['room']}"
         region = ro.get("sector") or ro.get("county")
         if region:
             parts["region"] = region
@@ -243,8 +246,11 @@ def _derive_person(result: ExtractionResult) -> None:
         if cnp.value[0] in "123456":
             result.offer(_derived("citizenship", "Română", 0.6, evidence, cnp.document))
 
-    # "Mihai Eminescu camera 2": the room goes with the apartment
+    # "Mihai Eminescu camera 2": the room goes with the apartment (unless there is one: "ap. 29,
+    # camera 1" keeps the room with the street)
     for street_field, room_field in (("street", "apartment"),):
+        if room_field in fields:
+            continue
         if (street := fields.get(street_field)) and (split := split_room(street.value)):
             result.replace(
                 _derived(street_field, split[0], street.confidence, street.value, street.document)
@@ -302,11 +308,13 @@ def _derive_company(result: ExtractionResult) -> None:
             },
         )
 
-    # "Mihai Eminescu camera 2": the room goes with the apartment
+    # "Mihai Eminescu camera 2": the room goes with the apartment (unless there is one)
     for street_field, room_field in (
         ("company_street", "company_apartment"),
         ("contact_street", "contact_apartment"),
     ):
+        if room_field in fields:
+            continue
         if (street := fields.get(street_field)) and (split := split_room(street.value)):
             result.replace(
                 _derived(street_field, split[0], street.confidence, street.value, street.document)
@@ -384,6 +392,12 @@ def _derive_roles(result: ExtractionResult) -> None:
         )
         result.offer(_derived("administration", administration, 0.9, "the board roles", None))
 
+    # who the representative filing the request is: "prin avocat, conform împuternicirii
+    # avocațiale" (IV), "în calitate de avocat, conform ..." (XII)
+    if kind := fields.get("representative_type"):
+        for name, value in representation(kind.value).items():
+            result.offer(_derived(name, value, 0.9, kind.value, kind.document))
+
     # the beneficial owner declaration is filed by the proxy when there is one
     if filer := fields.get("filer_last_name"):
         result.offer(_derived("bo_filed_by", "împuternicit", 0.9, filer.value, filer.document))
@@ -391,6 +405,26 @@ def _derive_roles(result: ExtractionResult) -> None:
         result.offer(
             _derived("bo_filed_by", "reprezentantul legal", 0.9, "no proxy (filer) given", None)
         )
+
+
+def representation(kind: str) -> dict[str, str]:
+    """What a representative writes in the forms: a lawyer acts under an împuternicire
+    avocațială, a proxy under an authenticated special or general power of attorney."""
+    folded = fold(kind)
+    if "avocat" in folded:
+        who, basis = "avocat", "împuternicirii avocațiale"
+    elif "general" in folded:
+        who, basis = "împuternicit", "procurii generale autentice"
+    elif re.search(r"imputernicit|procur|special", folded):
+        who, basis = "împuternicit", "procurii speciale autentice"
+    else:
+        return {}
+    return {
+        "represented_by": who,
+        "representation_basis": basis,
+        "filer_capacity": who,
+        "filer_basis": basis,
+    }
 
 
 def complete_values(values: dict[str, str]) -> dict[str, tuple[str, str]]:

@@ -165,6 +165,13 @@ defaults:
   birth_country: România
   citizenship: Română
 
+# Asked in the review though no box prints it: it writes the document the person filing acts
+# under (V), see extraction/derive.py.
+asks:
+  - representative_type
+
+# The filer's own details: proposed again next time. Who the representative is (a lawyer or a
+# proxy, which decides the document they act under) is asked each time.
 remember:
   - contact_last_name
   - contact_first_name
@@ -176,7 +183,6 @@ remember:
   - filer_id_series
   - filer_id_number
   - filer_cnp
-  - filer_basis
 
 optional_fields:
   - request_registration

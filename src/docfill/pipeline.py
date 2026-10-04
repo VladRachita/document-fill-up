@@ -9,17 +9,21 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from docfill.computed import with_computed
+from docfill.computed import COMPUTED, with_computed
 from docfill.config import Settings, get_settings
 from docfill.doctypes import DocTypeClassifier, Prediction, match_form
 from docfill.errors import MissingFieldsError
 from docfill.export import fill_pdf_form, render_text_pdf
 from docfill.extraction import FieldExtractor, merge_extractions
+from docfill.extraction.clauses import fold
 from docfill.extraction.derive import complete_values
 from docfill.extraction.fields import (
     FIELDS,
     MAX_PERSONS,
     PERSON_FIELDS,
+    PERSON_PREFIXES,
+    REPRESENTATIVE,
+    REPRESENTATIVE_FIELDS,
     person_prefix,
     person_view,
     persons_with,
@@ -122,7 +126,11 @@ def read_template_values(
         name, _ = parse_expression(expression)
         if value and name not in found:
             found[name] = (value, pdf_field)
-    for name, spec in template.lists.items():
+    for listed, spec in template.lists.items():
+        # a list printed from a computed value is read back as the field it says (3.1 of
+        # Anexa 4: the activities of the company)
+        computed = COMPUTED.get(listed)
+        name = computed.read_as if computed and computed.read_as else listed
         cells = list_cells(spec)
         rows = []
         for row_cells in cells:
@@ -178,13 +186,25 @@ class DocumentAnalysis:
     extraction: ExtractionResult
     doc_type: Prediction | None = None
     # Whose document it is: 1 = the applicant, 2 and 3 = other persons (their fields are
-    # prefixed p2_ / p3_). ``None`` until assigned (see :meth:`DocFill.assign_persons`).
+    # prefixed p2_ / p3_), 0 (``REPRESENTATIVE``) = the avocat / împuternicit filing the request.
+    # ``None`` until assigned (see :meth:`DocFill.assign_persons`), and for documents that name
+    # their persons themselves or name none (an act constitutiv, a proof of the firm name).
     person: int | None = None
 
 
 # Documents that describe one person: each one is assigned its own person (documents with the
 # same CNP go to the same person).
 PERSON_DOC_TYPES = {"id_card", "declaratie_administrator"}
+# Documents that number their own persons (the act constitutiv: associates, administrators,
+# beneficial owners; see extraction/articles.py) and documents about no person of the request
+# (the owner lending the registered office, the trade register's letterhead).
+NAMED_PERSONS_DOC_TYPES = {"act_constitutiv"}
+NO_PERSON_DOC_TYPES = {"dovada_denumire", "dovada_sediu"}
+
+
+def names_persons(doc_type: str | None) -> bool:
+    """Whether a document of this type is not assigned to one person."""
+    return doc_type in NAMED_PERSONS_DOC_TYPES | NO_PERSON_DOC_TYPES
 
 
 # What a document says about the applicant only (the capacity in which they sign the forms):
@@ -192,9 +212,37 @@ PERSON_DOC_TYPES = {"id_card", "declaratie_administrator"}
 APPLICANT_ONLY = {"capacity", "represented_by", "representation_basis", "marital_regime"}
 
 
-def for_person(result: ExtractionResult, person: int) -> ExtractionResult:
+def as_representative(result: ExtractionResult) -> ExtractionResult:
+    """The identity of the avocat / împuternicit filing the request: their name, identity card
+    and CNP go to "Filed by" (XII), their name and address to the contact person (VII). Nothing
+    else is taken from their documents: they are not a person of the company, and what they say
+    about it (a company, a capacity) is not the company's."""
+
+    def renamed(found: ExtractedField) -> list[ExtractedField]:
+        return [
+            found.model_copy(update={"name": target})
+            for target in REPRESENTATIVE_FIELDS.get(found.name, ())
+        ]
+
+    result_for = ExtractionResult()
+    for found in result.fields.values():
+        for copy in renamed(found):
+            result_for.fields[copy.name] = copy
+    for pool in result.candidates.values():
+        for candidate in pool:
+            for copy in renamed(candidate):
+                result_for.candidates.setdefault(copy.name, []).append(copy)
+    return result_for
+
+
+def for_person(result: ExtractionResult, person: int | None) -> ExtractionResult:
     """The same extraction with the fields of a person renamed for ``person`` (``cnp`` ->
-    ``p2_cnp``); person 1 (the applicant) keeps the plain names."""
+    ``p2_cnp``); person 1 (the applicant) keeps the plain names; the representative's fields
+    become the filer's and the contact person's. ``None``: the document numbered its persons."""
+    if person is None:
+        return result
+    if person == REPRESENTATIVE:
+        return as_representative(result)
     prefix = person_prefix(person)
     if not prefix:
         return result
@@ -296,32 +344,90 @@ class DocFill:
 
     @staticmethod
     def assign_persons(analyses: Sequence[DocumentAnalysis]) -> None:
-        """Give every document a person. A document with the CNP of a person already assigned
-        goes to that person (a person's identity card and sworn statement); otherwise each
-        identity card or personal statement is a new person (the first is person 1, the
-        applicant; then persons 2, 3); everything else is person 1. Persons already assigned
-        (e.g. chosen in the wizard) are kept."""
+        """Give every document a person.
 
-        def cnp_of(analysis: DocumentAnalysis) -> str | None:
-            found = analysis.extraction.fields.get("cnp")
+        An act constitutiv numbers its persons itself (person 1 is the administrator who signs
+        the requests) and the proofs of the firm name and of the registered office are about no
+        person: they get none. A document with the CNP (or the name, or the identity card
+        number) of a person already known goes to that person (a person's identity card, their
+        sworn statement). With an act constitutiv, an identity card of nobody it names is the
+        representative filing the request (avocat / împuternicit). Otherwise each identity card
+        or personal statement is a new person (the first is person 1, the applicant; then
+        persons 2, 3); everything else is person 1. Persons already assigned (e.g. chosen in the
+        wizard) are kept."""
+
+        def doc_type(analysis: DocumentAnalysis) -> str | None:
+            return analysis.doc_type.doc_type if analysis.doc_type else None
+
+        def cnp_of(analysis: DocumentAnalysis, prefix: str = "") -> str | None:
+            found = analysis.extraction.fields.get(prefix + "cnp")
             return found.value if found and not found.issues else None
 
-        by_cnp = {
-            cnp: analysis.person
-            for analysis in analyses
-            if analysis.person and (cnp := cnp_of(analysis))
-        }
-        taken = {analysis.person for analysis in analyses if analysis.person}
+        def key_of(analysis: DocumentAnalysis, names: tuple[str, ...], prefix: str = "") -> str:
+            """The values of ``names`` as one key (letters and digits, no accents), or ``""``
+            when one is missing or doubtful."""
+            fields = analysis.extraction.fields
+            parts = [fields.get(prefix + name) for name in names]
+            if not all(part and not part.issues for part in parts):
+                return ""
+            return re.sub(r"[^a-z0-9]", "", fold(" ".join(part.value for part in parts if part)))
+
+        def name_of(analysis: DocumentAnalysis, prefix: str = "") -> str:
+            return key_of(analysis, ("last_name", "first_name"), prefix)
+
+        def card_of(analysis: DocumentAnalysis, prefix: str = "") -> str:
+            return key_of(analysis, ("id_series", "id_number"), prefix)
+
+        by_cnp: dict[str, int] = {}
+        by_key: dict[str, int] = {}  # a name, an identity card series and number
+        taken: set[int] = set()
+        named = False
         for analysis in analyses:
-            if analysis.person:
+            if names_persons(doc_type(analysis)):
+                analysis.person = None
+            if doc_type(analysis) not in NAMED_PERSONS_DOC_TYPES:
                 continue
-            doc_type = analysis.doc_type.doc_type if analysis.doc_type else None
+            for index, prefix in enumerate(PERSON_PREFIXES, start=1):
+                cnp = cnp_of(analysis, prefix)
+                keys = [
+                    key for key in (name_of(analysis, prefix), card_of(analysis, prefix)) if key
+                ]
+                if cnp:
+                    by_cnp.setdefault(cnp, index)
+                for key in keys:
+                    by_key.setdefault(key, index)
+                if cnp or keys:
+                    taken.add(index)
+                    named = True
+        for analysis in analyses:
+            if analysis.person is None:
+                continue
+            taken.add(analysis.person)
+            if cnp := cnp_of(analysis):
+                by_cnp.setdefault(cnp, analysis.person)
+        representative = REPRESENTATIVE in taken
+        for analysis in analyses:
+            if analysis.person is not None or names_persons(doc_type(analysis)):
+                continue
             cnp = cnp_of(analysis)
             if cnp in by_cnp:
                 analysis.person = by_cnp[cnp]
                 continue
+            # the CNP misread on a scan: the name or the identity card number may still match
+            if known := next(
+                (by_key[key] for key in (name_of(analysis), card_of(analysis)) if key in by_key),
+                None,
+            ):
+                analysis.person = known
+                continue
             analysis.person = 1
-            if doc_type not in PERSON_DOC_TYPES:
+            if doc_type(analysis) not in PERSON_DOC_TYPES:
+                continue
+            if named and not representative:  # nobody the act constitutiv names
+                analysis.person = REPRESENTATIVE
+                representative = True
+                if cnp:
+                    by_cnp[cnp] = REPRESENTATIVE
                 continue
             free = next((p for p in range(1, MAX_PERSONS + 1) if p not in taken), None)
             if free is None:
@@ -341,7 +447,7 @@ class DocFill:
         field wins."""
         cls.assign_persons(analyses)
         return merge_extractions(
-            for_person(analysis.extraction, analysis.person or 1) for analysis in analyses
+            for_person(analysis.extraction, analysis.person) for analysis in analyses
         )
 
     def extract_texts(
@@ -351,14 +457,18 @@ class DocFill:
         ],
     ) -> ExtractionResult:
         """Re-run extraction on (source, text[, doc_type[, person]]) tuples, e.g. after a user
-        corrected the OCR text, the detected document type or whose document it is."""
+        corrected the OCR text, the detected document type or whose document it is (0: the
+        representative filing the request; ignored for an act constitutiv, which numbers its
+        persons, and for the proofs of the firm name and of the registered office)."""
         results = []
         for source, text, *rest in documents:
             doc_type = rest[0] if rest and rest[0] else None
-            person = rest[1] if len(rest) > 1 and rest[1] else 1
+            person: int | None = rest[1] if len(rest) > 1 and rest[1] is not None else 1
             document = SanitizedDocument(source=source, text=text)
             if doc_type is None:
                 doc_type = self.classifier.predict(text).doc_type
+            if names_persons(doc_type):
+                person = None
             results.append(for_person(self.extractor.extract(document, doc_type), person))
         return merge_extractions(results)
 

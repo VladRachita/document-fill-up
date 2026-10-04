@@ -53,6 +53,12 @@ _CLAUSE_START = re.compile(
     r"(?=(?i:cnp|cu\s+domiciliul|domicil|n[ăa]scut|cet[ăa][țţt]|posesor|identificat|de\s+cet))"
 )
 _NOT_NAMES = {"subsemnatul", "subsemnata", "subsemnatul(a)", "d-nul", "d-na", "dl", "dna"}
+# A party to a contract (the owner lending the registered office...) does not sign the request:
+# "în calitate de comodant" is no capacity of the applicant.
+_CONTRACT_PARTIES = {
+    "comodant", "comodatar", "locator", "locatar", "chirias", "proprietar", "proprietara",
+    "vanzator", "vanzatoare", "cumparator", "cumparatoare", "mandant", "cedent", "cesionar",
+}  # fmt: skip
 _ID_DOCUMENT = re.compile(
     rf"(?P<kind>[^,]*?)[\s,]*seria[\s:]*(?P<series>[{_UPPER}]{{1,2}})\b[\s,]*"
     r"(?:nr\.?|num[ăa]r(?:ul)?)[\s:]*(?P<number>\d{6,9})\b",
@@ -201,7 +207,8 @@ def clause_fields(text: str) -> dict[str, str]:
         elif keyword == "capacity":
             capacity = re.split(r"\s+(?:al|a|la)\s+(?:societ|firm|S\.?C\b)", value, maxsplit=1)[0]
             capacity = re.sub(r"\s+(?:numit|numită|desemnat|desemnată|ales|aleasă)$", "", capacity)
-            put("capacity", capacity)
+            if next(iter(fold(capacity).split()), "").strip(" .,") not in _CONTRACT_PARTIES:
+                put("capacity", capacity)
             if company := _COMPANY.search(value):
                 put("company_name", company["name"])
     if "id_series" not in found:  # "CI seria AX nr. 123456" without "identificat prin"

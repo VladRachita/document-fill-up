@@ -265,6 +265,17 @@ def validate_values(values: dict[str, str]) -> dict[str, list[str]]:
         if shares and not re.fullmatch(r"\d[\d.]*", shares):
             add(prefix + "shares", "A number of shares (e.g. 450)")
 
+    # a representative files the request: lawyer or proxy is asked each time, never remembered
+    if (
+        any((values.get(name) or "").strip() for name in ("filer_last_name", "filer_cnp"))
+        and not (values.get("representative_type") or "").strip()
+    ):
+        add(
+            "representative_type",
+            "A representative files the request: choose a lawyer (împuternicire avocațială) or "
+            "a proxy (procură autentică)",
+        )
+
     if (turnover := (values.get("estimated_turnover") or "").strip()) and len(
         re.sub(r"\D", "", turnover.split(",")[0])
     ) > 8:

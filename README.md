@@ -116,10 +116,18 @@ docfill serve                 # open http://127.0.0.1:8000
    * **What to upload**, which follows the documents ticked: the applicant's identity card,
      and the identity card of every other person involved when a ticked document needs them
      (associates, administrators, beneficial owners), an already filled form or a document
-     identifying a person (PDF, Word, photo or scan). *Fill in by hand* is also possible.
-2. **Scan & clean.** For each file: the **detected document type** with its confidence (change
-   it if wrong; the classifier learns from it), **whose document it is** (person 1, 2 or 3: each
-   identity card is a person, documents with the same CNP go to the same person), the text read
+     identifying a person (PDF, Word, photo or scan). For a company, the **act constitutiv**
+     gives the company and its persons (see *The act constitutiv* in
+     [Romanian documents](#romanian-documents)). When a lawyer or a proxy files the request,
+     put **their identity card** in the separate **Representative** box and say whether they
+     are a lawyer (împuternicire avocațială) or a proxy (procură specială / generală
+     autentică): their data goes to "Filed by" and the contact person, never to a person of the
+     company, with or without an act constitutiv. *Fill in by hand* is also possible.
+2. **Scan & clean.** For each file: the **detected document type** with its confidence, or
+   *recognised from its title* (change it if wrong; the classifier learns from it), **whose
+   document it is** (person 1, 2 or 3: each identity card is a person, documents with the same
+   CNP go to the same person; or the **representative** filing the request, whose card fills
+   "Filed by" and the contact person; an act constitutiv names its persons itself), the text read
    from the file next to the
    cleaned text (**fix OCR mistakes there, fields are re-extracted as you type**), what was
    removed or redacted.
@@ -227,6 +235,41 @@ act constitutiv wording `D-nul/d-na …, născut(ă) la data de …, domiciliat(
 CI seria … nr. …` too). Names in capitals are family name first, as Romanian documents print
 them (`Nume și prenume: POPESCU ION` is *Popescu* / *Ion*).
 
+**The act constitutiv.** An act constitutiv (Word or PDF, recognised from its title) is read
+as a whole, not as one person's document:
+
+| What the act says | Fields |
+|---|---|
+| `Denumirea societății este: EXEMPLU — societate cu răspundere limitată/S.R.L` (or the title `ACT CONSTITUTIV al Societății EXEMPLU S.R.L.`) | `company_name` = `EXEMPLU S.R.L.` (the legal form is added when the name is written without it) |
+| `Sediul societății este [în / :] Mun. Timișoara, Ale. Teilor nr. 4, bl. 12, et. VII, ap. 31, camera 1, jud. Timiș.` | the registered office and its parts (`camera 1` stays with the street: the form has no box for it), the trade register office (Timiș) |
+| `… dovezii privind disponibilitatea firmei nr. 123456 din 01.09.2026` | the number and date of the name availability proof |
+| `— activitatea principală clasa CAEN 4711 și denumirea activității …`, `— clasa CAEN 4725 și denumirea activității …` (or `4711 - …` in the object of activity) | `caen_activities`, one per line, the main activity first (Anexa 4, 3.1) |
+| `capitalul social subscris al societății este de [:] 500 lei … 50 de părți sociale` | `share_capital`, `share_count` |
+| every identification clause, after `Asociat unic:` / `Asociați:`, `Capitalul social este deținut de către…`, `Administrarea societății se face de către:`, `beneficiarul real al societății este:` | the persons, each with their roles: associate (shares from `deține 60 de părți sociale` or `100%`), administrator (`pe perioadă de 30 de ani`), beneficial owner (`art. 4 alin. (2) lit. a) pct. 1`, the description in brackets); the list of associates |
+
+The same CNP is the same person in every article. **Person 1, who signs the forms (section IV
+of Anexa 2a, V.1 of Anexa 4), is the administrator** (an associate one first), then the other
+administrators and the associates; their capacity is written from their roles (`asociat unic și
+administrator`). An identity card with the CNP of a person of the act goes to that person; an
+identity card of **nobody the act names is the representative** filing the request (avocat /
+împuternicit), unless it was put in the wizard's Representative box (always the representative):
+it fills "Filed by" (XII) and the contact person (VII), never a person. Whether
+the representative is **a lawyer or a proxy is asked every time** (never remembered): it writes
+`prin avocat, conform împuternicirii avocațiale` (or `prin împuternicit, conform procurii
+speciale / generale autentice`) in section IV and the capacity in XII.
+
+The **proof of the firm name** (ONRC, Formular nr. 17) gives the reserved name and its number /
+date, and the **proof of the registered office** (comodat, lease) the address of the premises;
+the people in them (the trade register's letterhead, the owner lending the premises) are not
+persons of the request, so they never fill the applicant.
+
+**Where Anexa 4 writes the activities.** The activities of the company (`caen_activities`, read
+from the act) go to the registered office (3.1). When the proof of the registered office (or the
+act) says the office has no activity (`sediu social fără desfășurare de activitate`), the box
+*The registered office has no activity* is ticked and Anexa 4 lists them at third parties
+(3.2. Activități desfășurate la terți), the main one first, followed by any other activity at
+third parties (`caen_third_party`). The box can be ticked or unticked in the review.
+
 ## Several persons
 
 Opening a company involves several people: the applicant who signs the forms, the shareholders,
@@ -234,9 +277,10 @@ the administrators, the beneficial owners. docfill keeps **three persons**:
 
 | Person | Fields | Filled from |
 |---|---|---|
-| 1 - the applicant | `last_name`, `cnp`, `city`... | the first identity card |
-| 2 | `p2_last_name`, `p2_cnp`, `p2_city`... | the second identity card |
-| 3 | `p3_last_name`, `p3_cnp`, `p3_city`... | the third identity card |
+| 1 - the applicant | `last_name`, `cnp`, `city`... | the administrator of the act constitutiv, or the first identity card |
+| 2 | `p2_last_name`, `p2_cnp`, `p2_city`... | the next person of the act, or the second identity card |
+| 3 | `p3_last_name`, `p3_cnp`, `p3_city`... | the third person of the act, or the third identity card |
+| the representative | `filer_*`, `contact_*` | the identity card of a lawyer / proxy the act constitutiv does not name |
 
 A document with the CNP of a person already read goes to that person; the person of every
 document can be changed in the wizard. Every person's CNP, date of birth and identity card are
@@ -265,7 +309,7 @@ learns from each saved review:
 | **Learned labels** | A value you typed that was printed in the document after a label nobody knew teaches that label. |
 | **Spelling fixes** | Corrections that only change a place name's spelling are applied next time. |
 | **Document types** | Every confirmed document type is a training example for the classifier. |
-| **Your details** | Fields marked `remember` (lawyer / filer, contact person, billing, communication, submitted documents) are proposed again. |
+| **Your details** | Fields marked `remember` (lawyer / filer, contact person, billing, communication, submitted documents) are proposed again. Whether the person filing is a lawyer or a proxy is asked every time. |
 
 ```bash
 docfill learn stats                     # accuracy per field and method, learned labels...
@@ -290,7 +334,7 @@ and verify over time. Open it at **http://127.0.0.1:8000/knowledge**, or use
 | `entity` | a legal form | SRL, SRL-D, SA (societăți), PFA, PFI, II, IF (persoane fizice) |
 | `procedure` | a legal form × an operation: where it is filed (ONRC / ANAF), the official forms (which docfill fills, and where to get the others), the documents of the file, extra fields to collect, legal basis | 21: every form × înființare / modificare / radiere |
 | `rule` | a legal check with its legal basis | 31, e.g. SA capital ≥ 90.000 lei and ≥ 2 shareholders (Legea 31/1990 art. 10), SRL ≤ 50 associates (art. 12), legal form in the firm name, PFA / II holder ≥ 18 years, IF ≥ 2 members, CAEN classes per PFA / II / IF, at least one change ticked (mențiuni), a reason for closing, the PFI's profession, every person with a role fully identified, at least one beneficial owner (Legea 129/2019), a tax on profit or on micro-enterprise revenue in the fiscal vector |
-| `doc_type` | a document the classifier learns to recognise | act constitutiv, dovada sediului, hotărâre AGA / decizie asociat unic, certificat de înregistrare, declarație beneficiar real, specimen de semnătură, acord de constituire IF, document privind dreptul de exercitare a profesiei, cerere de înregistrare fiscală (built in: identity card, birth certificate, Anexa 2a, Anexa 4, administrator statement) |
+| `doc_type` | a document the classifier learns to recognise | act constitutiv, dovada sediului, dovada disponibilității denumirii, hotărâre AGA / decizie asociat unic, certificat de înregistrare, declarație beneficiar real, specimen de semnătură, acord de constituire IF, document privind dreptul de exercitare a profesiei, cerere de înregistrare fiscală (built in: identity card, birth certificate, Anexa 2a, Anexa 4, administrator statement) |
 
 Which forms docfill fills:
 
@@ -398,7 +442,8 @@ box_choices:                           # a choice ticking one of several check b
 filled_when:                           # PDF fields left empty unless the field has a value
   # p2_beneficial_owner: ["33", "31", ...]   (the block of beneficial owner 2)
 defaults: {id_type: CI, country: România}
-remember: [represented_by, billing_iban]   # the filer's own details
+remember: [contact_phone, billing_iban]   # the filer's own details
+asks: [representative_type]            # asked in the review though no box prints it
 optional_fields: [building, entrance, floor, apartment]
 ```
 
@@ -512,9 +557,11 @@ src/docfill/
   doctypes.py          document type classifier (scikit-learn), incl. types taught as knowledge
   knowledge/           legal knowledge: specs, declarative rules, versioned store, laws + search,
     bundled/           Romanian legal forms, procedures, rules and document types (YAML)
-  extraction/          field catalog (persons 1-3), label rules, patterns (CNP, MRZ...), the
-                       identification clause, NER, derivations, repairs and checks of the text
-                       printed on an identity card (idcard.py)
+  extraction/          field catalog (persons 1-3, the representative), label rules, patterns
+                       (CNP, MRZ...), the identification clause, the act constitutiv and the
+                       proofs of the firm name and registered office (articles.py), NER,
+                       derivations, repairs and checks of the text printed on an identity card
+                       (idcard.py)
   computed.py          values composed when filling (domicile line, share value...)
   ro.py, mrz.py        Romanian knowledge (counties, CNP, addresses, places) and MRZ parsing
   lexicon.py, names.py Romanian names and localities (data/): lookups, repairs of names,
@@ -571,8 +618,10 @@ ruff check src tests examples && ruff format --check src tests examples
 * The lists of names are not exhaustive. A rare surname or first name that is not listed keeps
   the diacritics OCR lost (the wizard shows it; correct it once), and is never "repaired". The
   corrections made on cards were measured on synthetic cards only.
-* CAEN activity names are typed (or read from a filled Anexa 4); a CAEN Rev. 3 list could fill
-  the name from the code.
+* CAEN activity names are read from the act constitutiv (or a filled Anexa 4) or typed; a CAEN
+  Rev. 3 list could fill the name from the code.
+* The list of submitted documents (Anexa 2a, IX) is typed (and remembered), not built from the
+  uploaded files yet.
 * Three persons at most (the three blocks of the beneficial owner declaration); founders that
   are companies, an SA administered in the dualist system (directorat + consiliu de
   supraveghere) and a capital partly paid at registration are not in the act constitutiv

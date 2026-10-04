@@ -155,10 +155,14 @@ defaults:
   birth_country: România
   citizenship: Română
 
-# The filer's own details: proposed again next time.
+# Asked in the review though no box prints it: it writes "prin ... conform ..." (IV) and the
+# capacity of the person filing (XII), see extraction/derive.py.
+asks:
+  - representative_type
+
+# The filer's own details: proposed again next time. Who the representative is (a lawyer or
+# a proxy, which decides "prin ... conform ..." and the filer's capacity) is asked each time.
 remember:
-  - represented_by
-  - representation_basis
   - communication_method
   - contact_last_name
   - contact_first_name
@@ -186,8 +190,6 @@ remember:
   - filer_id_series
   - filer_id_number
   - filer_cnp
-  - filer_capacity
-  - filer_basis
 
 optional_fields:
   - building

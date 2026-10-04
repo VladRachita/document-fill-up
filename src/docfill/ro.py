@@ -320,7 +320,7 @@ def normalize_sex(text: str) -> str | None:
 # --------------------------------------------------------------------------- addresses
 
 _STOP_WORDS = (
-    r"(?:Str|Strada|Bd|B-dul|Bulevardul|Calea|Aleea|Al|Sos|Șos|Soseaua|Șoseaua|Spl|Splaiul|"
+    r"(?:Str|Strada|Bd|B-dul|Bulevardul|Calea|Aleea|Ale|Al|Sos|Șos|Soseaua|Șoseaua|Spl|Splaiul|"
     r"Piata|Piața|Intr|Intrarea|Drumul|Sec|Sector|Jud|Judet|Județ|Sat|Satul|Com|Comuna|Mun|"
     r"Municipiul|Oras|Oraș|Orasul|Orașul|Nr|Bl|Sc|Et|Ap)\b"
 )
@@ -338,7 +338,7 @@ _COUNTY = re.compile(
 )
 _SECTOR = re.compile(r"\bSec(?:tor(?:ul)?)?\.?\s*(?P<sector>[1-6])\b", re.IGNORECASE)
 _STREET = re.compile(
-    r"\b(?P<kind>Str(?:ada)?|Bd|B-dul|Bulevardul|Calea|Aleea|Al(?=\.)|[SȘ]os(?:eaua)?|Spl(?:aiul)?|"
+    r"\b(?P<kind>Str(?:ada)?|Bd|B-dul|Bulevardul|Calea|Aleea|Ale(?=\.)|Al(?=\.)|[SȘ]os(?:eaua)?|Spl(?:aiul)?|"
     r"Pia[tț]a|P-[tț]a|Intr(?:area)?|Drumul|Fund(?:[aă]tura)?)(?:\.\s*|\s+)"
     r"(?P<name>[^\s,.].*?)(?=\s*,?\s*\b(?:nr|bl|sc|et|ap|cam|camera)\b\.?|\s*,|\s*$)",
     re.IGNORECASE,
@@ -347,17 +347,21 @@ _PARTS = {
     "street_number": re.compile(r"\bnr\.?\s*(?P<v>\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)", re.I),
     "building": re.compile(r"\bbl(?:oc)?\.?\s*(?P<v>[A-Za-z0-9][\w\-/]*)", re.I),
     "entrance": re.compile(r"\bsc(?:ara)?\.?\s*(?P<v>[A-Za-z0-9]+)", re.I),
-    "floor": re.compile(r"\bet(?:aj)?\.?\s*(?P<v>\d+|parter|P|D|M)\b", re.I),
+    "floor": re.compile(
+        r"\bet(?:aj)?\.?\s*(?P<v>\d+|parter|P|D|M|[IVX]{1,4}(?=[\s,.;]|$))\b", re.I
+    ),
     "apartment": re.compile(
         r"\b(?:ap(?:artament)?\.?\s*(?P<v>\d+[A-Za-z]?)|(?P<room>cam(?:era)?\.?\s*\d+\w*))", re.I
     ),
 }
+_ROOM = re.compile(r"\bcam(?:era)?\.?\s*\d+\w*", re.I)
 _KEEP_STREET_KIND = {
     "bd": "Bd.",
     "b-dul": "Bd.",
     "bulevardul": "Bd.",
     "calea": "Calea",
     "aleea": "Aleea",
+    "ale": "Aleea",
     "al": "Aleea",
     "sos": "Șos.",
     "șos": "Șos.",
@@ -405,7 +409,8 @@ def format_locality(kind: str, name: str) -> str:
 
 def parse_ro_address(text: str) -> dict[str, str]:
     """Split a Romanian address into county, city, street, number, block, staircase, floor,
-    apartment (and sector for Bucharest). Only the parts present are returned."""
+    apartment (and sector for Bucharest; ``room`` for the room of an apartment, ``ap. 29,
+    camera 1``). Only the parts present are returned."""
     text = " ".join(text.replace("\n", ", ").split())
     result: dict[str, str] = {}
     if match := _COUNTY.search(text):
@@ -416,7 +421,7 @@ def parse_ro_address(text: str) -> dict[str, str]:
         result["sector"] = f"Sector {match['sector']}"
     code = _CODE_BY_COUNTY.get(result.get("county", "")) or ("B" if "sector" in result else None)
     localities = [
-        format_locality(m["kind"], spell_locality(m["kind"], m["name"], code))
+        format_locality(m["kind"], spell_locality(m["kind"], _without_noise(m["name"], code), code))
         for m in _LOCALITY_PREFIX.finditer(text)
     ]
     if localities:  # "Com. Hărman, Sat Podu Oltului"
@@ -431,6 +436,11 @@ def parse_ro_address(text: str) -> dict[str, str]:
                 result[part] = " ".join(match["room"].split()).lower()
             else:
                 result[part] = match["v"].replace(" ", "")
+    # "ap. 29, camera 1": the room of an apartment (a registered office often is one room)
+    if (room := _ROOM.search(text)) and (room := " ".join(room.group().split()).lower()) != (
+        result.get("apartment")
+    ):
+        result["room"] = room
     if "county" in result or "city" in result:
         result.setdefault("country", "România")
     return result
@@ -569,6 +579,16 @@ _PLACE_PART = re.compile(r"(?P<kind>Mun\.|Oraș|Com\.|Sat)\s+(?P<name>[^,]+?)\s*
 
 def _marks(text: str) -> int:
     return sum(char in ROMANIAN_MARKS for char in text)
+
+
+def _without_noise(name: str, county: str | None) -> str:
+    """``Brașov Sr`` -> ``Brașov``: one or two letters after a locality, that the register has
+    without them, are specks of the card read as letters."""
+    words = name.split()
+    if len(words) < 2 or len(words[-1]) > 2 or gazetteer().find(name, county):
+        return name
+    rest = " ".join(words[:-1])
+    return rest if gazetteer().find(rest, county) else name
 
 
 def spell_locality(kind_prefix: str, name: str, county: str | None = None) -> str:
