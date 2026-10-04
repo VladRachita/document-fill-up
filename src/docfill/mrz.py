@@ -8,9 +8,12 @@ a value is only trusted when its check digit matches; common OCR confusions in n
 
 from __future__ import annotations
 
+import itertools
 import re
 from dataclasses import dataclass, field
 from datetime import date
+
+from docfill.ro import check_cnp
 
 _LAYOUTS = {3: 30, 2: 36}  # lines -> length (TD1, TD2); TD3 handled separately (2 x 44)
 _TO_DIGIT = str.maketrans(
@@ -27,6 +30,26 @@ _TO_DIGIT = str.maketrans(
         "T": "7",
     }
 )
+
+
+# Digits OCR reads where the zone has a letter (document code, state, nationality).
+_TO_ALPHA = str.maketrans({"0": "O", "1": "I", "2": "Z", "5": "S", "6": "G", "8": "B"})
+# The letters of a series that OCR mixes up with digits or with each other (capital I, 1, l).
+_SERIES_SWAPS = {
+    "L": "I",
+    "I": "L",
+    "1": "I",
+    "0": "O",
+    "5": "S",
+    "8": "B",
+    "2": "Z",
+    "6": "G",
+    "7": "T",
+}
+
+
+def _alpha(text: str) -> str:
+    return text.translate(_TO_ALPHA)
 
 
 def check_digit(data: str) -> str:
@@ -52,12 +75,21 @@ def _checked(data: str, digit: str, numeric: bool = True) -> tuple[str, bool]:
         return data, True
     if numeric:
         repaired = data.translate(_TO_DIGIT)
-    else:
-        prefix = re.match(r"[A-Z]{0,2}", data).group()
-        repaired = prefix + data[len(prefix) :].translate(_TO_DIGIT)
-    if check_digit(repaired) == digit:
-        return repaired, True
+        if check_digit(repaired) == digit:
+            return repaired, True
+        return data, False
+    for prefix in _series_readings(data[:2]):
+        repaired = prefix + data[2:].translate(_TO_DIGIT)
+        if check_digit(repaired) == digit:
+            return repaired, True
     return data, False
+
+
+def _series_readings(prefix: str) -> list[str]:
+    """The series (two letters) as read, then with the letters OCR mixes up swapped: ``LF`` may
+    be ``IF`` (Ilfov), ``1S`` may be ``IS``. Only a reading whose check digit matches is used."""
+    options = [(char, _SERIES_SWAPS[char]) if char in _SERIES_SWAPS else (char,) for char in prefix]
+    return ["".join(reading) for reading in itertools.product(*options)]
 
 
 def _date(yymmdd: str, future: bool) -> date | None:
@@ -92,14 +124,23 @@ class MRZ:
         return all(self.valid.values())
 
 
+# "<<<<" fillers that OCR read as letters: a run of these letters is not a name.
+_FILLER_TOKEN = re.compile(r"[CKELSX]{3,}")
+
+
 def _names(zone: str) -> tuple[str, str]:
     surname, _, given = zone.partition("<<")
-    return surname.replace("<", " ").strip(), given.replace("<", " ").strip()
+
+    def words(part: str) -> str:
+        return " ".join(w for w in part.replace("<", " ").split() if not _FILLER_TOKEN.fullmatch(w))
+
+    return words(surname), words(given)
 
 
 def _clean(line: str) -> str:
     line = line.upper().replace(" ", "")
     line = re.sub(r"[«‹(\[{]", "<", line)
+    line = line.replace("$", "S").replace("§", "S").replace("|", "I").replace("!", "I")
     return re.sub(r"[^A-Z0-9<]", "", line)
 
 
@@ -126,12 +167,12 @@ def parse_mrz(lines: list[str]) -> MRZ | None:
         surname, given = _names(first[5:44])
         return MRZ(
             "TD3",
-            first[0:2].strip("<"),
-            first[2:5],
+            _alpha(first[0:2]).strip("<"),
+            _alpha(first[2:5]),
             surname,
             given,
             number.strip("<"),
-            second[10:13],
+            _alpha(second[10:13]),
             _date(birth, False),
             second[20].strip("<") or None,
             _date(expiry, True),
@@ -139,25 +180,7 @@ def parse_mrz(lines: list[str]) -> MRZ | None:
             {"document_number": ok_number, "birth_date": ok_birth, "expiry_date": ok_expiry},
         )
     if len(lines) == 2 and len(lines[0]) == 36:
-        first, second = lines
-        number, ok_number = _checked(second[0:9], second[9], numeric=False)
-        birth, ok_birth = _checked(second[13:19], second[19])
-        expiry, ok_expiry = _checked(second[21:27], second[27])
-        surname, given = _names(first[5:36])
-        return MRZ(
-            "TD2",
-            first[0:2].strip("<"),
-            first[2:5],
-            surname,
-            given,
-            number.strip("<"),
-            second[10:13],
-            _date(birth, False),
-            second[20].strip("<") or None,
-            _date(expiry, True),
-            second[28:35].strip("<"),
-            {"document_number": ok_number, "birth_date": ok_birth, "expiry_date": ok_expiry},
-        )
+        return _parse_td2(*lines)
     if len(lines) == 3 and len(lines[0]) == 30:
         first, second, third = lines
         number, ok_number = _checked(first[5:14], first[14], numeric=False)
@@ -166,12 +189,12 @@ def parse_mrz(lines: list[str]) -> MRZ | None:
         surname, given = _names(third)
         return MRZ(
             "TD1",
-            first[0:2].strip("<"),
-            first[2:5],
+            _alpha(first[0:2]).strip("<"),
+            _alpha(first[2:5]),
             surname,
             given,
             number.strip("<"),
-            second[15:18],
+            _alpha(second[15:18]),
             _date(birth, False),
             second[7].strip("<") or None,
             _date(expiry, True),
@@ -181,9 +204,107 @@ def parse_mrz(lines: list[str]) -> MRZ | None:
     return None
 
 
+def _parse_td2(first: str | None, second: str) -> MRZ:
+    """A TD2 zone (the Romanian identity card). ``first`` (the names) is ``None`` when only the
+    second line, the one with the check digits, could be read."""
+    number, ok_number = _checked(second[0:9], second[9], numeric=False)
+    birth, ok_birth = _checked(second[13:19], second[19])
+    expiry, ok_expiry = _checked(second[21:27], second[27])
+    nationality = _alpha(second[10:13])
+    surname, given = _names(first[5:36]) if first else ("", "")
+    return MRZ(
+        "TD2",
+        _alpha(first[0:2]).strip("<") if first else "",
+        _alpha(first[2:5]) if first else nationality,
+        surname,
+        given,
+        number.strip("<"),
+        nationality,
+        _date(birth, False),
+        second[20].strip("<") or None,
+        _date(expiry, True),
+        second[28:35].strip("<"),
+        {"document_number": ok_number, "birth_date": ok_birth, "expiry_date": ok_expiry},
+    )
+
+
+def _td2_valid(line: str) -> bool:
+    """Do all three check digits of a 36 character second line match?"""
+    return (
+        line[20] in "MF<"
+        and _checked(line[0:9], line[9], numeric=False)[1]
+        and _checked(line[13:19], line[19])[1]
+        and _checked(line[21:27], line[27])[1]
+    )
+
+
+def _realigned(line: str) -> list[str]:
+    """``line`` as a 36 character TD2 line, or the lines it becomes when OCR dropped a character
+    (a ``<`` is put back anywhere) or added one (each character removed in turn)."""
+    if len(line) == 36:
+        return [line]
+    if len(line) == 35:
+        return [line[:i] + "<" + line[i:] for i in range(36)]
+    if len(line) == 37:
+        return [line[:i] + line[i + 1 :] for i in range(37)]
+    return []
+
+
+def find_td2_data_line(text: str) -> str | None:
+    """The second line of a TD2 zone read on its own. On photographs the first line (names and
+    many ``<``) is often split by OCR, but the second line is usually intact. It is accepted
+    only if all three check digits match, and, when a dropped or added character has to be
+    guessed, only if exactly one reading matches: a stray line is never taken for it."""
+    found: set[str] = set()
+    for raw in text.splitlines():
+        line = _clean(raw)
+        if sum(char.isdigit() for char in line) < 14:
+            continue
+        found.update(candidate for candidate in _realigned(line) if _td2_valid(candidate))
+    if len(found) > 1:
+        # A lost or extra character inside the document number leaves the rest aligned the same
+        # way, so the check digit alone cannot place it: keep the readings that are a series
+        # (two letters) and a number (6 or 7 digits), padded with "<" at the end only.
+        found = {
+            line
+            for line in found
+            if split_ro_document_number(_checked(line[:9], line[9], numeric=False)[0].rstrip("<"))
+        } or found
+    return found.pop() if len(found) == 1 else None
+
+
 def read_mrz(text: str) -> MRZ | None:
     lines = find_mrz_lines(text)
-    return parse_mrz(lines) if lines else None
+    mrz = parse_mrz(lines) if lines else None
+    if mrz is not None and mrz.fully_valid:
+        return mrz
+    if second := find_td2_data_line(text):
+        names = lines[0] if lines and len(lines) == 2 and len(lines[0]) == 36 else None
+        return _parse_td2(names, second)
+    return mrz
+
+
+def cnp_from_mrz(mrz: MRZ) -> str | None:
+    """The CNP carried by the zone of a Romanian identity card, or ``None``.
+
+    On the card with two lines the optional field holds the CNP without its date of birth (sex
+    digit, county, serial number, control digit); the date comes from the zone itself, whose
+    check digit has been verified. Electronic cards keep the 13 digits in the optional data. A
+    number is returned only when it is a valid CNP of the date of birth in the zone."""
+    if mrz.issuing_state != "ROU":
+        return None
+    candidates = re.findall(r"(?<!\d)\d{13}(?!\d)", mrz.optional)
+    tail = mrz.optional.translate(_TO_DIGIT)
+    td2 = mrz.layout == "TD2" and mrz.birth_date and mrz.valid.get("birth_date")
+    if td2 and re.fullmatch(r"\d{7}", tail):
+        candidates.append(tail[0] + f"{mrz.birth_date:%y%m%d}" + tail[1:])
+    for cnp in candidates:
+        info = check_cnp(cnp)
+        if info.valid and (
+            mrz.birth_date is None or f"{info.birth_date:%y%m%d}" == f"{mrz.birth_date:%y%m%d}"
+        ):
+            return cnp
+    return None
 
 
 def split_ro_document_number(number: str) -> tuple[str, str] | None:

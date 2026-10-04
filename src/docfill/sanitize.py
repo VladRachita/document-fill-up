@@ -22,6 +22,7 @@ from dataclasses import dataclass
 import ftfy
 
 from docfill.models import RawDocument, SanitizedDocument
+from docfill.ro import check_cnp
 
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0e-\x1f\x7f​-‏  ﻿]")
 _HSPACE = re.compile(r"[ \t  -   　]+")
@@ -77,6 +78,10 @@ def _redact_cards(text: str) -> tuple[str, int]:
         nonlocal count
         digits = re.sub(r"\D", "", match.group())
         if 13 <= len(digits) <= 19 and _luhn_valid(digits):
+            # One CNP in ten also passes the Luhn check: a number that is a valid Romanian
+            # personal code is a person's identifier, not a payment card.
+            if len(digits) == 13 and check_cnp(digits).valid:
+                return match.group()
             count += 1
             return "[REDACTED CARD]"
         return match.group()
@@ -98,9 +103,36 @@ def _redact_ibans(text: str) -> tuple[str, int]:
     return _IBAN_RE.sub(replace, text), count
 
 
+# A line of the machine readable zone of an identity document: letters, digits and "<" (and a few
+# characters OCR adds), never the punctuation of ordinary text.
+_MRZ_LINE = re.compile(r"[A-Za-z0-9<«‹*.$|!]{20,}")
+
+
+def looks_like_mrz(line: str) -> bool:
+    compact = line.replace(" ", "")
+    return "<" in compact and _MRZ_LINE.fullmatch(compact) is not None
+
+
+def _outside_mrz(redactor: Callable[[str], tuple[str, int]]) -> Callable[[str], tuple[str, int]]:
+    """Apply ``redactor`` to every line except the machine readable zone of an identity document:
+    it holds the document number and dates, never a card or an IBAN."""
+
+    def redact(text: str) -> tuple[str, int]:
+        count = 0
+        lines = []
+        for line in text.split("\n"):
+            if not looks_like_mrz(line):
+                line, found = redactor(line)
+                count += found
+            lines.append(line)
+        return "\n".join(lines), count
+
+    return redact
+
+
 REDACTORS: dict[str, Callable[[str], tuple[str, int]]] = {
-    "iban": _redact_ibans,
-    "credit_card": _redact_cards,
+    "iban": _outside_mrz(_redact_ibans),
+    "credit_card": _outside_mrz(_redact_cards),
 }
 
 
@@ -141,6 +173,8 @@ def is_noise(line: str) -> bool:
     compact = line.replace(" ", "")
     if not compact:
         return False
+    if len(compact) >= 20 and compact.count("<") >= 3:
+        return False  # the first line of the machine readable zone: mostly "<" fillers
     alnum = sum(char.isalnum() for char in compact)
     if alnum == 0:
         return True

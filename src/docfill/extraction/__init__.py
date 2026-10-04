@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping
 
 from docfill.config import Settings, get_settings
+from docfill.extraction import idcard
 from docfill.extraction.clauses import extract_clauses
 from docfill.extraction.derive import complete_values, derive_fields
 from docfill.extraction.fields import FIELDS, GROUPS, FieldSpec, field_labels
@@ -52,6 +53,8 @@ class FieldExtractor:
         found += extract_patterns(document.text, document.source)
         if self.ner:
             found += self.ner.extract(document.text, document.source)
+        if doc_type == "id_card":  # text printed on the card: repaired and checked like its labels
+            found = [idcard.review(candidate) for candidate in found]
         if self.fix_spelling:
             found = [self.fix_spelling(candidate) for candidate in found]
         if self.calibrator:

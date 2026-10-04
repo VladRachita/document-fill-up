@@ -7,14 +7,16 @@ from datetime import date
 import pytest
 
 from docfill.config import Settings
-from docfill.mrz import check_digit, make_td2, read_mrz
+from docfill.mrz import check_digit, cnp_from_mrz, make_td2, parse_mrz, read_mrz
 from docfill.ro import (
     check_cnp,
     cnp_control_digit,
     compose_street_line,
     county_name,
+    doubtful_place,
     normalize_date,
     parse_ro_address,
+    repair_county_codes,
     restore_diacritics,
     split_room,
 )
@@ -44,6 +46,66 @@ def test_mrz_check_digits_and_ocr_repair():
     assert (mrz.surname, mrz.given_names) == ("POPESCU", "ION ANDREI")
     assert mrz.document_number == "AX123456"
     assert mrz.birth_date == date(1987, 11, 14) and mrz.expiry_date == date(2032, 11, 14)
+
+
+def test_mrz_second_line_is_read_when_the_names_line_is_split():
+    # On a tilted photograph OCR splits the first line in two; the second line, which carries
+    # the check digits, is still intact (spaces inside it are noise).
+    first, second = make_td2(
+        "TOMA", "IOANA IULIA", "AX334455", "ROU", "921205", "F", "331205", "2012668"
+    )
+    noisy = second[:16] + " " + second[16:28] + " " + second[28:]
+    mrz = read_mrz(f"IDROUTOMA<<IOAN\n{noisy}\nAIULIA<<<<<<<<<<<<<<<<<")
+    assert mrz is not None and mrz.fully_valid
+    assert (mrz.document_number, mrz.birth_date, mrz.expiry_date) == (
+        "AX334455",
+        date(1992, 12, 5),
+        date(2033, 12, 5),
+    )
+    assert mrz.sex == "F" and mrz.issuing_state == "ROU" and mrz.surname == ""
+
+
+def test_mrz_second_line_with_a_lost_or_an_extra_character():
+    _, second = make_td2("POP", "LIVIU", "CJ290841", "ROU", "750609", "M", "290609", "1120521")
+    # an extra character (37 long) and a lost "<" filler (35 long)
+    for damaged in (second[:1] + "3" + second[1:], second[:8] + second[9:]):
+        mrz = read_mrz(f"noise\n{damaged}\n")
+        assert mrz is not None and mrz.fully_valid, damaged
+        assert mrz.document_number == "CJ290841" and mrz.birth_date == date(1975, 6, 9)
+
+
+def test_mrz_is_not_invented_from_stray_lines():
+    text = "CNP 1871114321239\nSERIA AX NR 123456\n12345678901234567890123456789012345\n"
+    assert read_mrz(text) is None
+
+
+@pytest.mark.parametrize("misread", ["LF", "1F", "IF"])
+def test_mrz_series_letters_read_as_look_alikes(misread):
+    # Ilfov: the series IF starts with a capital I that OCR reads as l or 1; the check digit
+    # of the document number decides which reading is the right one.
+    first, second = make_td2(
+        "POPESCU", "ION", "IF123456", "ROU", "871114", "M", "321114", "1321230"
+    )
+    mrz = read_mrz(f"{first}\n{misread}{second[2:]}\n")
+    assert mrz.fully_valid and mrz.document_number == "IF123456"
+
+
+def test_cnp_is_rebuilt_from_the_machine_readable_zone():
+    person = Person()
+    first, second = person.mrz()
+    mrz = read_mrz(f"{first}\n{second}\n")
+    assert cnp_from_mrz(mrz) == person.cnp
+    # electronic cards keep the 13 digits in the optional data
+    td1 = [
+        "IDROU" + "AX123456<0" + person.cnp + "<<",
+        "8711142M3211142ROU<<<<<<<<<<" + "0",
+        "POPESCU<<ION<ANDREI<<<<<<<<<<<<<",
+    ]
+    electronic = parse_mrz([line[:30].ljust(30, "<") for line in td1])
+    assert electronic is not None and cnp_from_mrz(electronic) == person.cnp
+    # a damaged optional field gives no CNP, never a wrong one
+    broken = second[:28] + "9" + second[29:]
+    assert cnp_from_mrz(read_mrz(f"{first}\n{broken}\n")) is None
 
 
 @pytest.mark.parametrize(
@@ -84,11 +146,61 @@ def test_mrz_check_digits_and_ocr_repair():
                 "country": "România",
             },
         ),
+        (
+            "Jud.CJ Or.Huedin, Str.Horea nr.25 ap.2",  # towns are written "Or." on cards
+            {
+                "county": "Cluj",
+                "city": "Oraș Huedin",
+                "street": "Horea",
+                "street_number": "25",
+                "apartment": "2",
+                "country": "România",
+            },
+        ),
+        (
+            "Jud.C} Mun.Dej",  # the hook of the J of the county code, read as a brace
+            {"county": "Cluj", "city": "Mun. Dej", "country": "România"},
+        ),
+        ("Jud.!S Mun.Iasi", {"county": "Iași", "city": "Mun. Iași", "country": "România"}),
         ("Numele de familie al tatălui", {}),
     ],
 )
 def test_parse_ro_address(address, expected):
     assert parse_ro_address(address) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "county"),
+    [("C}", "Cluj"), ("c)", "Cluj"), ("lS", "Iași"), ("!F", "Ilfov"), ("CJ", "Cluj"), ("XX", None)],
+)
+def test_county_codes_misread_by_ocr(text, county):
+    assert county_name(text) == county
+    assert repair_county_codes(f"Jud.{text} Mun.X") == (
+        f"Jud.{ {'Cluj': 'CJ', 'Iași': 'IS', 'Ilfov': 'IF'}[county] } Mun.X"
+        if county
+        else "Jud.XX Mun.X"
+    )
+
+
+@pytest.mark.parametrize(
+    ("place", "birth", "problem"),
+    [
+        ("Mun. Sibiu", False, None),
+        ("Mun. Cluj-Napoca", False, None),
+        ("Oraș Huedin", False, None),  # a town that is not on the list is never doubted
+        ("Com. Hărman, Sat Podu Oltului", False, None),
+        ("Mun. București Sector 2", True, None),
+        ("Mun. București", False, None),  # a domicile: its sector is in the county field
+        ("Mun. Sib", False, "cut off"),
+        ("Mun. Cluj", False, "cut off"),
+        ("Mun. Alba", False, "cut off"),
+        ("Mun. Set", False, "Not a known municipality"),
+        ("Mun. București", True, "sector of Bucharest"),
+    ],
+)
+def test_places_that_cannot_be_what_a_card_prints(place, birth, problem):
+    found = doubtful_place(place, birth=birth)
+    assert (problem in found) if problem else found is None
 
 
 def test_address_helpers():

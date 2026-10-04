@@ -9,6 +9,7 @@ import re
 from collections.abc import Mapping
 from functools import lru_cache
 
+from docfill.extraction import idcard
 from docfill.extraction.fields import FIELDS, TYPE_SYNONYMS, FieldSpec
 from docfill.extraction.text_utils import (
     POSTAL_CODE,
@@ -215,8 +216,14 @@ def extract_labeled(
         is_learned = collapse(label) in learned_keys
         if is_learned:
             confidence = min(confidence, LEARNED_CONFIDENCE)
+        on_card = doc_type == "id_card"
+        if raw and on_card:
+            raw = idcard.repair(spec, raw)
         value = validate(spec, raw, strict=confidence < INLINE_CONFIDENCE) if raw else None
         if value:
+            issues: list[str] = []
+            if on_card and (problem := idcard.suspicious(spec, value)):
+                confidence, issues = min(confidence, idcard.SUSPECT_CONFIDENCE), [problem]
             found.append(
                 ExtractedField(
                     name=spec.name,
@@ -225,6 +232,7 @@ def extract_labeled(
                     source="learned" if is_learned else "label",
                     evidence=evidence.strip(),
                     document=document,
+                    issues=issues,
                 )
             )
 

@@ -11,19 +11,34 @@ import re
 from datetime import date
 
 from docfill.extraction.fields import FIELDS, PERSON_PREFIXES
+from docfill.extraction.idcard import SUSPECT_CONFIDENCE
+from docfill.extraction.patterns import MRZ_NAMES_TRUSTED
 from docfill.models import ExtractionResult
 from docfill.ro import check_cnp, parse_date
 from docfill.sanitize import _iban_valid
 
 INVALID_CONFIDENCE = 0.3
 CONFIRMED_CONFIDENCE = 0.97
+# The "<" fillers of the zone, as OCR reads them when it is unsure (lower-case, accents removed).
+_FILLER_LETTERS = set("ckelsx")
 
 
-def _letters(text: str) -> str:
+_DIGITS_AS_LETTERS = str.maketrans("01256", "oizsg")
+_LOOKALIKES = str.maketrans("lq", "io")  # I read as l, O read as Q: same name for the comparison
+
+
+def _plain(text: str) -> str:
+    """The letters of a name: no accents, hyphens or spaces, lower case; digits that OCR read
+    in place of letters (``Liv1U``) are the letters they stand for."""
     import unicodedata
 
-    decomposed = unicodedata.normalize("NFD", text)
-    return "".join(c for c in decomposed if c.isalpha()).lower()
+    decomposed = unicodedata.normalize("NFD", text).lower().translate(_DIGITS_AS_LETTERS)
+    return "".join(c for c in decomposed if c.isalpha())
+
+
+def _key(plain: str) -> str:
+    """:func:`_plain` with the letters OCR mixes up merged (same length, so positions agree)."""
+    return plain.translate(_LOOKALIKES)
 
 
 def cross_check(result: ExtractionResult) -> ExtractionResult:
@@ -76,17 +91,40 @@ def _check_person(result: ExtractionResult, prefix: str) -> None:
             if sex and sex.source != "derived" and info.sex and sex.value != info.sex:
                 flag("sex", "Differs from the sex encoded in the CNP", sex.confidence * 0.6)
 
-    # printed name vs. machine readable zone (MRZ has no diacritics, hyphens become spaces)
+    # the CNP printed on the card vs. the one carried by the machine readable zone: two sources
+    # that fail independently, so agreement is strong evidence and a difference needs a person
+    cnp = fields.get("cnp")
+    pool = result.candidates.get(prefix + "cnp", [])
+    from_mrz = next((c for c in pool if c.source == "mrz"), None)
+    if cnp is not None and from_mrz is not None and cnp.source != "mrz":
+        if cnp.value == from_mrz.value:
+            confirm("cnp", "the MRZ")
+        else:
+            message = f"Differs from the CNP in the machine readable zone ({from_mrz.value})"
+            flag("cnp", message, SUSPECT_CONFIDENCE)
+
+    # printed name vs. machine readable zone (no diacritics, hyphens become spaces, "<" fillers
+    # sometimes read as letters)
     for name in ("last_name", "first_name"):
         field = fields.get(name)
         pool = result.candidates.get(prefix + name, [])
         mrz = next((c for c in pool if c.source == "mrz"), None)
         if field is None or mrz is None or field.source == "mrz":
             continue
-        if _letters(field.value) == _letters(mrz.value):
+        printed, zone = _plain(field.value), _plain(mrz.value)
+        key_printed, key_zone = _key(printed), _key(zone)
+        rest = zone[len(printed) :] if key_zone.startswith(key_printed) else None
+        if key_printed.startswith(key_zone) or (rest is not None and set(rest) <= _FILLER_LETTERS):
             confirm(name, "the MRZ")
-        else:
-            flag(name, f"Differs from the machine readable zone ({mrz.value})")
+        elif zone.startswith(printed) and mrz.confidence >= MRZ_NAMES_TRUSTED:
+            # The name is cut off on the scan (glare, a fold): finish it with the zone's letters.
+            # Only for an exact prefix: letters merged as look-alikes could keep a misread one.
+            field.evidence = f"{field.evidence or field.value} (finished with the MRZ)"
+            field.value, field.source = field.value + rest, "derived"
+            flag(name, "Cut off on the scan: finished with the machine readable zone")
+        else:  # two readings that disagree: a person decides, neither is filled in
+            flag(name, f"Differs from the machine readable zone ({mrz.value})", SUSPECT_CONFIDENCE)
+            mrz.confidence = min(mrz.confidence, SUSPECT_CONFIDENCE)
 
     issued, expires = fields.get("id_issue_date"), fields.get("id_expiry_date")
     issued_date = parse_date(issued.value) if issued else None
