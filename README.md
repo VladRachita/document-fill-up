@@ -151,6 +151,11 @@ docfill serve                 # open http://127.0.0.1:8000
    in the output folder
    (`DOCFILL_OUTPUT_DIR`, never overwritten) and downloaded. The page shows what docfill learned
    from the review, including the checks you overrode (recorded so rules get reviewed).
+   **Start a new document** clears the page for the next one: the documents just created are
+   unticked, the files, values and previews are gone. What was saved stays: the PDFs in the
+   output folder, and what docfill learned and remembers (in the database). Only the values of
+   the documents ticked are sent when previewing or saving, so nothing typed for a previous
+   document reaches the next one.
 
 The same review runs in the terminal: `docfill wizard ci.jpg -t onrc-anexa-2a -t onrc-anexa-4`
 (procedures and legal checks are in the web wizard; in the terminal use
