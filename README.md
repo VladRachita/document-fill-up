@@ -24,6 +24,7 @@ results are the files of the dossier, each saved as its own PDF:
 | **ONRC Formular nr. 3** | declarație privind beneficiarii reali (Legea nr. 129/2019) - official PDF form |
 | **Declarație pe proprie răspundere - administrator** | one for each administrator, in the wording filers submit |
 | **Act constitutiv SA (sistem unitar)** | the ONRC model, filled: founders, capital and shares, board, director, censors |
+| **Act constitutiv SRL - asociat unic** | the model filers use, filled: the firm (proof of the name), the registered office (comodat), CAEN activities, capital, the sole associate, the administrator, the beneficial owner |
 
 These are the **[reference documents](#reference-documents)**: kept exactly as they were given and
 checked by the tests after every change.
@@ -125,7 +126,11 @@ docfill serve                 # open http://127.0.0.1:8000
      put **their identity card** in the separate **Representative** box and say whether they
      are a lawyer (împuternicire avocațială) or a proxy (procură specială / generală
      autentică): their data goes to "Filed by" and the contact person, never to a person of the
-     company, with or without an act constitutiv. *Fill in by hand* is also possible.
+     company, with or without an act constitutiv. For the **act constitutiv of an SRL**, the
+     box *Sole associate and administrator* takes the sole associate's identity card and,
+     unless *the sole associate is also the administrator* stays ticked, the administrator's
+     (the administrator is then person 1, who signs the requests). *Fill in by hand* is also
+     possible.
 2. **Scan & clean.** For each file: the **detected document type** with its confidence, or
    *recognised from its title* (change it if wrong; the classifier learns from it), **whose
    document it is** (person 1, 2 or 3: each identity card is a person, documents with the same
@@ -278,6 +283,19 @@ other activity at third parties (`caen_third_party`): a registered office withou
 carried out at the registered office* in the review to list them under 3.1 (sediu social /
 profesional) instead.
 
+**The act constitutiv of an SRL (asociat unic)** is written from the model filers use, every
+paragraph without blanks copied verbatim:
+
+| In the act | Comes from |
+|---|---|
+| the firm, `conform dovezii privind disponibilitatea firmei nr. … din …` | the proof of the firm name (ONRC, Formular nr. 17) |
+| `Art. 1.4. — Sediul societății este în …` | the proof of the registered office (contract de comodat / închiriere): `Ale. lancu`, `BI. 12`, `Timisoara` as OCR reads a scan are written `Ale. Iancu`, `bl. 12`, `Timișoara` |
+| `Art. 2.1.` the object of activity, the main domain (group and class), the main and the secondary activities | the CAEN activities typed in the review, the main one first; the object is proposed from the main activity and can be written otherwise |
+| `Art. 3.1.` the share capital, the number of părți sociale (`50 de părți sociale`) and their nominal value (computed) | typed in the review |
+| `Asociat unic:`, `Art. 3.2.` and `Art. 10.` (the beneficial owner, 100%) | the sole associate's identity card |
+| `Art. 6.1.` the administrator | the same person, or the administrator's identity card |
+| `Art. 12.1.` and `Data:` | the date of the documents (today, editable) |
+
 ## Several persons
 
 Opening a company involves several people: the applicant who signs the forms, the shareholders,
@@ -297,6 +315,7 @@ checked, and derived values (date of birth and sex from the CNP...) are derived 
 
 | Role (field) | Effect |
 |---|---|
+| `associate` | an associate / shareholder (ticked for whoever holds shares); a sole associate holds every share, and person 1's capacity is written from the roles (`asociat unic și administrator`) |
 | `shares` | a founder in the act constitutiv, with the value and share of the capital computed; the list of associates is derived |
 | `board_role` (președinte / membru / administrator unic / administrator) | a member of the board or the sole administrator (the administration type is derived); a sworn statement is made for them |
 | `general_director` | appointed general director in the act constitutiv |
@@ -489,6 +508,7 @@ were given** (the official PDFs are not re-saved or blanked; they carry no value
 | `anexa-1-inregistrare-fiscala.pdf` | `cerere-inregistrare-fiscala` |
 | `onrc-declaratie-beneficiari-reali.pdf` | `onrc-declaratie-beneficiari-reali` |
 | `model-act-constitutiv-sa-sistem-unitar.doc` | `act-constitutiv-sa` (a text document: every paragraph of the model without blanks is copied verbatim) |
+| `model-act-constitutiv-srl-asociat-unic.docx` | `act-constitutiv-srl` (the same way; the model's metadata, the names of who edited it, removed) |
 
 `tests/test_reference_forms.py` checks, after every change, that each file is unchanged (SHA-256)
 and that filling it from known input (fictitious people) gives the **expected document**: every
@@ -580,7 +600,8 @@ src/docfill/
   templates/           standard documents: placeholders, DB model, repository, YAML loader
   standard_documents/  the reference documents (official PDFs, the ONRC act model) + YAML:
                        Anexa 2a (înmatriculare, mențiuni, radiere), Anexa 4, Anexa 1,
-                       beneficial owners, administrator statement, act constitutiv SA
+                       beneficial owners, administrator statement, act constitutiv SA and
+                       SRL (asociat unic)
   export/              PDF forms (fill, blank, inspect) and text rendering
   pipeline.py, app.py  read -> clean -> detect -> extract -> fill; wiring with learning
   wizard.py, web/      review logic, the web wizard and the knowledge page
@@ -634,5 +655,6 @@ ruff check src tests examples && ruff format --check src tests examples
   are companies, an SA administered in the dualist system (directorat + consiliu de
   supraveghere) and a capital partly paid at registration are not in the act constitutiv
   template: write those acts separately.
-* Only the act constitutiv of an SA is filled (the ONRC model given as reference); the act
-  constitutiv of an SRL is a document to attach.
+* docfill writes the act constitutiv of an SA (the ONRC model given as reference) and of an SRL
+  with a sole associate (the model filers use); an SRL with several associates, or an SRL-D,
+  has its act written separately.

@@ -328,7 +328,7 @@ rules:
 
   # ------------------------------------------------------------------ persoanele implicate
   # Persoana 1 este solicitantul; persoanele 2 și 3 sunt citite din celelalte acte de identitate.
-  # O persoană cu un rol (acționar, administrator, director general, beneficiar real) trebuie
+  # O persoană cu un rol (asociat / acționar, administrator, director general, beneficiar real) trebuie
   # identificată complet în actul constitutiv și în declarația privind beneficiarii reali.
   - key: persoana-1-identificata
     title: Persoana 1 este identificată complet
@@ -336,7 +336,8 @@ rules:
     severity: error
     check:
       type: required
-      when: [shares, board_role, general_director, beneficial_owner]
+      when: [associate, shares, board_role, general_director,
+             beneficial_owner]
       fields: [last_name, first_name, cnp, citizenship, date_of_birth, place_of_birth, city,
                id_type, id_series, id_number, id_issued_by, id_issue_date]
     message: >
@@ -355,7 +356,8 @@ rules:
     severity: error
     check:
       type: required
-      when: [p2_shares, p2_board_role, p2_general_director, p2_beneficial_owner]
+      when: [p2_associate, p2_shares, p2_board_role, p2_general_director,
+             p2_beneficial_owner]
       fields: [p2_last_name, p2_first_name, p2_cnp, p2_citizenship, p2_date_of_birth,
                p2_place_of_birth, p2_city, p2_id_type, p2_id_series, p2_id_number,
                p2_id_issued_by, p2_id_issue_date]
@@ -370,7 +372,8 @@ rules:
     severity: error
     check:
       type: required
-      when: [p3_shares, p3_board_role, p3_general_director, p3_beneficial_owner]
+      when: [p3_associate, p3_shares, p3_board_role, p3_general_director,
+             p3_beneficial_owner]
       fields: [p3_last_name, p3_first_name, p3_cnp, p3_citizenship, p3_date_of_birth,
                p3_place_of_birth, p3_city, p3_id_type, p3_id_series, p3_id_number,
                p3_id_issued_by, p3_id_issue_date]

@@ -1,0 +1,311 @@
+# Actul constitutiv al unei societăți cu răspundere limitată cu asociat unic: the model filers
+# use (model-act-constitutiv-srl-asociat-unic.docx, kept next to this file as the reference).
+# Every paragraph of the model without blanks is copied verbatim; the paragraphs with blanks are
+# filled as in the acts filed with it:
+#
+# * the firm and the number / date of the name availability proof: the proof itself (ONRC,
+#   Formular nr. 17);
+# * the registered office: the proof of the registered office (contract de comodat / închiriere);
+# * the object of activity: the CAEN activities typed in the wizard, the main one first (the
+#   main activity, its group and class, then the secondary ones); the object of Art. 2.1 is
+#   proposed from the main activity and can be written otherwise;
+# * the share capital and the number of părți sociale: typed in the wizard (the nominal value
+#   is computed);
+# * the sole associate (also the beneficial owner, 100%) and the administrator: their identity
+#   cards; the same person unless an administrator is given apart (see computed.py:
+#   associate_identification, administrator_identification);
+# * the date of the act: the date of the documents (today, editable in the wizard).
+#
+# Deliberate changes to the model: "Denumirea societății este:" takes a colon and "capitalul
+# social subscris al societății este de", as in the acts filed; the empty paragraphs of the
+# model are left out.
+name: act-constitutiv-srl
+title: Act constitutiv SRL - asociat unic
+description: >
+  Actul constitutiv al societății cu răspundere limitată cu asociat unic: denumirea (dovada
+  disponibilității firmei), sediul social (contractul de comodat / închiriere), obiectul de
+  activitate (CAEN), capitalul social și părțile sociale, asociatul unic, administratorul și
+  beneficiarul real.
+kind: text
+doc_type: act_constitutiv
+body: |
+  # ACT CONSTITUTIV
+
+  # al Societății {{ company_name | upper }}
+
+  Asociat unic:
+
+  {{ associate_identification }}.
+
+  În conformitate cu dispozițiile Legii societăților nr. 31/1990, republicată, cu modificările și completările ulterioare, s-a încheiat prezentul act constitutiv prin care s-a hotărât înființarea Societății {{ company_name | upper }}— societate cu răspundere limitată/S.R.L.
+
+  ## CAPITOLUL I
+
+  ## Forma juridică, denumirea, durata, sediul social
+
+  Art. 1.1. — Societatea este o persoană juridică română, constituită în forma de societate cu răspundere limitată. Societatea își desfășoară activitatea în conformitate cu legislația în vigoare și cu clauzele prezentului act constitutiv. Societatea este titulară de drepturi și obligații și răspunde față de terți cu întregul patrimoniu.
+
+  Art. 1.2. — Denumirea societății este: {{ company_name | upper }}— societate cu răspundere limitată/S.R.L., conform dovezii privind disponibilitatea firmei nr. {{ name_reservation_number }} din {{ name_reservation_date }}, eliberată de Oficiul Național al Registrului Comerțului.
+
+  În toate actele — facturi, oferte, comenzi, tarife, prospecte și alte documente întrebuințate în comerț, emanând de la societate, trebuie să se menționeze denumirea, forma juridică, sediul social, numărul de înregistrare în registrul comerțului, codul unic de înregistrare și capitalul social. Sunt exceptate bonurile fiscale, emise de aparatele de marcat electronice, care vor cuprinde elementele prevăzute de legislația din domeniu.
+
+  Dacă societatea își creează o pagină de internet proprie, aceste informații vor fi publicate și pe pagina de internet a societății.
+
+  Art. 1.3. — Durata de funcționare a societății este nedeterminată.
+
+  Art. 1.4. — Sediul societății este în {{ company_seat_line }}.
+
+  Art. 1.5. — Societatea va putea înființa sedii secundare — sucursale, puncte de lucru, agenții, reprezentanțe sau alte asemenea unități fără personalitate juridică — și la alte adrese, în alte localități din România și alte state, cu respectarea prevederilor legale în materie.
+
+  ## CAPITOLUL II
+
+  ## Obiectul de activitate al societății
+
+  Art. 2.1. — Obiectul de activitate al societății este: {{ activity_object }}
+
+  Domeniul principal de activitate corespunde grupei CAEN {{ main_caen_group }}, căruia îi corespunde clasa CAEN {{ main_caen_class }}.
+
+  — activitatea principală clasa CAEN {{ main_caen_class }} și denumirea activității {{ main_activity_name }}
+
+  [[secondary_activity_lines]] — activități secundare:
+
+  [[secondary_activity_lines]] {{ secondary_activity_lines }}
+
+  ## CAPITOLUL III
+
+  ## Capitalul social, părțile sociale
+
+  Art. 3.1. — La constituire, capitalul social subscris al societății este de {{ share_capital_amount }} lei, aport în numerar, fiind împărțit într-un număr de {{ share_count_de }} părți sociale, cu o valoare nominală de {{ share_value }} lei/parte socială.
+
+  Art. 3.2. — Capitalul social este deținut de către unicul asociat astfel:
+
+  {{ associate_identification }}, deține o participație de 100% din capitalul social al societății.
+
+  Art. 3.3. — Obligațiile sociale sunt garantate cu patrimoniul social și nu pot fi grevate de datorii sau alte obligații personale și sunt indivizibile. Asociații sunt răspunzători până la concurența sumei reprezentând părțile sociale pe care le posedă.
+
+  Art. 3.4. — Părțile sociale pot fi transmise între asociați.
+
+  Transmiterea părților sociale către persoane din afara societății este permisă numai dacă a fost aprobată de asociați reprezentând 100% din capitalul social.
+
+  Hotărârea adunării asociaților, adoptată în condițiile mai sus menționate, se depune în termen de 15 zile la oficiul registrului comerțului, spre a fi menționată în registru și publicată în Monitorul Oficial al României, Partea a IV-a.
+
+  Transmiterea părților sociale se înregistrează în registrul comerțului și în registrul de asociați al societății.
+
+  Actul de transmitere a părților sociale și actul constitutiv actualizat cu datele de identificare a noilor asociați vor fi depuse la oficiul registrului comerțului, fiind supuse înregistrării în registrul comerțului potrivit dispozițiilor din Legea societăților nr. 31/1990, republicată, cu modificările și completările ulterioare.
+
+  După caz:
+
+  — asociații convin de comun acord ca, în cazul decesului unuia dintre ei, să acorde succesorilor calitatea de asociat;
+
+  — societatea este obligată la plata părților sociale către succesori, conform ultimei situații financiare aprobate, în cazul în care aceștia nu își manifestă intenția de a deține și exercita calitatea de asociat.
+
+  ## CAPITOLUL IV
+
+  ## Drepturile și obligațiile asociaților
+
+  Art. 4.1. — Părțile sociale conferă posesorilor lor drepturi egale, respectându-se pentru fiecare asociat următoarele:
+
+  — dreptul la dividende, în funcție de aportul la capitalul social al fiecărui asociat;
+
+  — acordarea unei cote proporționale cu activul social rezultat în caz de lichidare;
+
+  — dreptul de participare la conducerea societății prin exercitarea dreptului la vot și controlul asupra evidențelor și registrelor contabile;
+
+  — dreptul de a fi informat asupra activității societății;
+
+  — dreptul de a se retrage din societate.
+
+  Art. 4.2. — În virtutea drepturilor conferite asociații se obligă:
+
+  — să se informeze reciproc și onest în cadrul adunărilor generale ale asociaților, precum și în orice alte situații asupra problemelor ce privesc activitatea societății;
+
+  — să nu întreprindă acțiuni care vor putea aduce atingere intereselor societății, fapt care poate determina excluderea prin hotărârea adunării generale a asociaților;
+
+  — să decidă contractarea auditului financiar, atunci când acesta nu are caracter obligatoriu potrivit legii.
+
+  Art. 4.3. — Participarea la beneficii și la pierderi a asociaților se va face proporțional cu părțile sociale subscrise și depuse de fiecare la constituirea capitalului social, cu excepția pierderilor produse prin fraudă de oricare dintre părți.
+
+  ## CAPITOLUL V
+
+  ## Conducerea societății
+
+  Art. 5.1. — Adunarea generală a asociaților este organul de conducere a societății și are următoarele atribuții principale:
+
+  — să aprobe situația financiară anuală și să stabilească repartizarea profitului net;
+
+  — să desemneze administratorii și cenzorii sau, după caz, auditorii interni, să îi revoce și să le dea descărcare de activitatea lor, precum și să decidă contractarea auditului financiar, atunci când acesta nu are caracter obligatoriu, potrivit legii;
+
+  — să modifice actul constitutiv;
+
+  — alte atribuții prevăzute de legislația în vigoare.
+
+  Adunarea generală decide prin votul reprezentând 100% a asociaților și a părților sociale.
+
+  Votarea se poate face și prin corespondență.
+
+  Dacă adunarea legal constituită nu poate lua o hotărâre valabilă din cauza neîntrunirii majorității cerute, adunarea convocată a doua oară poate decide asupra ordinii de zi, oricare ar fi numărul de asociați și partea din capitalul social reprezentată de asociații prezenți.
+
+  Art. 5.2. — Asociatul care într-o operațiune determinată are pe cont propriu sau pe contul altuia interese contrare acelora ale societății nu poate lua parte la nicio deliberare sau decizie privind această operațiune.
+
+  Asociatul care contravine dispozițiilor mai sus menționate este răspunzător de daunele cauzate societății.
+
+  Art. 5.3. — Un asociat nu poate exercita dreptul său de vot în deliberările adunărilor asociaților referitoare la aporturile sale în natură sau la actele juridice încheiate între el și societate.
+
+  ## CAPITOLUL VI
+
+  ## Administrarea societății
+
+  Art. 6.1. — Administrarea societății se face de către:
+
+  {{ administrator_identification }}, pe perioadă de 30 de ani, cu posibilitatea reînnoirii mandatului.
+
+  Prin acceptarea mandatului, administratorul își asumă răspunderea pentru îndeplinirea condițiilor prevăzute de art. 6 din Legea societăților nr. 31/1990, republicată, cu modificările și completările ulterioare.
+
+  Art. 6.2. — Societatea trebuie să țină, prin grija administratorului, un registru al societății în care se vor înscrie, după caz, numele și prenumele asociatului, firma (denumirea și forma juridică), domiciliul sau sediul fiecărui asociat, partea fiecăruia din capitalul social, transferul părților sociale sau alte modificări privitoare la acestea. Administratorul este răspunzător față de societate pentru:
+
+  — realitatea vărsămintelor efectuate de asociați;
+
+  — existența reală a dividendelor plătite;
+
+  — existența registrelor cerute de lege și corecta lor ținere;
+
+  — exacta îndeplinire a hotărârilor adunării generale;
+
+  — stricta îndeplinire a îndatoririlor ce legea și actul constitutiv le impun.
+
+  Art. 6.3. — Administratorul este obligat să convoace adunarea asociaților la sediul social, cel puțin o dată pe an sau ori de câte ori este necesar.
+
+  Un asociat sau un număr de asociați ce reprezintă cel puțin o pătrime din capitalul social va/vor putea cere convocarea adunării generale arătând scopul acestei convocări.
+
+  Art. 6.4. — Reprezentarea și administrarea societății se realizează de către administrator în limitele competenței stabilite prin adunarea generală a asociaților în acord cu dispozițiile Legii societăților nr. 31/1990, republicată, cu modificările și completările ulterioare. În acest sens, administratorul are puteri depline de reprezentare și administrare, având dreptul să efectueze toate operațiunile și să semneze toate actele necesare și utile pentru realizarea obiectului de activitate al societății, în raport cu autoritățile publice, instituțiile bancare, instanțele judecătorești și orice alți terți, angajând valabil societatea patrimonial și juridic.
+
+  ## CAPITOLUL VII
+
+  ## Activitatea societății
+
+  Art. 7.1. — Exercițiul financiar începe la 1 ianuarie și se termină la 31 decembrie ale fiecărui an. Primul exercițiu va începe la data constituirii societății.
+
+  Art. 7.2. — Angajarea personalului societății se face cu respectarea legislației în vigoare.
+
+  Art. 7.3. — Situațiile financiare vor fi întocmite după normele prevăzute de lege.
+
+  Art. 7.4. — Profitul net al societății se stabilește prin situația financiară aprobată de asociați.
+
+  1. Cota-parte din profit ce se plătește fiecărui asociat constituie dividend.
+
+  2. Dividendele se plătesc asociaților proporțional cu cota de participare la capitalul social vărsat, dacă prin actul constitutiv nu se prevede altfel. Ele se plătesc în termenul stabilit de către adunarea generală a asociaților sau, după caz, prin legile speciale, dar nu mai târziu de 6 luni de la data aprobării situației financiare anuale aferente exercițiului financiar încheiat. În caz contrar, societatea datorează, după acest termen, dobândă penalizatoare calculată conform actelor normative în vigoare, dacă prin hotărârea adunării generale care a aprobat situația financiară aferentă exercițiului financiar încheiat nu s-a stabilit o dobândă mai mare.
+
+  3. Dividendele plătite contrar dispozițiilor prevăzute de lege se restituie, dacă societatea dovedește că asociații au cunoscut neregularitatea distribuirii sau, în împrejurările existente, trebuiau să o cunoască.
+
+  4. Dreptul la acțiunea de restituire a dividendelor plătite contrar dispozițiilor anterioare se prescrie în termen de 3 ani de la data distribuirii lor.
+
+  5. Dividendele care se cuvin după data transmiterii părților sociale aparțin cesionarului, în afară de cazul în care părțile au convenit altfel.
+
+  Beneficiul cuvenit asociaților se împarte între aceștia în cote proporționale cu participarea la capitalul social, dacă asociații nu hotărăsc altfel.
+
+  ## CAPITOLUL VIII
+
+  ## Excluderea și retragerea asociaților
+
+  Art. 8.1. — Poate fi exclus din societate:
+
+  — asociatul care, pus în întârziere, nu aduce aportul la care s-a obligat;
+
+  — asociatul-administrator care comite fraudă în dauna societății sau se servește de semnătura socială sau de capitalul social în folosul său sau al altora.
+
+  Art. 8.2. — Excluderea se pronunță prin hotărâre judecătorească la cererea societății sau a oricărui asociat. Asociatul exclus rămâne obligat față de terți pentru operațiile făcute de societate până în ziua rămânerii definitive a hotărârii de excludere, hotărâre ce va dispune și structura participării la capitalul social a celorlalți asociați.
+
+  Art. 8.3. — Retragerea din societate se va face:
+
+  — în situațiile în care asociatul nu este de acord cu modificarea actului constitutiv;
+
+  — cu acordul tuturor celorlalți asociați;
+
+  — când nu se realizează acordul unanim, asociatul se poate retrage, în baza unei hotărâri a tribunalului, supusă numai apelului, în termen de 15 zile de la comunicare.
+
+  Art. 8.4. — Hotărârea definitivă de excludere sau retragere se va depune în 15 zile la registrul comerțului pentru a fi înscrisă, iar dispozitivul hotărârii de excludere se va publica la cererea societății în Monitorul Oficial al României, Partea a IV-a.
+
+  ## CAPITOLUL IX
+
+  ## Dizolvarea și lichidarea societății
+
+  Art. 9.1. — Au ca efect dizolvarea societății și dau dreptul fiecărui asociat să ceară lichidarea acesteia:
+
+  — trecerea timpului stabilit pentru durata societății; asociații trebuie să fie consultați de administrator cu cel puțin trei luni înainte de expirarea duratei societății, cu privire la eventuala prelungire a acesteia. În lipsă, la cererea oricăruia dintre asociați, tribunalul va putea dispune, prin încheiere, efectuarea consultării, conform art. 119 alin. (3) din Legea societăților nr. 31/1990, republicată, cu modificările și completările ulterioare;
+
+  — imposibilitatea realizării obiectului societății sau realizarea acestuia;
+
+  — declararea nulității societății;
+
+  — hotărârea adunării generale;
+
+  — hotărârea tribunalului, la cererea oricărui asociat, pentru motive temeinice, precum și neînțelegerile grave dintre asociați, care împiedică funcționarea societății;
+
+  — falimentul;
+
+  — alte cauze prevăzute de lege sau de modificările prezentului act constitutiv.
+
+  Art. 9.2. — Când datorită decesului unui asociat numărul minim de asociați va fi sub cel prevăzut de lege, societatea își va continua activitatea cu moștenitorii defunctului, după caz.
+
+  Art. 9.3. — Dizolvarea societății înainte de expirarea termenului fixat pentru durata sa are efect față de terți numai după trecerea a 30 de zile de la publicarea în Monitorul Oficial al României, Partea a IV-a. Dizolvarea societății are ca efect deschiderea procedurii lichidării.
+
+  Art. 9.4. — Din momentul dizolvării, administratorul nu mai poate întreprinde noi operațiuni; în caz contrar va fi personal și solidar răspunzător pentru operațiunile pe care le-a întreprins.
+
+  Art. 9.5. — Pentru lichidarea și repartizarea patrimoniului social, asociatul unic stabilește modul de lichidare atunci când este de acord cu privire la repartizarea și lichidarea patrimoniului societății și când asigură stingerea pasivului sau regularizarea lui în acord cu creditorii, cu respectarea dispozițiilor Legii nr. 31/1990, republicată, cu modificările și completările ulterioare.
+
+  Art. 9.6. — Lichidatorii vor putea fi persoane fizice sau juridice, autorizați în condițiile legii. Toate actele emanând de la societate trebuie să arate că aceasta este în lichidare.
+
+  Art. 9.7. — Lichidarea societății trebuie terminată în cel mult un an de la data dizolvării. Pentru motive temeinice, la cererea lichidatorului, oficiul registrului comerțului poate prelungi acest termen cu încă un an, dar nu mai mult de trei ori.
+
+  Art. 9.8. — În termen de 15 zile de la terminarea lichidării, lichidatorii trebuie să ceară radierea societății din Registrul Comerțului. Registrele societății vor fi păstrate timp de 5 ani.
+
+  Art. 9.9. — Modalitatea de asigurare a stingerii pasivului sau de regularizare a lui în acord cu creditorii, în cazul dizolvării fără lichidare, este: achitarea integrală a datoriilor societății față de creditori din activele acesteia, conform evidențelor contabile. După stingerea pasivului, activul net rămas va fi repartizat asociatului unic în proporție de 100%, potrivit acordului expres al acestuia privind dizolvarea fără lichidare și lichidarea patrimoniului societății.
+
+  ## CAPITOLUL X
+
+  ## Beneficiarii reali ai societății
+
+  Art. 10. — În conformitate cu prevederile art. 56 din Legea nr. 129/2019, cu modificările și completările ulterioare, beneficiarul real al societății este:
+
+  {{ associate_identification }}, deține o participație de 100% din capitalul social al societății.
+
+  Modalitatea în care se exercită controlul asupra societății:
+
+  — potrivit prevederilor art. 4 alin. (2) lit. a) pct. 1 din Legea nr. 129/2019, cu modificările și completările ulterioare (deținere directă a unui procent de peste 25% din părțile sociale, respectiv 100%).
+
+  ## CAPITOLUL XI
+
+  ## Litigii
+
+  Art. 11.1. — Litigiile societății cu persoane fizice sau juridice sunt de competența instanțelor judecătorești.
+
+  Art. 11.2. — Litigiile societății născute din contractele economice încheiate cu persoane fizice sau juridice, precum și litigiile dintre asociați cu societatea vor fi soluționate de instanțele judecătorești competente prin aplicarea dreptului material român.
+
+  Art. 11.3. — Litigiile personalului angajat de societate se rezolvă potrivit legislației muncii în vigoare în România.
+
+  ## CAPITOLUL XII
+
+  ## Dispoziții finale
+
+  Art. 12.1. — Prezentul act constitutiv intră în vigoare astăzi, {{ today }}, data semnării lui de către asociat.
+
+  Art. 12.2. — Fondatorul își asumă răspunderea pentru îndeplinirea condițiilor prevăzute de art. 6 din Legea societăților nr. 31/1990, republicată, cu modificările și completările ulterioare.
+
+  Art. 12.3. — Prevederile actului constitutiv se completează cu normele Codului civil, Codului muncii, Legii societăților nr. 31/1990, republicată, cu modificările și completările ulterioare, și ale legislației civile în vigoare.
+
+  Data: {{ today }}
+
+  Asociat Unic: {{ associate_name }}
+
+  ________________________________
+
+  (semnătura)
+
+defaults:
+  id_type: CI
+  country: România
+  birth_country: România
+  citizenship: Română
+
+optional_fields:
+  - secondary_activity_lines

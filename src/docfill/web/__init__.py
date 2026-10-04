@@ -21,6 +21,7 @@ from docfill.app import App
 from docfill.errors import MissingFieldsError
 from docfill.extraction import merge_extractions
 from docfill.extraction.fields import (
+    CONTROL_OPTIONS,
     MAX_PERSONS,
     REPRESENTATIVE,
     REPRESENTATIVE_TYPES,
@@ -93,6 +94,22 @@ class ExportIn(PreviewIn):
     documents: list[DocumentText] = Field(default_factory=list, max_length=20)
     # The user saw the failed legal checks of the procedure and goes on anyway.
     legal_acknowledged: bool = False
+
+
+# The roles of the persons given apart in step 1: the administrator, and the sole associate who
+# holds every share and is the beneficial owner (Legea nr. 129/2019, art. 4 alin. (2) lit. a)).
+_ADMINISTRATOR_ROLES = {"board_role": "administrator unic"}
+
+
+def _associate_roles(administrator: bool) -> dict[str, str]:
+    roles = {
+        "associate": "x",
+        "beneficial_owner": CONTROL_OPTIONS[0],
+        "control_description": (
+            "deținere directă a unui procent de peste 25% din părțile sociale, respectiv 100%"
+        ),
+    }
+    return {**roles, **_ADMINISTRATOR_ROLES} if administrator else roles
 
 
 def read_upload(upload: UploadFile, limit: int) -> tuple[str, bytes]:
@@ -253,16 +270,21 @@ def register_wizard(
         procedure: Annotated[str | None, Form()] = None,
         representative: Annotated[list[UploadFile] | None, File()] = None,
         representative_type: Annotated[str | None, Form()] = None,
+        associate: Annotated[list[UploadFile] | None, File()] = None,
+        administrator: Annotated[list[UploadFile] | None, File()] = None,
     ) -> dict[str, Any]:
         """Step 2: read + sanitize each file, detect its type, extract fields for the chosen
         reference documents (and the procedure's own fields). ``representative``: the identity
         card of the lawyer / proxy filing the request, given apart in step 1 (it fills "Filed
         by" and the contact person, never a person); ``representative_type``: lawyer or proxy,
-        as chosen with it."""
+        as chosen with it. ``associate``: the identity card of the sole associate (also the
+        beneficial owner, 100%), the administrator too unless ``administrator`` gives the
+        administrator's identity card (then person 1, who signs the requests; the associate is
+        person 2)."""
         names = [n for n in [template, *(templates or [])] if n]
         if not names:
             raise HTTPException(422, "choose at least one reference document")
-        if not files and not representative:
+        if not files and not representative and not associate and not administrator:
             raise HTTPException(422, "add at least one file to read")
         if representative_type and representative_type not in REPRESENTATIVE_TYPES:
             raise HTTPException(422, f"representative_type: one of {list(REPRESENTATIVE_TYPES)}")
@@ -274,6 +296,29 @@ def register_wizard(
             name, data = read_upload(upload, settings.max_file_size)
             analysis = docfill.analyze_bytes(data, name)
             analysis.person = REPRESENTATIVE  # given as the representative's: kept as such
+            analyses.append(analysis)
+        # the sole associate and the administrator, given apart: their roles come with them
+        for upload, person, roles in [
+            *(
+                (u, 2 if administrator else 1, _associate_roles(not administrator))
+                for u in associate or []
+            ),
+            *((u, 1, _ADMINISTRATOR_ROLES) for u in administrator or []),
+        ]:
+            name, data = read_upload(upload, settings.max_file_size)
+            analysis = docfill.analyze_bytes(data, name)
+            analysis.person = person
+            for role, value in roles.items():
+                analysis.extraction.replace(
+                    ExtractedField(
+                        name=role,
+                        value=value,
+                        confidence=1.0,
+                        source="manual",
+                        evidence="given in step 1 with the identity card",
+                        document=name,
+                    )
+                )
             analyses.append(analysis)
         extraction = docfill.combine(analyses)  # assigns each identity card to a person
         if representative_type:  # chosen in step 1: writes "prin ... conform ..." (derived)

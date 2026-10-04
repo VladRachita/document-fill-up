@@ -91,6 +91,7 @@
   .drop.small { padding: 12px; }
   .rep { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 12px; }
   .rep h3 { font-size: 15px; margin: 0 0 4px; }
+  .same-person { display: flex; gap: 8px; align-items: center; margin: 10px 0; font-size: 14px; cursor: pointer; }
   ul.files { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
   ul.files li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
   ul.files li span.name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -280,6 +281,25 @@
           <span class="muted" style="font-size:13px">.pdf · .docx · .doc · .png · .jpg · .jpeg · photos and scans are read with OCR</span>
         </label>
         <ul class="files" id="file-list"></ul>
+        <div class="rep" id="roles-box" hidden>
+          <h3>Sole associate and administrator</h3>
+          <p class="hint">For the act constitutiv: the identity card of the sole associate (asociat unic, also the beneficial owner) and, when another person administers the company, the administrator's.</p>
+          <label class="drop small" id="assoc-drop">
+            <input type="file" id="assoc-input" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
+            <strong>Identity card of the sole associate</strong>
+            <span class="muted" style="font-size:13px">photo, scan or PDF</span>
+          </label>
+          <ul class="files" id="assoc-list"></ul>
+          <label class="same-person"><input type="checkbox" id="admin-same" checked> The sole associate is also the administrator</label>
+          <div id="admin-slot" hidden>
+            <label class="drop small" id="admin-drop">
+              <input type="file" id="admin-input" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
+              <strong>Identity card of the administrator</strong>
+              <span class="muted" style="font-size:13px">the administrator signs the requests (person 1)</span>
+            </label>
+            <ul class="files" id="admin-list"></ul>
+          </div>
+        </div>
         <div class="rep" id="rep-box">
           <h3>Representative filing the request <span class="muted">(optional)</span></h3>
           <p class="hint">A lawyer or a proxy who files the request for the company: their data is kept apart, in “Filed by” (XII) and the contact person (VII), never as a person of the company.</p>
@@ -436,7 +456,8 @@ const SEVERITY = { error: ["bad", "Error"], warning: ["warn", "Warning"], info: 
 
 const state = {
   step: 1, maxStep: 1, templates: [], selected: [], docTypes: [],
-  files: [], repFiles: [], repType: "", filesDirty: true, documents: [], activeDoc: 0,
+  files: [], repFiles: [], repType: "", assocFiles: [], adminFiles: [], adminSame: true,
+  filesDirty: true, documents: [], activeDoc: 0,
   rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {},
   previews: [], activePreview: 0, filter: "attention",
   filename: "", filenameTouched: false, allowMissing: false, learned: null,
@@ -750,6 +771,7 @@ function renderTemplates() {
 
 // What to upload for the ticked documents.
 function renderUploadHint() {
+  renderRoles();
   const chosen = state.templates.filter((t) => state.selected.includes(t.name));
   if (!chosen.length) {
     put($("upload-hint"), el("p", { class: "muted", style: "margin:0" },
@@ -781,7 +803,8 @@ function toggleTemplate(name, on) {
 
 function updateScanButton() {
   const nothing = !state.selected.length;
-  const noFiles = !state.files.length && !state.repFiles.length;
+  const noFiles = !state.files.length && !state.repFiles.length && !state.assocFiles.length &&
+    !(state.adminFiles.length && !state.adminSame);
   $("scan-btn").disabled = nothing || noFiles;
   $("manual-btn").disabled = nothing;
   $("scan-btn").title = nothing ? "Tick at least one document to fill" : noFiles ? "Add the files to read" : "";
@@ -829,6 +852,38 @@ function renderRepresentative() {
   updateScanButton();
 }
 
+// The sole associate and the administrator (act constitutiv SRL): their identity cards apart,
+// the same person unless the box is unticked and the administrator's card is given.
+function needsRoles() {
+  return state.templates.some((t) => state.selected.includes(t.name) &&
+    ["associate", "board_role"].every((role) => t.fields.includes(role)));
+}
+
+function fileItems(files, onRemove) {
+  return files.map((file) =>
+    el("li", {},
+      el("span", { class: "name", title: file.name }, file.name),
+      el("span", { class: "size" }, sizeLabel(file.size)),
+      el("button", { type: "button", class: "btn link small", "aria-label": `Remove ${file.name}`, onclick: onRemove }, "Remove")));
+}
+
+function renderRoles() {
+  $("roles-box").hidden = !needsRoles();
+  put($("assoc-list"), fileItems(state.assocFiles, () => { state.assocFiles = []; state.filesDirty = true; renderRoles(); }));
+  put($("admin-list"), fileItems(state.adminFiles, () => { state.adminFiles = []; state.filesDirty = true; renderRoles(); }));
+  $("admin-same").checked = state.adminSame;
+  $("admin-slot").hidden = state.adminSame;
+  updateScanButton();
+}
+
+function wireDrop(dropId, inputId, onFiles) {
+  const drop = $(dropId);
+  $(inputId).addEventListener("change", (event) => { onFiles(event.target.files); event.target.value = ""; });
+  drop.addEventListener("dragover", (event) => { event.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (event) => { event.preventDefault(); drop.classList.remove("over"); onFiles(event.dataTransfer.files); });
+}
+
 // Lawyer or proxy, chosen in step 1: a value set by the user, kept by every re-extraction.
 function keepRepresentativeType() {
   if (!state.repType) return;
@@ -848,6 +903,8 @@ async function scan() {
       if (state.procedure) form.append("procedure", state.procedure);
       state.files.forEach((file) => form.append("files", file, file.name));
       state.repFiles.forEach((file) => form.append("representative", file, file.name));
+      state.assocFiles.forEach((file) => form.append("associate", file, file.name));
+      if (!state.adminSame) state.adminFiles.forEach((file) => form.append("administrator", file, file.name));
       if (state.repType) form.append("representative_type", state.repType);
       const result = await (await api("/wizard/analyze", { method: "POST", body: form })).json();
       state.documents = result.documents;
@@ -856,6 +913,9 @@ async function scan() {
       state.manual = {}; state.derivedFrom = {};
       keepRepresentativeType();
       applyReview(result);
+      // what was given in step 1 (the roles of the associate and administrator): kept by every
+      // re-extraction, like a value set by the user
+      for (const row of state.rows) if (row.found && row.found.source === "manual") state.manual[row.name] = true;
     } else {
       await reextract();
     }
@@ -1447,7 +1507,8 @@ function download(file) {
 // was saved stays: the PDFs in the output folder, what docfill learned and the details it
 // remembers (in the database).
 function restart() {
-  Object.assign(state, { step: 1, maxStep: 1, files: [], repFiles: [], repType: "", filesDirty: true, documents: [], activeDoc: 0,
+  Object.assign(state, { step: 1, maxStep: 1, files: [], repFiles: [], repType: "", assocFiles: [], adminFiles: [],
+    adminSame: true, filesDirty: true, documents: [], activeDoc: 0,
     rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {}, previews: [],
     activePreview: 0, filename: "", filenameTouched: false, allowMissing: false, legal: [], legalAck: false });
   ["save-result", "save-missing", "save-legal", "dossier", "final-tabs", "final-preview", "doc-tabs",
@@ -1458,6 +1519,7 @@ function restart() {
   setSelection([]);
   renderFiles();
   renderRepresentative();
+  renderRoles();
   showBanner("");
   window.scrollTo(0, 0);
 }
@@ -1473,6 +1535,10 @@ function init() {
   repDrop.addEventListener("dragleave", () => repDrop.classList.remove("over"));
   repDrop.addEventListener("drop", (event) => { event.preventDefault(); repDrop.classList.remove("over"); setRepresentative(event.dataTransfer.files); });
   renderRepresentative();
+  wireDrop("assoc-drop", "assoc-input", (files) => { if (files[0]) { state.assocFiles = [files[0]]; state.filesDirty = true; renderRoles(); } });
+  wireDrop("admin-drop", "admin-input", (files) => { if (files[0]) { state.adminFiles = [files[0]]; state.filesDirty = true; renderRoles(); } });
+  $("admin-same").addEventListener("change", (event) => { state.adminSame = event.target.checked; state.filesDirty = true; renderRoles(); });
+  renderRoles();
   drop.addEventListener("dragover", (event) => { event.preventDefault(); drop.classList.add("over"); });
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
   drop.addEventListener("drop", (event) => { event.preventDefault(); drop.classList.remove("over"); addFiles(event.dataTransfer.files); });

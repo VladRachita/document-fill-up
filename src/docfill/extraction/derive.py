@@ -343,6 +343,20 @@ def _derive_company(result: ExtractionResult) -> None:
                 )
             )
 
+    # the object of activity of the act constitutiv: the main activity, unless typed
+    if (activities := fields.get("caen_activities")) and (
+        main := re.match(r"\s*\d{4}\s*[-–:]?\s*(?P<name>[^\n]+)", activities.value)
+    ):
+        result.offer(
+            _derived(
+                "activity_object",
+                main["name"].strip(" -–;."),
+                activities.confidence * DERIVED_FACTOR,
+                "the main CAEN activity",
+                activities.document,
+            )
+        )
+
     # trade register office
     if company_county := fields.get("company_county"):
         result.offer(
@@ -364,15 +378,44 @@ def _derive_roles(result: ExtractionResult) -> None:
         found = fields.get(name)
         return found.value.strip() if found else ""
 
-    # associates: "NAME | CNP | shares", one line per person holding shares
+    # a person holding shares is an associate; a sole associate holds every share
     count = parse_amount(value("share_count"))
+    for prefix in PERSON_PREFIXES:
+        if (shares := fields.get(prefix + "shares")) and shares.value.strip():
+            result.offer(_derived(prefix + "associate", "x", shares.confidence, shares.value, None))
+    associates = [p for p in PERSON_PREFIXES if value(p + "associate")]
+    if len(associates) == 1 and count and not value(associates[0] + "shares"):
+        sole = fields[associates[0] + "associate"]
+        result.offer(
+            _derived(
+                associates[0] + "shares",
+                format_amount(count),
+                sole.confidence * DERIVED_FACTOR,
+                "the sole associate holds every share",
+                sole.document,
+            )
+        )
+
+    # the capacity in which person 1 signs, from their roles ("asociat unic și administrator")
+    words = []
+    if value("associate"):
+        words.append("asociat unic" if len(associates) == 1 else "asociat")
+    if value("board_role"):
+        words.append("administrator")
+    if words:
+        result.offer(_derived("capacity", " și ".join(words), 0.85, "the roles of person 1", None))
+
+    # associates: "NAME | CNP | shares", one line per person holding shares (părți sociale of a
+    # limited liability company, acțiuni otherwise)
+    company = fold(value("company_name"))
+    parts = "părți sociale" if re.search(r"\bs\.?\s?r\.?\s?l\b", company) else "acțiuni"
     rows, sources = [], []
     for prefix in PERSON_PREFIXES:
         shares = parse_amount(value(prefix + "shares"))
         name = " ".join(filter(None, (value(prefix + "last_name"), value(prefix + "first_name"))))
         if not shares or not name:
             continue
-        held = f"{format_amount(shares)} acțiuni"
+        held = f"{format_amount(shares)} {parts}"
         if count:
             held += f" ({format_amount(shares / count * 100)}%)"
         rows.append(" | ".join(filter(None, (name.upper(), value(prefix + "cnp"), held))))
