@@ -108,6 +108,9 @@ docfill serve                 # open http://127.0.0.1:8000
    * **What you are doing** (optional): the legal form (SRL, SRL-D, SA, PFA, PFI, II, IF) and
      the operation (înființare, modificare, radiere). The procedure's legal checks and the
      **documents of the file** (dosar) are one click away, with the knowledge not verified yet.
+     The operation ticks its request on every chosen form that has the box (*înmatriculare*,
+     *modificare*, *radiere*: Anexa 2a, the beneficial owner declaration); it can be unticked
+     in the review.
    * **Which documents you need**: the documents of that procedure as cards, the required ones
      ticked. Tick one, a few or all (*All*, *Required only*, *None*); forms docfill does not
      have yet are shown with their official link, any other standard document can be added.

@@ -470,6 +470,19 @@ def test_a_card_with_a_misread_cnp_still_goes_to_its_person(context):
     assert (statement.person, lawyer.person) == (1, REPRESENTATIVE)
 
 
+def test_the_beneficial_owner_declaration_is_filed_by_the_lawyer(context):
+    # the act alone says nobody else files it; merged with the lawyer's card, the lawyer does
+    docfill = context.docfill
+    act = docfill.analyze_bytes(make_docx(ACT_SOLE_ASSOCIATE), "act.docx")
+    assert act.extraction.fields["bo_filed_by"].value == "reprezentantul legal"
+    lawyer = docfill.analyze_bytes(
+        sworn_statement_docx(LAWYER), "avocat.docx", "declaratie_administrator"
+    )
+    combined = docfill.combine([act, lawyer])
+    assert combined.fields["bo_filed_by"].value == "împuternicit"
+    assert docfill.combine([act]).fields["bo_filed_by"].value == "reprezentantul legal"
+
+
 def test_without_an_act_the_first_identity_card_is_the_applicant(context):
     docfill = context.docfill
     analyses = [
@@ -676,3 +689,58 @@ def test_the_page_offers_the_same_representative_types():
     page = wizard_page()
     assert all(f'"{kind}"' in page for kind in REPRESENTATIVE_TYPES)
     assert 'id="rep-input"' in page
+
+
+# --------------------------------------------------------------------------- the operation
+
+
+@pytest.mark.parametrize(
+    ("procedure", "ticked", "box", "other_box"),
+    [
+        ("srl.infiintare", "request_registration", "Box1", "Box2"),  # înmatriculare
+        ("srl.modificare", "request_mentions", "Box2", "Box1"),  # modificare
+        (None, None, None, None),  # no operation chosen: nothing ticked
+    ],
+)
+def test_the_operation_ticks_its_request_on_the_beneficial_owner_declaration(
+    settings, context, tmp_path, procedure, ticked, box, other_box
+):
+    settings = settings.model_copy(update={"output_dir": tmp_path / "out"})
+    templates = ["onrc-declaratie-beneficiari-reali"]
+    act = ("act.docx", make_docx(ACT_SOLE_ASSOCIATE), "application/octet-stream")
+    data = {"templates": templates, **({"procedure": procedure} if procedure else {})}
+    with TestClient(create_app(settings)) as client:
+        body = client.post("/wizard/analyze", files=[("files", act)], data=data).json()
+        rows = {row["name"]: row for row in body["rows"]}
+        by_hand = client.post(
+            "/wizard/reextract",
+            json={"templates": templates, "procedure": procedure, "documents": []},
+        ).json()
+        manual_rows = {row["name"]: row["value"] for row in by_hand["rows"]}
+        for request in ("request_registration", "request_mentions"):
+            expected = "x" if request == ticked else ""
+            assert rows[request]["value"] == expected and manual_rows[request] == expected
+        if ticked:
+            assert rows[ticked]["found"]["source"] == "default"  # can be unticked in the review
+        values = {name: row["value"] for name, row in rows.items() if row["value"]}
+        exported = client.post(
+            "/wizard/export",
+            json={
+                "templates": templates,
+                "procedure": procedure,
+                "values": values,
+                "allow_missing": True,
+                "legal_acknowledged": True,
+            },
+        ).json()
+        form = read_form_values((tmp_path / "out" / exported["files"][0]["filename"]).read_bytes())
+        if box:
+            assert box in form and other_box not in form
+        else:
+            assert "Box1" not in form and "Box2" not in form
+        # a document without the box is left alone (nothing "other" to show either)
+        alone = client.post(
+            "/wizard/analyze", files=[("files", act)], data={**data, "templates": ["onrc-anexa-4"]}
+        ).json()
+        assert "request_registration" not in {row["name"] for row in alone["rows"]}
+        assert "request_registration" not in {field["name"] for field in alone["other_fields"]}
