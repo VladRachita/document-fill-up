@@ -282,7 +282,12 @@ def fill(
     ] = None,
     output: Annotated[
         Path | None,
-        typer.Option("--output", "-o", help="Output PDF path (.pdf is added if missing)."),
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output path (.pdf, or .docx for a document written in Word, is added if "
+            "missing).",
+        ),
     ] = None,
     set_values: Annotated[
         list[str] | None,
@@ -293,7 +298,8 @@ def fill(
     ] = False,
     ner: Annotated[bool, typer.Option(help="Use the ML named-entity model.")] = True,
 ) -> None:
-    """Fill a standard document with data extracted from FILES and export it as PDF."""
+    """Fill a standard document with data extracted from FILES and export it as PDF (or as
+    Word, for the documents written as such)."""
     files = files or []
     overrides = _parse_overrides(set_values or [])
     if not files and not overrides:
@@ -313,12 +319,12 @@ def fill(
 
     if output is None:
         stem = files[0].stem if files else "manual"
-        output = Path(f"{template}-{stem}.pdf")
-    elif output.suffix.lower() != ".pdf":
-        # The output is always a PDF: never write it under another extension.
-        output = output.with_name(output.name + ".pdf")
+        output = Path(f"{template}-{stem}{result.suffix}")
+    elif output.suffix.lower() != result.suffix:
+        # Never write the document under another extension than its own.
+        output = output.with_name(output.name + result.suffix)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(result.pdf)
+    output.write_bytes(result.data)
 
     for analysis in analyses:
         for warning in analysis.raw.warnings:
@@ -531,7 +537,7 @@ def wizard(
 
     # Step 4 - save under a new name and learn from the review
     console.rule("[bold]Step 4/4 · Save")
-    if missing and not typer.confirm("Create the PDFs with those fields left blank?"):
+    if missing and not typer.confirm("Create the documents with those fields left blank?"):
         console.print("Nothing saved.")
         raise typer.Exit(code=1)
     base = typer.prompt("New file name", default=suggest_filename(chosen, values))
@@ -542,7 +548,7 @@ def wizard(
         except DocFillError as exc:
             _fail(str(exc))
         name = base if len(chosen) == 1 else f"{base}_{doc.name}"
-        path = save_output(output_dir or settings.output_dir, name, result.pdf)
+        path = save_output(output_dir or settings.output_dir, name, result.data, result.suffix)
         console.print(f"[green]Saved[/] {path}")
     learned = context.learning.record_review(
         Review(
@@ -736,6 +742,8 @@ def evaluate(
     try:
         with _repository(ctx) as repo:
             standard = repo.get(template)
+        if standard.kind != "pdf_form":
+            _fail(f"'{template}' is not a PDF form: only filled PDF forms can be compared")
         analyses = [context.docfill.analyze_file(path) for path in sources or [expected]]
         result = context.docfill.fill(
             standard, context.docfill.combine(analyses), allow_missing=True

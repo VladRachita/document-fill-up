@@ -44,6 +44,7 @@ ROLE_CONFIDENCE = 0.9
 ARTICLES_CONFIDENCE = 0.95
 OFFICIAL_CONFIDENCE = 0.95  # what the trade register itself wrote (the reserved firm name)
 PREMISES_CONFIDENCE = 0.85  # the address of the premises: the act constitutiv has the last word
+PREMISES_GUESS_CONFIDENCE = 0.7  # the first address after the premises, without "situat în"
 
 _UPPER = "A-ZĂÂÎȘȚŞŢ"
 _DATE = r"\d{1,2}[./-]\d{1,2}[./-]\d{2,4}"
@@ -605,22 +606,34 @@ def _capital_i(text: str) -> str:
     return re.sub(r"(?<![\w])l[a-zăâîșț]{2,}", fix, text)
 
 
+# The premises lent or let as the registered office, as OCR may read the words of a scan
+# ("imobllul", "sltuat", "Tn" for "în").
+_LENT = r"imob[il1]l\w*|spat[il1]\w*|apartament\w*|cladir\w*|incaper\w*"
+_SITUATED = (
+    rf"\b(?:{_LENT}|sediu\w*)\s+(?:\w+\s+){{0,3}}?s[il1|]tuat\w*\s*,?\s+"
+    r"(?:[itfl1|]n|la(?:\s+adresa)?)\s*:?\s*"
+)
+_ADDRESS_START = (
+    r"(?:jud(?:etul)?|mun(?:icipiul)?|oras(?:ul)?|com(?:una)?|sat(?:ul)?|loc(?:alitatea)?|"
+    r"str(?:ada)?|bd|b-dul|bulevardul|aleea|ale|calea|sos(?:eaua)?|sector(?:ul)?)\b\.?"
+)
+_PREMISES_ADDRESS = rf"\b(?:{_LENT})[^.;]{{0,80}}?\b(?={_ADDRESS_START})"
+
+
 def extract_premises(text: str, document: str | None = None) -> list[ExtractedField]:
     """The proof of the registered office (comodat, lease, owner's statement): the address of
     the premises and the company it is lent to. The owner is not a person of the request."""
     found: list[ExtractedField] = []
-    match = _search_folded(
-        r"\b(?:imobil\w*|spati\w*|apartament\w*|sediu\w*|cladir\w*|incaper\w*)\s+(?:\w+\s+){0,3}?"
-        r"situat\w*\s+(?:in|la)\s*:?\s*",
-        text,
-    )
+    match = _search_folded(_SITUATED, text)
+    confidence = PREMISES_CONFIDENCE
+    if not match:  # "situat în" misread: the first address that follows the premises
+        match = _search_folded(_PREMISES_ADDRESS, text)
+        confidence = PREMISES_GUESS_CONFIDENCE
     if match:
         address = _capital_i(_sentence_from(text, match.end()))
         if len(address) > 8:
             evidence = _line_at(text, match.start())
-            found.append(
-                _field("company_address", address, PREMISES_CONFIDENCE, evidence, document)
-            )
+            found.append(_field("company_address", address, confidence, evidence, document))
     if pending := _search_folded(r"\bin\s+curs\s+de\s+(?:infiintare|constituire)", text):
         line_start = text.rfind("\n", 0, pending.start()) + 1
         if firm := _FIRM_BEFORE.search(text[line_start : pending.start()]):

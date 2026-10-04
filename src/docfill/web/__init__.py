@@ -30,7 +30,12 @@ from docfill.extraction.fields import (
 from docfill.knowledge import ProcedureSpec, RuleResult
 from docfill.learning import Review, ReviewedDocument, reviewed_fields_from_rows
 from docfill.models import ExtractedField, ExtractionResult
-from docfill.pipeline import NAMED_PERSONS_DOC_TYPES, NO_PERSON_DOC_TYPES, DocumentAnalysis
+from docfill.pipeline import (
+    MEDIA_TYPES,
+    NAMED_PERSONS_DOC_TYPES,
+    NO_PERSON_DOC_TYPES,
+    DocumentAnalysis,
+)
 from docfill.templates import TemplateRepository
 from docfill.templates.models import StandardDocument
 from docfill.wizard import (
@@ -367,7 +372,8 @@ def register_wizard(
 
     @app.post("/wizard/export", tags=["wizard"])
     def export(payload: ExportIn, repo: Repo) -> dict[str, Any]:
-        """Create every PDF, save them under the chosen name and learn from the review. With a
+        """Create every document (PDF, or Word for the documents written as such), save them
+        under the chosen name and learn from the review. With a
         procedure, its required fields and failed legal checks (errors) must be dealt with, or
         explicitly accepted (``allow_missing`` / ``legal_acknowledged``)."""
         chosen = load(repo, payload.templates)
@@ -396,7 +402,7 @@ def register_wizard(
             if person is not None:  # one copy per person: named after the person
                 who = person_name(values, person)
                 name, title = f"{name}_{who or person}", f"{title} - {who or f'persoana {person}'}"
-            path = save_output(settings.output_dir, name, result.pdf)
+            path = save_output(settings.output_dir, name, result.data, result.suffix)
             files.append(
                 {
                     "template": template.name,
@@ -432,13 +438,14 @@ def register_wizard(
 
     @app.get("/wizard/files/{filename}", tags=["wizard"])
     def download(filename: str) -> FileResponse:
-        """Download a PDF saved by the wizard."""
-        if filename != safe_filename(filename) or not re.fullmatch(r"[\w.-]+\.pdf", filename):
+        """Download a document saved by the wizard (PDF or Word)."""
+        match = re.fullmatch(r"[\w.-]+\.(pdf|docx)", filename)
+        if not match or filename != safe_filename(filename, f".{match[1]}"):
             raise HTTPException(404, "not found")
         path = settings.output_dir / filename
         if not path.is_file():
             raise HTTPException(404, "not found")
-        return FileResponse(path, media_type="application/pdf", filename=filename)
+        return FileResponse(path, media_type=MEDIA_TYPES[match[1]], filename=filename)
 
 
 _ = MissingFieldsError  # raised by docfill.fill, turned into 422 by the app's handler

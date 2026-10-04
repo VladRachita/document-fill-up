@@ -232,3 +232,40 @@ def sworn_statement_docx(person: Person | None = None, **kwargs) -> bytes:
     buffer = io.BytesIO()
     document.save(buffer)
     return buffer.getvalue()
+
+
+# ------------------------------------------------------------------ electronic identity card
+
+
+def cei_export_lines(person: Person | None = None) -> list[str]:
+    """The lines of the PDF the "RO CEI Reader" application exports from an electronic identity
+    card (CEI): one label per line, the series and the number together, the issuing authority
+    over three lines, and places with the cedilla ``ş`` / ``ţ`` the application prints."""
+    person = person or Person()
+    cedilla = str.maketrans("șțȘȚ", "şţŞŢ")
+    return [
+        f"Nume de familie: {person.last_name}",
+        f"Prenume: {person.first_name}",
+        "Cetățenie: ROU",
+        f"Sex: {person.sex}",
+        f"CNP: {person.cnp}",
+        f"Data nașterii: {person.birth:%d.%m.%Y}",
+        f"Locul nașterii: {person.birth_place_line.translate(cedilla)}",
+        f"Număr document: {person.series}{person.number}",
+        f"Data emiterii: {person.issued:%d.%m.%Y}",
+        f"Data expirării: {person.expires:%d.%m.%Y}",
+        "Autoritatea",
+        "emitentă:",
+        person.issued_by.translate(cedilla),
+        f"Domiciliu: {' '.join(person.domicile_card_lines).translate(cedilla)}",
+        "Document foto",
+        "Acest document este generat cu acordul utilizatorului prin intermediul aplicației",
+        "RO CEI Reader a MAI",
+    ]
+
+
+def cei_export_pdf(person: Person | None = None) -> bytes:
+    """:func:`cei_export_lines` as a PDF with a text layer."""
+    from docfill.export.pdf_render import render_text_pdf
+
+    return render_text_pdf("\n".join(cei_export_lines(person)))

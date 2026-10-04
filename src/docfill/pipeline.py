@@ -13,7 +13,7 @@ from docfill.computed import COMPUTED, with_computed
 from docfill.config import Settings, get_settings
 from docfill.doctypes import DocTypeClassifier, Prediction, match_form
 from docfill.errors import MissingFieldsError
-from docfill.export import fill_pdf_form, render_text_pdf
+from docfill.export import fill_pdf_form, render_text_docx, render_text_pdf
 from docfill.extraction import FieldExtractor, merge_extractions
 from docfill.extraction.clauses import fold
 from docfill.extraction.derive import complete_values
@@ -40,6 +40,7 @@ from docfill.templates.placeholders import (
     clean_fill_value,
     clean_list_value,
     parse_expression,
+    preview_lines,
     render_body,
     split_row,
 )
@@ -269,15 +270,36 @@ def for_person(result: ExtractionResult, person: int | None) -> ExtractionResult
 FORM_CONFIDENCE = 0.97
 
 
+MEDIA_TYPES = {
+    "pdf": "application/pdf",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+
+
 @dataclass
 class FillResult:
-    pdf: bytes
+    data: bytes  # the filled document: a PDF, or a Word document (``output``)
     template: str
     template_version: int
     values: dict[str, str]
     sources: dict[str, str]
     missing: list[str]
     warnings: list[str] = field(default_factory=list)
+    output: str = "pdf"  # "pdf" | "docx", as the standard document says
+
+    @property
+    def pdf(self) -> bytes:
+        if self.output != "pdf":
+            raise ValueError(f"'{self.template}' is filled as a .{self.output} document")
+        return self.data
+
+    @property
+    def suffix(self) -> str:
+        return f".{self.output}"
+
+    @property
+    def media_type(self) -> str:
+        return MEDIA_TYPES[self.output]
 
 
 class DocFill:
@@ -529,11 +551,14 @@ class DocFill:
             "subject": f"Standard document '{template.name}' v{template.version}",
             "keywords": f"docfill; template-checksum={template.checksum}",
         }
-        if template.kind == "text":
+        if template.kind == "text" and template.output == "docx":
+            lines = preview_lines(template.body or "", values)
+            data = render_text_docx(lines, metadata, template.bold)
+        elif template.kind == "text":
             body = render_body(template.body or "", values)
-            pdf = render_text_pdf(body, metadata, self.settings)
+            data = render_text_pdf(body, metadata, self.settings)
         else:
-            pdf = fill_pdf_form(
+            data = fill_pdf_form(
                 template.pdf_data or b"",
                 form_values(template, values),
                 {f"/{key.capitalize()}": value for key, value in metadata.items()},
@@ -542,7 +567,8 @@ class DocFill:
 
         used = {name: values[name] for name in template.field_names() if name in values}
         return FillResult(
-            pdf=pdf,
+            data=data,
+            output=template.output,
             template=template.name,
             template_version=template.version,
             values=used,

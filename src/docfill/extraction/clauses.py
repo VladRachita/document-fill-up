@@ -76,6 +76,9 @@ _ID_TYPES = {
     "pasaportul": "Pașaport",
     "cis": "CIS",
     "carte de identitate simpla": "CIS",
+    "cei": "CEI",
+    "carte electronica de identitate": "CEI",
+    "cartea electronica de identitate": "CEI",
 }
 _COMPANY = re.compile(
     r"\b(?:al|a|la)\s+(?:societ\w+|firmei|S\.?C\.?)\s+(?P<name>[^,;()]+?"

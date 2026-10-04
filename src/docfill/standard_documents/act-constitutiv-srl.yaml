@@ -16,6 +16,9 @@
 #   associate_identification, administrator_identification);
 # * the date of the act: the date of the documents (today, editable in the wizard).
 #
+# The act is written as a Word document (output: docx), laid out like the model, so the filer
+# can still edit it before it is signed; the other standard documents are PDFs.
+#
 # Deliberate changes to the model: "Denumirea societății este:" takes a colon and "capitalul
 # social subscris al societății este de", as in the acts filed; the empty paragraphs of the
 # model are left out.
@@ -27,6 +30,14 @@ description: >
   activitate (CAEN), capitalul social și părțile sociale, asociatul unic, administratorul și
   beneficiarul real.
 kind: text
+output: docx
+# written in bold, as in the model: the firm, the object, the associate and the administrator
+bold:
+  - company_name
+  - activity_object
+  - associate_identification
+  - administrator_identification
+  - associate_name
 doc_type: act_constitutiv
 body: |
   # ACT CONSTITUTIV

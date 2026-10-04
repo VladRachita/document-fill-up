@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from docfill.api import create_app
 from docfill.app import build_app
-from docfill.computed import with_computed
+from docfill.computed import address_line, with_computed
 from docfill.doctypes import DocType, DocTypeClassifier
 from docfill.export.pdf_form import read_form_values
 from docfill.extraction import FieldExtractor
@@ -302,6 +302,38 @@ def test_proof_of_registered_office():
     }
 
 
+@pytest.mark.parametrize(
+    ("premises", "confidence"),
+    [
+        # how OCR may read "imobilul situat în" and the floor "VII" on a scan
+        ("imobllul sltuat Tn Jud. Timiș, Mun. Timișoara, Ale. Teilor, Nr. 4, Bl. 12, Et. Vil,",
+         0.85),
+        ("imobilul situat, la adresa: Jud. Timiș, Mun. Timișoara, Ale. Teilor, Nr. 4, Bl. 12, "
+         "Et. Vll,", 0.85),
+        # "situat" misread beyond recognition: the first address after the premises
+        ("imobilul sifuat ín Jud. Timiș, Mun. Timișoara, Ale. Teilor, Nr. 4, Bl. 12, Et. VII,",
+         0.7),
+        ("imobilul din Jud. Timiș, Mun. Timișoara, Ale. Teilor, Nr. 4, Bl. 12, Et. VII,", 0.7),
+    ],
+)  # fmt: skip
+def test_proof_of_registered_office_as_ocr_reads_it(premises, confidence):
+    text = text_of(COMODAT).replace(
+        "imobilul situat în Jud. Timiș, Mun. Timișoara, Ale. Teilor, Nr. 4, Bl. 12, Et. VII,",
+        premises,
+    )
+    (found,) = [field for field in extract_premises(text) if field.name == "company_address"]
+    assert found.confidence == confidence
+    derived = complete_values({"company_address": found.value})
+    office = {name: value for name, (value, _) in derived.items()}
+    assert address_line(office, "company_", county="county") == (
+        "Mun. Timișoara, Ale. Teilor nr. 4, bl. 12, et. VII, ap. 31, camera 1, jud. Timiș"
+    )
+
+
+def test_no_premises_no_office():
+    assert extract_premises("Spațiul va fi utilizat în vederea stabilirii sediului.") == []
+
+
 ACTIVITIES = "6201 Activități de realizare a software-ului la comandă\n6202 Consultanță IT"
 
 
@@ -370,6 +402,12 @@ def test_document_types_by_their_title():
     ):
         prediction = classifier.predict(text_of(paragraphs))
         assert (prediction.doc_type, prediction.method) == (expected, "title")
+    # a mark of the scan before the title; a title OCR lost, with both parties named
+    assert classifier.by_title("| " + text_of(COMODAT)) == "dovada_sediu"
+    untitled = text_of(COMODAT[1:]).replace("CONTRACT DE COMODAT", "")
+    assert classifier.by_title("C0NTRAGT DE C0MQDAT\n" + untitled) == "dovada_sediu"
+    # not a list of documents that names a contract
+    assert classifier.by_title("Opis\n3. Contract de comodat nr. 1\n4. Dovada") is None
     # a type the classifier was not taught is never named by its title
     assert DocTypeClassifier().by_title(text_of(ACT_TWO_ASSOCIATES)) is None
 

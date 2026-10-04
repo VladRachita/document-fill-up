@@ -231,6 +231,7 @@ def _preview(template: StandardDocument, values: Mapping[str, str]) -> dict[str,
     preview: dict[str, Any] = {
         "name": template.name,
         "kind": template.kind,
+        "output": template.output,
         "title": template.title,
         "missing": missing,
         "filled": len(filled),
@@ -320,12 +321,12 @@ def suggest_filename(
     return safe_filename("_".join(part for part in parts if part))
 
 
-def save_output(directory: Path, filename: str, data: bytes) -> Path:
-    """Write ``data`` as ``directory/filename``, adding ``-2``, ``-3``... instead of
-    overwriting an existing file."""
+def save_output(directory: Path, filename: str, data: bytes, suffix: str = ".pdf") -> Path:
+    """Write ``data`` as ``directory/filename`` (with ``suffix``: ``.pdf``, ``.docx``), adding
+    ``-2``, ``-3``... instead of overwriting an existing file."""
     directory.mkdir(parents=True, exist_ok=True)
-    name = safe_filename(filename)
-    stem, suffix = name[: -len(".pdf")], ".pdf"
+    name = safe_filename(filename, suffix)
+    stem = name[: -len(suffix)]
     path = directory / name
     counter = 2
     while True:

@@ -174,7 +174,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ] = "{}",
         allow_missing: Annotated[bool, Form()] = False,
     ) -> Response:
-        """Fill a standard document from the uploaded documents and return the PDF."""
+        """Fill a standard document from the uploaded documents and return it (a PDF, or a
+        Word document for the standard documents written as such)."""
         try:
             overrides = json.loads(values or "{}")
         except json.JSONDecodeError as exc:
@@ -187,10 +188,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         uploads = [read_upload(upload, settings.max_file_size) for upload in files or []]
         result, _ = docfill.process(uploads, standard, overrides, allow_missing)
         return Response(
-            content=result.pdf,
-            media_type="application/pdf",
+            content=result.data,
+            media_type=result.media_type,
             headers={
-                "Content-Disposition": f'attachment; filename="{standard.name}.pdf"',
+                "Content-Disposition": f'attachment; filename="{standard.name}{result.suffix}"',
                 "X-Docfill-Template-Version": str(result.template_version),
                 "X-Docfill-Missing": ",".join(result.missing),
             },

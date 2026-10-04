@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any, Literal
 
@@ -15,6 +16,8 @@ from docfill.errors import TemplateError, TemplateIntegrityError
 from docfill.templates.placeholders import parse_expression, validate_body
 
 TemplateKind = Literal["text", "pdf_form"]
+# The file a filled document is written as: a PDF, or a Word document (text documents only).
+OutputFormat = Literal["pdf", "docx"]
 
 
 def compute_checksum(
@@ -91,6 +94,9 @@ class StandardDocumentSpec(BaseModel):
     * ``kind: pdf_form`` - ``pdf_data`` is an existing PDF with fillable (AcroForm) text
       fields; ``field_map`` maps PDF field names to docfill fields, e.g.
       ``{"txtSurname": "last_name | upper"}``. Without a map, PDF field names are used as-is.
+
+    A text document is written as a PDF, or as a Word document with ``output: docx`` (an act
+    the filer edits before signing).
     """
 
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{1,99}$")
@@ -129,6 +135,9 @@ class StandardDocumentSpec(BaseModel):
     # Fields asked in the review though no box prints them: they decide values that are printed
     # (e.g. ["representative_type"]: a lawyer or a proxy writes "prin ... conform ...").
     asks: list[str] = Field(default_factory=list, max_length=20)
+    output: OutputFormat = "pdf"
+    # Fields whose values a Word document writes in bold (``output: docx``), e.g. the firm.
+    bold: list[str] = Field(default_factory=list, max_length=50)
 
     @model_validator(mode="after")
     def _check(self) -> StandardDocumentSpec:
@@ -150,7 +159,14 @@ class StandardDocumentSpec(BaseModel):
                 validate_body(self.body)
             except TemplateError as exc:
                 raise ValueError(str(exc)) from exc
+            unused = [name for name in self.bold if not re.search(rf"\{{\{{\s*{name}\b", self.body)]
+            if unused:
+                raise ValueError(f"bold names fields the body does not write: {unused}")
+            if self.bold and self.output != "docx":
+                raise ValueError("'bold' only applies to documents written as Word (output: docx)")
         else:
+            if self.output != "pdf" or self.bold:
+                raise ValueError("a pdf_form standard document is filled as a PDF")
             if not self.pdf_data:
                 raise ValueError("a pdf_form standard document needs 'pdf_data' (or 'pdf_file')")
             if self.body:
@@ -217,6 +233,10 @@ class StandardDocumentSpec(BaseModel):
             options["per_person"] = list(self.per_person)
         if self.asks:
             options["asks"] = list(self.asks)
+        if self.output != "pdf":
+            options["output"] = self.output
+        if self.bold:
+            options["bold"] = list(self.bold)
         return options
 
     def checksum(self) -> str:
@@ -320,6 +340,15 @@ class StandardDocument(Base):
     def asks(self) -> list[str]:
         return self.option("asks", [])
 
+    @property
+    def output(self) -> str:
+        """``pdf`` or ``docx``: the file the filled document is written as."""
+        return self.option("output", "pdf")
+
+    @property
+    def bold(self) -> list[str]:
+        return self.option("bold", [])
+
     def pdf_field_names(self) -> list[str]:
         """Every PDF field this document fills (mapped fields, list cells, boxes)."""
         names = list(self.field_map) + [name for name in self.ticks if name not in self.field_map]
@@ -396,6 +425,7 @@ class StandardDocument(Base):
             "fields": self.input_fields(),
             "required_fields": self.required_fields(),
             "per_person": list(self.per_person),
+            "output": self.output,
             "checksum": self.checksum,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

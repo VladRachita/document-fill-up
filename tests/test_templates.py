@@ -65,11 +65,31 @@ def test_clean_fill_value():
         {"body": "Hi {{ oops"},
         {"field_map": {"a": "b"}},
         {"kind": "pdf_form"},
+        {"output": "odt"},
+        {"bold": ["first_name"]},  # bold is for Word documents
+        {"output": "docx", "bold": ["last_name"]},  # a field the body does not write
     ],
 )
 def test_spec_validation(overrides):
     with pytest.raises(ValidationError):
         text_spec(**overrides)
+
+
+def test_a_text_document_written_as_word(repo):
+    spec = text_spec(output="docx", bold=["first_name"])
+    assert spec.options() == {"output": "docx", "bold": ["first_name"]}
+    assert text_spec().options() == {}  # a PDF, as before: the checksum does not change
+    document, _ = repo.save(spec)
+    assert (document.output, document.bold) == ("docx", ["first_name"])
+    assert document.summary()["output"] == "docx"
+    with pytest.raises(ValidationError):
+        StandardDocumentSpec(
+            name="form",
+            title="Form",
+            kind="pdf_form",
+            pdf_data=make_pdf_form(["first_name"]),
+            output="docx",
+        )
 
 
 def test_pdf_form_spec_defaults_to_identity_mapping():

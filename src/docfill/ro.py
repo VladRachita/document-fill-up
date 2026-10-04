@@ -350,8 +350,10 @@ _PARTS = {
         r"\b(?:bl(?:oc)?|(?-i:B[I1](?=\.)))\.?\s*(?P<v>[A-Za-z0-9][\w\-/]*)", re.I
     ),
     "entrance": re.compile(r"\bsc(?:ara)?\.?\s*(?P<v>[A-Za-z0-9]+)", re.I),
+    # "Et. VII" as OCR may read it: "Et. Vil", "Et. Vll"
     "floor": re.compile(
-        r"\bet(?:aj)?\.?\s*(?P<v>\d+|parter|P|D|M|[IVX]{1,4}(?=[\s,.;]|$))\b", re.I
+        r"\bet(?:aj)?\.?\s*(?P<v>\d+|parter|P|D|M|(?-i:[IVX][IVXil1]{0,3})(?=[\s,.;]|$))\b",
+        re.I,
     ),
     "apartment": re.compile(
         r"\b(?:ap(?:artament)?\.?\s*(?P<v>\d+[A-Za-z]?)|(?P<room>cam(?:era)?\.?\s*\d+\w*))", re.I
@@ -439,6 +441,8 @@ def parse_ro_address(text: str) -> dict[str, str]:
                 result[part] = " ".join(match["room"].split()).lower()
             else:
                 result[part] = match["v"].replace(" ", "")
+    if re.fullmatch(r"[IVX][IVXil1]*", floor := result.get("floor", "")):
+        result["floor"] = floor.translate(str.maketrans("il1", "III"))
     # "ap. 29, camera 1": the room of an apartment (a registered office often is one room)
     if (room := _ROOM.search(text)) and (room := " ".join(room.group().split()).lower()) != (
         result.get("apartment")
