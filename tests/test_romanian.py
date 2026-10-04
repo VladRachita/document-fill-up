@@ -12,12 +12,16 @@ from docfill.ro import (
     check_cnp,
     cnp_control_digit,
     compose_street_line,
+    county_code,
     county_name,
     doubtful_place,
     normalize_date,
+    office_doubt,
     parse_ro_address,
+    place_doubt,
     repair_county_codes,
     restore_diacritics,
+    spell_locality,
     split_room,
 )
 from docfill.samples import Person, ro_id_card_jpeg
@@ -201,6 +205,118 @@ def test_county_codes_misread_by_ocr(text, county):
 def test_places_that_cannot_be_what_a_card_prints(place, birth, problem):
     found = doubtful_place(place, birth=birth)
     assert (problem in found) if problem else found is None
+
+
+@pytest.mark.parametrize(
+    ("text", "code"),
+    [("CJ", "CJ"), ("Cluj", "CJ"), ("jud. cluj", "CJ"), ("București", "B"), ("Sector 2", "B")],
+)
+def test_county_code(text, code):
+    assert county_code(text) == code
+    assert county_code("Atlantida") is None and county_code(None) is None
+
+
+@pytest.mark.parametrize(
+    ("place", "county", "birth", "problem", "suggestions"),
+    [
+        # a status changes over the years: a town that is a municipality now, and the reverse
+        ("Oraș Dej", "CJ", False, None, ()),
+        ("Mun. Huedin", "CJ", False, None, ()),
+        # the county of the card is the one the name is looked up in
+        ("Mun. Cluj-Napoca", "AB", False, "județul Alba (there is one in Cluj)", ()),
+        ("Com. Hărman", "BV", False, None, ()),
+        ("Com. Hărman", "CJ", False, "județul Cluj (there is one in Brașov)", ()),
+        ("Com. Hărman, Sat Podu Oltului", "BV", False, None, ()),
+        # a name cut off by glare: the municipalities that begin so, the kind printed first
+        ("Mun. Plo", "PH", False, "cut off", ("Mun. Ploiești",)),
+        ("Mun. Ca", "SV", False, "cut off", ("Mun. Câmpulung Moldovenesc",)),
+        ("Oraș Huedi", "CJ", False, "cut off", ("Oraș Huedin",)),
+        ("Mun. Me", "SB", False, "cut off", ("Mun. Mediaș",)),
+        ("Com. Car", "DJ", False, "cut off", ("Com. Cârna", "Com. Carpen", "Com. Cârcea")),
+        # one letter misread
+        ("Oraș Hucdin", "CJ", False, "did you mean Huedin", ("Oraș Huedin",)),
+        ("Com. Harmann", "BV", False, "did you mean Hărman", ("Com. Hărman",)),
+        ("Com. Hărman, Sat Podu Oltuli", "BV", False, "did you mean Podu Oltului", None),
+        # a name the register does not have, that looks like none of its names: left alone
+        ("Com. Sărbătoreni", "BV", False, None, ()),
+        ("Sat Valea Lungă", None, False, None, ()),
+        ("Cluj-Napoca", "CJ", False, None, ()),  # without a prefix it is no card's locality
+    ],
+)
+def test_places_are_checked_in_their_county(place, county, birth, problem, suggestions):
+    doubt = place_doubt(place, birth=birth, county=county)
+    if problem is None:
+        assert doubt is None
+        return
+    assert doubt is not None and problem in doubt.problem
+    if suggestions is not None:
+        assert doubt.suggestions == suggestions
+
+
+def test_a_suggestion_replaces_only_the_doubted_part_of_a_place():
+    doubt = place_doubt("Com. Hărman, Sat Podu Oltuli", county="BV")
+    assert doubt.suggestions == ("Com. Hărman, Sat Podu Oltului",)
+
+
+@pytest.mark.parametrize(
+    ("office", "problem", "suggestions"),
+    [
+        ("SPCLEP Cluj-Napoca", None, ()),
+        ("SPCLEP Alba Iulia", None, ()),
+        ("SPCLEP Sector 4", None, ()),  # not a place of the register
+        ("SPCLEP Săcălaz", None, ()),
+        ("SPCLEP Drobeta-Tumu Severin", "did you mean Drobeta-Turnu Severin", None),
+        ("SPCLEP Cluj", "cut off", ("SPCLEP Cluj-Napoca",)),
+        ("SPCLEP Xyzzyq", None, ()),
+        ("I.N.E.P.", None, ()),
+    ],
+)
+def test_the_place_in_an_issuing_office_is_checked(office, problem, suggestions):
+    doubt = office_doubt(office)
+    if problem is None:
+        assert doubt is None
+        return
+    assert doubt is not None and problem in doubt.problem
+    if suggestions is not None:
+        assert doubt.suggestions == suggestions
+
+
+@pytest.mark.parametrize(
+    ("kind", "name", "county", "spelled"),
+    [
+        ("Com.", "Harman", "BV", "Hărman"),
+        ("Com.", "HARMAN", "BV", "HĂRMAN"),
+        ("Mun.", "Cluj Napoca", "CJ", "Cluj-Napoca"),
+        ("Sat", "Podu Oltului", "BV", "Podu Oltului"),
+        ("Oraș", "Stefanesti", "AG", "Ștefănești"),
+        ("Com.", "Sacalaz", None, "Săcălaz"),  # one such commune in the country
+        ("Com.", "Stefanesti", None, "Ștefănești"),  # in five counties, spelled the same
+        ("Sat", "Silea", None, "Silea"),  # Silea or Șilea, by county: left as read
+        ("Sat", "Silea", "AB", "Șilea"),
+        ("Com.", "Zzzz", "BV", "Zzzz"),
+        ("Com.", "Hărman", "CJ", "Hărman"),
+    ],
+)
+def test_localities_are_spelled_as_the_register_does(kind, name, county, spelled):
+    assert spell_locality(kind, name, county) == spelled
+
+
+def test_an_address_gets_its_diacritics_from_the_register_and_the_lists():
+    parts = parse_ro_address("Jud.BV Com.Harman Sat Podu Oltului Str.Libertatii nr.5")
+    assert parts["city"] == "Com. Hărman, Sat Podu Oltului" and parts["street"] == "Libertății"
+    parts = parse_ro_address("Jud.IS Mun.Iasi Str.Stefan cel Mare nr.8")
+    assert parts["city"] == "Mun. Iași" and parts["street"] == "Ștefan cel Mare"
+    # a Bucharest address has no county: its sector says where it is
+    assert parse_ro_address("Mun.Bucuresti Sec.4 Str.Rudariilor nr.14")["city"] == "Mun. București"
+
+
+def test_restore_diacritics_knows_names_and_street_words():
+    assert restore_diacritics("Str. Stefan cel Mare") == "Str. Ștefan cel Mare"
+    assert restore_diacritics("Aleea Padurii") == "Aleea Pădurii"
+    assert restore_diacritics("Bd. Libertatii") == "Bd. Libertății"
+    assert restore_diacritics("Str. Mihai Eminescu") == "Str. Mihai Eminescu"  # nothing to add
+    assert restore_diacritics("Str. Kossuth Lajos") == "Str. Kossuth Lajos"  # not ours to accent
+    assert restore_diacritics("Com. Sacalaz") == "Com. Săcălaz"  # a commune of the register
 
 
 def test_address_helpers():

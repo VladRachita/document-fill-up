@@ -132,7 +132,9 @@ def _names(zone: str) -> tuple[str, str]:
     surname, _, given = zone.partition("<<")
 
     def words(part: str) -> str:
-        return " ".join(w for w in part.replace("<", " ").split() if not _FILLER_TOKEN.fullmatch(w))
+        found = [w for w in part.replace("<", " ").split() if not _FILLER_TOKEN.fullmatch(w)]
+        # a letter left on its own is a "<" filler OCR read as a letter: no name is one letter
+        return " ".join(w for w in found if len(w) > 1 or len(found) == 1)
 
     return words(surname), words(given)
 

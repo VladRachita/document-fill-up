@@ -24,18 +24,21 @@ from docfill.models import ExtractedField, ExtractionResult
 from docfill.ro import (
     check_cnp,
     compose_street_line,
+    county_code,
     county_name,
-    doubtful_place,
     format_amount,
     format_date,
     looks_romanian_address,
     parse_amount,
     parse_ro_address,
+    place_doubt,
     split_room,
 )
 from docfill.templates.placeholders import split_row
 
 DERIVED_FACTOR = 0.95
+SUGGESTED_CONFIDENCE = SUSPECT_CONFIDENCE - 0.01  # offered to a person, never filled in
+_COUNTY_TRUSTED = 0.7  # a county read from the text; not the one a CNP was issued in
 _ADDRESS_PARTS = ("street_address", "postal_code", "city", "region", "country")
 _RO_PARTS = ("street", "street_number", "building", "entrance", "floor", "apartment", "city")
 _STREET_WORD = re.compile(r"\b(?:str|strada|bd|b-dul|aleea|calea|sos|soseaua|nr|bl|sc|et|ap)\b")
@@ -191,13 +194,33 @@ def _derive_person(result: ExtractionResult) -> None:
 
     # a municipality that is not one, a place cut off by glare or a fold: shown, not filled in
     # (for text read from a document, not for what a person typed or a filled form says)
-    for name in ("place_of_birth", "city"):
+    for name, county_name_ in (("place_of_birth", "birth_county"), ("city", "region")):
         field = fields.get(name)
         if field is None or field.source in _NOT_READ:
             continue
-        if problem := doubtful_place(field.value, birth=name == "place_of_birth"):
-            doubt = {"confidence": min(field.confidence, SUSPECT_CONFIDENCE)}
-            result.replace(field.model_copy(update={**doubt, "issues": [*field.issues, problem]}))
+        scope = fields.get(county_name_)
+        county = county_code(scope.value) if scope and scope.confidence >= _COUNTY_TRUSTED else None
+        doubt = place_doubt(field.value, birth=name == "place_of_birth", county=county)
+        if doubt is None:
+            continue
+        doubted = field.model_copy(
+            update={
+                "confidence": min(field.confidence, SUSPECT_CONFIDENCE),
+                "issues": [*field.issues, doubt.problem],
+            }
+        )
+        if len(doubt.suggestions) == 1:
+            # cut off, or one letter off, and one name of the register fits: shown as the value
+            # to check, the reading kept next to it
+            result.replace(doubted.model_copy(update={"confidence": SUGGESTED_CONFIDENCE - 0.1}))
+            suggested = _derived(
+                name, doubt.suggestions[0], SUGGESTED_CONFIDENCE, field.value, None
+            )
+            result.replace(suggested.model_copy(update={"issues": [doubt.problem]}))
+            continue
+        result.replace(doubted)
+        for suggestion in doubt.suggestions:
+            result.offer(_derived(name, suggestion, SUGGESTED_CONFIDENCE, field.value, None))
 
     # CNP
     if (cnp := fields.get("cnp")) and (info := check_cnp(cnp.value)).valid:

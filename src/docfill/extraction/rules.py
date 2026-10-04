@@ -149,7 +149,7 @@ def validate(spec: FieldSpec, value: str, strict: bool = False) -> str | None:
         value = re.split(r"\s*/\s*", value)[0]
         return CITIZENSHIP_NORMAL.get(_key(value), value)
     if spec.name == "id_issued_by":  # "SPCLEP Sibiu 22.06.22-14.11.2032" when columns merge
-        value = re.sub(r"\s*\d{2}\.\d{2}\.\d{2,4}.*$", "", value)
+        value = re.sub(r"\s*\d{2}[.,]\d{2}[.,]\d{2,4}.*$", "", value)
         return restore_diacritics(value) or None
     return value
 

@@ -174,16 +174,46 @@ office in capitalised words, so docfill reads `lON`, `ANDREl`, `Alba lulia`, `lu
 (capital I read as l, 1, a bar or j), `jud.AB` and a county code such as `C}` (the hook of the J)
 as what they can only be. Bucharest prints the sector (`Mun.București Sec.2`), which stays in the
 place of birth; towns are written `Or.Huedin`. A printed name that is cut off (glare, a fold) is
-finished from the MRZ, and one that disagrees with it is not filled. A value that cannot be what
-the field holds is **shown for review but never filled in**: symbols or a piece of the zone read
-as text, a neighbouring label read as the value, a municipality that is not one (`Mun. Set`) or
-only the beginning of one (`Mun. Sib`), a locality that cannot be read.
+finished from the MRZ. A value that cannot be what the field holds is **shown for review but
+never filled in**: symbols or a piece of the zone read as text, a neighbouring label read as the
+value, a place that the register does not have (see below).
+
+**Romanian names and places.** docfill knows which names exist in Romania, the way a Romanian
+clerk reading the card does (`src/docfill/data/`, no network needed):
+
+* *Given names and surnames* (about 1,100 each: traditional, saints', Biblical, recent, and the
+  Hungarian ones of Transylvania). The diacritics OCR loses are restored: `STEFANESCU` becomes
+  `ȘTEFĂNESCU`, `LACRAMIOARA` `LĂCRĂMIOARA`, `Cr1stian` `Cristian` (a digit inside a name is the
+  letter it looks like). Only the Romanian diacritics (ă â î ș ț) are added, never one that was
+  read is taken away, and a Hungarian name is left as it was read. A name that is not listed is
+  never changed.
+* *A first name that is not a Romanian name* but is a look-alike letter away from one
+  (`JOANA`, `IOANA`; `J`/`I`, `O`/`Q`) is **corrected** — with a note, and what was read stays
+  one click away. The machine readable zone has the last word: if it says `JOANA` too, the person
+  is called that; if it says `IOANA` the name is confirmed; if both words are names (`JULIA`,
+  `IULIA`) docfill does not decide. A surname, a lost letter (`ONUT` for `IONUȚ`) or a name cut off
+  by glare (`DUMITRES`) is **offered, not filled in**. A first name that does not fit the sex of
+  the CNP (`IOANA` on a card of a man) is flagged.
+* *The register of localities* (SIRUTA: 103 municipalities, 216 towns, 2,862 communes and
+  13,000 villages of the 41 counties and Bucharest). The locality of a domicile or of a place of
+  birth is looked up in the **county the card prints** (`Jud.BV`): `Com.Harman` becomes
+  `Com. Hărman`, `Mun.Cluj Napoca` `Mun. Cluj-Napoca`. A name that the county does not have is
+  shown for review, with the names it may be — cut off by glare (`Mun. Sib` → Sibiu, `Oraș Huedi`
+  → Huedin), one letter misread (`Hucdin`), a locality that exists in another county
+  (`Mun. Cluj-Napoca` with `Jud.AB`: the county or the name was misread) — and when only one
+  fits, it is the value to check. The place in the name of the issuing office
+  (`SPCLEP Drobeta-Tumu Severin`) is checked the same way.
+* *Street words* with diacritics (`Libertății`, `Păcii`, `Școlii`, `Vodă`...): `Str.Stefan cel Mare`
+  becomes `Str. Ștefan cel Mare`.
+
+The lists are plain text next to the code, so a missing name is one line to add; the register is
+generated from SIRUTA by `tools/build_localities.py` (data licence in the file).
 
 **Birth certificate.** Detected and read (labels, parents, place of birth). Note: handwritten
 values (old certificates) cannot be read by Tesseract; the wizard asks for them.
 
-**Place names.** Diacritics lost by OCR are restored for county seats and major towns
-("Fagaras" -> "Făgăraș", "Focşani" -> "Focșani"); others are learned from your corrections.
+**Place names.** Diacritics lost by OCR are restored from the register of localities and the
+lists of names (above); anything docfill does not know is learned from your corrections.
 
 **Filled forms as a source.** A filled Anexa 2a (or any registered PDF form) is recognised from
 its form fields and read back through its field map, so a finished Anexa 2a fills Anexa 4.
@@ -487,6 +517,9 @@ src/docfill/
                        printed on an identity card (idcard.py)
   computed.py          values composed when filling (domicile line, share value...)
   ro.py, mrz.py        Romanian knowledge (counties, CNP, addresses, places) and MRZ parsing
+  lexicon.py, names.py Romanian names and localities (data/): lookups, repairs of names,
+                       settling a name against the machine readable zone
+  data/                given names, surnames, street words, the register of localities (text)
   validation.py        cross-checks and live validation
   learning.py          review outcomes, calibration, learned labels, memory
   templates/           standard documents: placeholders, DB model, repository, YAML loader
@@ -498,6 +531,7 @@ src/docfill/
   wizard.py, web/      review logic, the web wizard and the knowledge page
   samples.py           synthetic documents (fictitious Romanian identity card)
   cli.py, api.py       Typer CLI and FastAPI app
+tools/                 build_localities.py: the register of localities from SIRUTA
 tests/                 pytest suite (fictitious data only); test_reference_forms.py checks
                        every reference document
 ```
@@ -533,7 +567,10 @@ ruff check src tests examples && ruff format --check src tests examples
   Real phone photos (glare, angle) may need better image straightening, and a card scanned
   small (under about 1000 px wide) loses fields - try yours and correct in the wizard, the
   corrections are learned. Text hidden by glare cannot be known: a place that is cut off is only
-  caught when it is the beginning of a known municipality or town.
+  caught when it is the beginning of a name of the register (and proposed, not filled in).
+* The lists of names are not exhaustive. A rare surname or first name that is not listed keeps
+  the diacritics OCR lost (the wizard shows it; correct it once), and is never "repaired". The
+  corrections made on cards were measured on synthetic cards only.
 * CAEN activity names are typed (or read from a filled Anexa 4); a CAEN Rev. 3 list could fill
   the name from the code.
 * Three persons at most (the three blocks of the beneficial owner declaration); founders that

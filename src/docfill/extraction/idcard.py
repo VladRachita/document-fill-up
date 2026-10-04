@@ -12,12 +12,18 @@ from __future__ import annotations
 import re
 from difflib import get_close_matches
 
+from docfill import names
 from docfill.extraction.fields import FIELDS, FieldSpec
 from docfill.extraction.text_utils import fold
 from docfill.models import ExtractedField
-from docfill.ro import repair_county_codes
+from docfill.ro import office_doubt, repair_county_codes
 
 SUSPECT_CONFIDENCE = 0.45  # under the default fill threshold: shown, never filled in
+GUESS_CONFIDENCE = 0.75  # a first name corrected to a Romanian one: filled in, with a note
+ALTERNATIVE_CONFIDENCE = 0.4  # a reading offered next to the value, to be picked by a person
+CORRECTED = "Read as"  # the note of a name that was corrected: the zone can overrule it
+UNKNOWN_NAME = "Not a known Romanian"  # the note of a name that may be misread or cut off
+NAME_NOTES = (CORRECTED, UNKNOWN_NAME)  # what the machine readable zone can settle
 
 _UPPER = "A-ZĂÂÎȘȚŞŢ"
 _LOWER = "a-zăâîșțşţ"
@@ -121,16 +127,92 @@ def suspicious(spec: FieldSpec, value: str) -> str | None:
 _NOT_PRINTED = {"mrz", "derived", "manual", "form", "default", "memory"}
 
 
-def review(candidate: ExtractedField) -> ExtractedField:
+def _name_kind(spec: FieldSpec) -> str | None:
+    if spec.kind != "name":
+        return None
+    if spec.name.endswith("first_name"):
+        return names.GIVEN
+    return names.FAMILY if spec.name.endswith("last_name") else None
+
+
+def _review_name(candidate: ExtractedField, kind: str) -> tuple[dict, list[ExtractedField]]:
+    """The changes to a first or last name that the lists of Romanian names decide: diacritics
+    restored, digits read as letters. A name that is not Romanian and is a look-alike letter
+    away from a name that is (``JOANA``, ``IOANA``) is corrected when it is a first name (with a
+    note, the reading kept next to it). Anything less sure (a surname, a lost letter, a name cut
+    off) is offered, not filled in."""
+    fix = names.fix_name(candidate.value, kind)
+    changes: dict = {"value": fix.value} if fix.value != candidate.value else {}
+    issues, confidence, extra = list(candidate.issues), candidate.confidence, []
+    if fix.uncertain_digits:
+        confidence = min(confidence, GUESS_CONFIDENCE)
+        issues.append("Digits read inside the name were replaced by letters: check it")
+    suggestion = fix.suggestion or (fix.guess if kind == names.FAMILY else None)
+    if fix.guess and kind == names.GIVEN:
+        confidence = min(confidence, GUESS_CONFIDENCE)
+        issues.append(
+            f"{CORRECTED} '{fix.value}', corrected to the Romanian first name {fix.guess}: "
+            "check it against the card"
+        )
+        changes.update(value=fix.guess, original=fix.value)
+        reading = {"value": fix.value, "confidence": ALTERNATIVE_CONFIDENCE, "original": None}
+        extra.append(candidate.model_copy(update=reading))
+    elif suggestion:
+        confidence = min(confidence, SUSPECT_CONFIDENCE)
+        what = "first name" if kind == names.GIVEN else "surname"
+        issues.append(f"{UNKNOWN_NAME} {what}: did you mean {suggestion}? Check it")
+        offer = {"value": suggestion, "confidence": SUSPECT_CONFIDENCE - 0.01, "source": "derived"}
+        extra.append(candidate.model_copy(update={**offer, "issues": []}))
+    if issues != candidate.issues:
+        changes.update(issues=issues, confidence=confidence)
+    return changes, extra
+
+
+def _propose(
+    candidate: ExtractedField, problem: str, suggestions: tuple[str, ...]
+) -> tuple[dict, list[ExtractedField]]:
+    """A value that cannot be what the field holds, shown for a person: the only name that fits
+    becomes the value (what was read stays next to it), several are offered next to it. Never
+    filled in."""
+    issues = [*candidate.issues, problem]
+    if len(suggestions) == 1:
+        reading = {"confidence": ALTERNATIVE_CONFIDENCE - 0.1, "issues": issues}
+        changes = {
+            "value": suggestions[0],
+            "confidence": SUSPECT_CONFIDENCE - 0.01,
+            "source": "derived",
+            "issues": [problem],
+        }
+        return changes, [candidate.model_copy(update=reading)]
+    offered = {"confidence": SUSPECT_CONFIDENCE - 0.01, "source": "derived", "issues": []}
+    extra = [candidate.model_copy(update={**offered, "value": value}) for value in suggestions]
+    return {"confidence": min(candidate.confidence, SUSPECT_CONFIDENCE), "issues": issues}, extra
+
+
+def review(candidate: ExtractedField) -> list[ExtractedField]:
     """A value read from the text of an identity card: repaired the way the card prints it and,
-    if it still cannot be what the field holds, lowered under the fill threshold."""
+    if it still cannot be what the field holds, lowered under the fill threshold. Returns the
+    value followed by the other readings of it that a person may pick."""
     spec = FIELDS.get(candidate.name)
     if spec is None or candidate.source in _NOT_PRINTED:
-        return candidate
+        return [candidate]
     value = repair(spec, candidate.value)
     changes: dict = {"value": value} if value != candidate.value else {}
+    extra: list[ExtractedField] = []
+    if kind := _name_kind(spec):
+        more, extra = _review_name(candidate.model_copy(update=changes), kind)
+        changes.update(more)
+        value = changes.get("value", value)
+    elif spec.name.endswith("id_issued_by") and (doubt := office_doubt(value)):
+        more, extra = _propose(
+            candidate.model_copy(update=changes), doubt.problem, doubt.suggestions
+        )
+        changes.update(more)
+        value = changes.get("value", value)
     problem = suspicious(spec, value)
-    if problem and problem not in candidate.issues:
-        changes["confidence"] = min(candidate.confidence, SUSPECT_CONFIDENCE)
-        changes["issues"] = [*candidate.issues, problem]
-    return candidate.model_copy(update=changes) if changes else candidate
+    if problem and problem not in changes.get("issues", candidate.issues):
+        changes["confidence"] = min(
+            changes.get("confidence", candidate.confidence), SUSPECT_CONFIDENCE
+        )
+        changes["issues"] = [*changes.get("issues", candidate.issues), problem]
+    return [candidate.model_copy(update=changes) if changes else candidate, *extra]

@@ -67,6 +67,9 @@ class ExtractedField(BaseModel):
     document: str | None = None
     # Problems found by the validators (bad CNP checksum, mismatch with the MRZ, ...).
     issues: list[str] = Field(default_factory=list)
+    # The text as read, when ``value`` is a guess made from it (a name that is not a Romanian
+    # name, read as the one it looks like): a second source that agrees with the reading wins.
+    original: str | None = None
 
 
 class ExtractionResult(BaseModel):
@@ -82,14 +85,14 @@ class ExtractionResult(BaseModel):
             if field.confidence >= min_confidence
         }
 
-    def _record(self, candidate: ExtractedField) -> None:
+    def _record(self, candidate: ExtractedField, override: bool = False) -> None:
         pool = self.candidates.setdefault(candidate.name, [])
         for index, existing in enumerate(pool):
             if (existing.value.casefold(), existing.source) == (
                 candidate.value.casefold(),
                 candidate.source,
             ):
-                if candidate.confidence > existing.confidence:
+                if override or candidate.confidence > existing.confidence:
                     pool[index] = candidate
                 break
         else:
@@ -106,8 +109,9 @@ class ExtractionResult(BaseModel):
         return False
 
     def replace(self, candidate: ExtractedField) -> None:
-        """Record ``candidate`` and make it the value for its field unconditionally."""
-        self._record(candidate)
+        """Record ``candidate`` and make it the value for its field unconditionally; the same
+        value from the same source is replaced in the pool, even by a less confident one."""
+        self._record(candidate, override=True)
         self.fields[candidate.name] = candidate
 
     def merge(self, other: ExtractionResult) -> ExtractionResult:

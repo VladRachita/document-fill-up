@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 
+from docfill import names
 from docfill.extraction.text_utils import clean_value, is_address_continuation, parse_address
 from docfill.models import ExtractedField
 from docfill.mrz import cnp_from_mrz, read_mrz, split_ro_document_number
@@ -173,6 +174,11 @@ def _printed_cnp(text: str, document: str | None) -> list[ExtractedField]:
     return []
 
 
+def _mrz_name(value: str, kind: str, romanian: bool) -> str:
+    value = value.title()
+    return names.fix_name(value, kind).value if romanian else value
+
+
 def _from_mrz(text: str, document: str | None) -> list[ExtractedField]:
     mrz = read_mrz(text)
     if mrz is None:
@@ -185,16 +191,13 @@ def _from_mrz(text: str, document: str | None) -> list[ExtractedField]:
     # the check digits of the zone all match it was read well, and its names can finish a
     # printed name that is cut off (see docfill.validation).
     names_confidence = MRZ_NAMES_TRUSTED if mrz.fully_valid else MRZ_NAMES
+    romanian = mrz.issuing_state == "ROU"  # the diacritics the zone lacks come from the lists
     if mrz.surname:
-        found.append(
-            _field("last_name", mrz.surname.title(), names_confidence, "mrz", evidence, document)
-        )
+        surname = _mrz_name(mrz.surname, names.FAMILY, romanian)
+        found.append(_field("last_name", surname, names_confidence, "mrz", evidence, document))
     if mrz.given_names:
-        found.append(
-            _field(
-                "first_name", mrz.given_names.title(), names_confidence, "mrz", evidence, document
-            )
-        )
+        given = _mrz_name(mrz.given_names, names.GIVEN, romanian)
+        found.append(_field("first_name", given, names_confidence, "mrz", evidence, document))
     if mrz.valid.get("document_number"):
         split = split_ro_document_number(mrz.document_number)
         if split and mrz.issuing_state == "ROU":

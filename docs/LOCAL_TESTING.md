@@ -75,7 +75,7 @@ docker compose run --rm --no-deps -v "$PWD/examples:/app/examples" --user "$(id 
 | Person | Worth checking |
 |---|---|
 | `popescu` | the reference: the clean card is read without mistakes |
-| `stefanescu` | diacritics lost by OCR (Ștefănescu, Săcălaz), a commune docfill does not know |
+| `stefanescu` | diacritics lost by OCR: docfill restores those of Ștefănescu (its list of names) and of Mediaș (its register of localities); the commune "Șerpărești" is made up, so docfill does not know it |
 | `muresan` | expired card; OCR reads "Alba Iulia" as "Alba lulia" (capital I as l): docfill repairs it |
 | `dumitru` | born in 2009: under 18, the PFA / II age check must fail |
 
@@ -89,7 +89,7 @@ It stores the outcome and the method that found the value (`label`, `mrz`, `patt
 | Mechanism | What changes next time |
 |---|---|
 | **Confidence calibration** | Each method's confidence for a field becomes a mix of its built-in confidence (worth 4 reviews) and how often you accepted it (per document type once there are 3 reviews of it). Below `DOCFILL_MIN_CONFIDENCE` (0.5) the value is no longer filled in, only proposed. Example: a method at 97% corrected 4 times in a row drops to 49% and stops filling that field; every acceptance raises it again. |
-| **Spelling fixes** | For place-like fields (city, place of birth, county, street, issued by...) a correction that only adds accents or changes punctuation ("Com. Sacalaz" → "Com. Săcălaz") is applied automatically next time. |
+| **Spelling fixes** | For place-like fields (city, place of birth, county, street, issued by...) a correction that only adds accents or changes punctuation ("Com. Serparesti" → "Com. Șerpărești") is applied automatically next time. docfill already knows the places of the register of localities and the Romanian names it lists (they get their diacritics back without a correction): this is for what it does not know. |
 | **Learned labels** | A value you type that was printed after an unknown label teaches that label. |
 | **Document types** | Every saved document (with its type, corrected in *Scan & clean* if needed) is a training example for the type classifier. |
 | **Your details** | Fields a form marks `remember` (represented by, contact person, billing...) are proposed again. |
@@ -113,14 +113,20 @@ fresh database.
 
 1. **Baseline.** `ci_popescu_clean.jpg`: every value matches the answers. Save: nothing was
    corrected.
-2. **A spelling fix.** `ci_stefanescu_clean.jpg`: the city is "Com. Sacalaz". Correct it to
-   "Com. Săcălaz" and save: *Spelling fixes remembered: 1*. Then
-   `ci_stefanescu_faded.jpg`: the city is now "Com. Săcălaz" straight away.
+2. **A spelling fix.** `ci_stefanescu_clean.jpg`: the surname comes out as "Ștefănescu" and the
+   place of birth as "Mun. Mediaș" even where OCR lost the diacritics (docfill knows them), but
+   the city is "Com. Serparesti": the commune is made up, so it is in no list. Correct it to
+   "Com. Șerpărești" and save: *Spelling fixes remembered: 1*. Then
+   `ci_stefanescu_faded.jpg`: the city is now "Com. Șerpărești" straight away.
 3. **Bad scans.** The `glare`, `photo` and `lowres` cards give missing values (city, county,
    issued by, the issue date...) and, on `glare`, a place of birth that is cut off ("Mun. Sib"):
-   it is shown with the warning *Looks cut off on the scan (… Sibiu?)* but not filled in, and a
-   name that is cut off is finished from the machine readable zone. Correct what is wrong and
-   save each time; in `docfill learn stats` the accuracy of the method behind that field drops.
+   the register has one municipality that begins so, so it is shown as the value to check ("Mun.
+   Sibiu", with the warning *Looks cut off on the scan (… Sibiu?)*, the reading next to it) but
+   not filled in, and a name that is cut off is finished from the machine readable zone. On the
+   `photo` card of a person whose first name starts with I, OCR may read `JOANA` for `IOANA`:
+   it is corrected, with a note (*Read as 'Joana-Iulia', corrected to the Romanian first name
+   Ioana-Iulia*), and the reading stays one click away. Correct what is wrong and save each
+   time; in `docfill learn stats` the accuracy of the method behind that field drops.
    Once a method is corrected more often than accepted for a field, its values stop being filled
    in automatically and wait for you under **Needs attention**.
 4. **A new label.** Upload `fisa_popescu.docx` on its own: the place of birth is empty. Type
@@ -172,9 +178,9 @@ fresh database.
 
 Found while writing this guide; worth confirming, and reporting if you see others:
 
-* Diacritics in names are lost ("Ștefănescu" → "Stefanescu"). Correcting them does not stop it:
-  each correction lowers the trust of one method, but another one (the MRZ, then a learned label)
-  proposes the same value, which is still filled in after 5 corrections.
+* Diacritics in names that docfill does not list are lost (a rare surname such as "Hrițcu" comes
+  out as "Hritcu"); the common ones are restored from its lists. Correcting a name does not stop
+  OCR from losing the diacritics: docfill never learns names (see above).
 * Correcting a name can "learn" the card's own label (`nume/nom/last name → last_name`).
 * Values docfill filled in itself (form defaults, remembered details, today's date) count as
   *added* by you when saved: this inflates *Added* in the stats and can teach wrong labels (e.g.
