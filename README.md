@@ -155,11 +155,29 @@ The same review runs in the terminal: `docfill wizard ci.jpg -t onrc-anexa-2a -t
 style (`Jud.CJ Mun.Cluj-Napoca` / `Str.Florilor nr.5 bl.A2 sc.1 et.3 ap.10`, split into
 street, number, block, staircase, floor, apartment, locality, county) and the **machine
 readable zone** (`IDROU...`, TD1/TD2/TD3). MRZ values are only trusted when their check digit
-matches; OCR confusions (O/0, I/1, B/8) are repaired when that makes the check digit match. The
+matches; OCR confusions (O/0, I/1, B/8, `LF` for `IF`) are repaired when that makes the check
+digit match. The second line of the zone is read on its own when a tilted photograph splits the
+first, and a lost or extra character in it is put back when exactly one reading matches. The
 printed names are confirmed against the MRZ.
 
-**CNP.** The control digit is verified; a CNP that fails is not filled automatically but offered
-for review. A valid CNP gives the date of birth, sex and issuing county, and cross-checks them.
+**CNP.** It is read twice: as printed, and rebuilt from the MRZ (on the card with two lines its
+optional field holds the CNP without the date of birth, which the zone gives). The control digit
+is verified; letters OCR took for digits (`l` for 1, `O` for 0) are put back when that makes the
+control digit match. A CNP that fails is not filled automatically but offered for review, so one
+wrong digit is quicker to fix than thirteen to type; when the zone has a valid one, that is used.
+The two readings confirm each other, and when they disagree neither is filled. A valid CNP gives
+the date of birth, sex and issuing county, and cross-checks them. (A CNP that happens to look
+like a payment card number is never redacted.)
+
+**Misread card text.** The card prints names in capitals and places, streets and the issuing
+office in capitalised words, so docfill reads `lON`, `ANDREl`, `Alba lulia`, `luliu Maniu`
+(capital I read as l, 1, a bar or j), `jud.AB` and a county code such as `C}` (the hook of the J)
+as what they can only be. Bucharest prints the sector (`Mun.București Sec.2`), which stays in the
+place of birth; towns are written `Or.Huedin`. A printed name that is cut off (glare, a fold) is
+finished from the MRZ, and one that disagrees with it is not filled. A value that cannot be what
+the field holds is **shown for review but never filled in**: symbols or a piece of the zone read
+as text, a neighbouring label read as the value, a municipality that is not one (`Mun. Set`) or
+only the beginning of one (`Mun. Sib`), a locality that cannot be read.
 
 **Birth certificate.** Detected and read (labels, parents, place of birth). Note: handwritten
 values (old certificates) cannot be read by Tesseract; the wizard asks for them.
@@ -465,7 +483,8 @@ src/docfill/
   knowledge/           legal knowledge: specs, declarative rules, versioned store, laws + search,
     bundled/           Romanian legal forms, procedures, rules and document types (YAML)
   extraction/          field catalog (persons 1-3), label rules, patterns (CNP, MRZ...), the
-                       identification clause, NER, derivations
+                       identification clause, NER, derivations, repairs and checks of the text
+                       printed on an identity card (idcard.py)
   computed.py          values composed when filling (domicile line, share value...)
   ro.py, mrz.py        Romanian knowledge (counties, CNP, addresses, places) and MRZ parsing
   validation.py        cross-checks and live validation
@@ -507,9 +526,14 @@ ruff check src tests examples && ruff format --check src tests examples
 
 * Handwriting (old birth certificates) is not readable by Tesseract; a handwriting OCR model
   (or a cloud OCR service, if sending the data out is acceptable) would be needed.
-* The identity card reader is tested on synthetic cards built from the official layout; real
-  phone photos (glare, angle) may need better image straightening - try yours and correct in
-  the wizard, the corrections are learned.
+* The identity card reader is tested on synthetic cards built from the official layout (ten
+  fictitious people, each as a clean card and as tilted, small, faded, glared and mid-size scans:
+  every value of a clean, faded or mid-size scan is read correctly, and a wrong value is almost
+  never filled in; on a bad scan the values it cannot read are missing or proposed, not wrong).
+  Real phone photos (glare, angle) may need better image straightening, and a card scanned
+  small (under about 1000 px wide) loses fields - try yours and correct in the wizard, the
+  corrections are learned. Text hidden by glare cannot be known: a place that is cut off is only
+  caught when it is the beginning of a known municipality or town.
 * CAEN activity names are typed (or read from a filled Anexa 4); a CAEN Rev. 3 list could fill
   the name from the code.
 * Three persons at most (the three blocks of the beneficial owner declaration); founders that

@@ -76,7 +76,7 @@ docker compose run --rm --no-deps -v "$PWD/examples:/app/examples" --user "$(id 
 |---|---|
 | `popescu` | the reference: the clean card is read without mistakes |
 | `stefanescu` | diacritics lost by OCR (Ștefănescu, Săcălaz), a commune docfill does not know |
-| `muresan` | expired card; "Alba Iulia" is hard for OCR |
+| `muresan` | expired card; OCR reads "Alba Iulia" as "Alba lulia" (capital I as l): docfill repairs it |
 | `dumitru` | born in 2009: under 18, the PFA / II age check must fail |
 
 ## 3. How docfill learns, and what it cannot learn
@@ -116,11 +116,13 @@ fresh database.
 2. **A spelling fix.** `ci_stefanescu_clean.jpg`: the city is "Com. Sacalaz". Correct it to
    "Com. Săcălaz" and save: *Spelling fixes remembered: 1*. Then
    `ci_stefanescu_faded.jpg`: the city is now "Com. Săcălaz" straight away.
-3. **Bad scans.** The `glare`, `photo` and `lowres` cards give cut values ("Ion-Andre",
-   "Mun. Sib") and missing ones (place of birth, city, issued by). Correct them and save each
-   time; in `docfill learn stats` the accuracy of the method behind that field drops. Once a
-   method is corrected more often than accepted for a field, its values stop being filled in
-   automatically and wait for you under **Needs attention**.
+3. **Bad scans.** The `glare`, `photo` and `lowres` cards give missing values (city, county,
+   issued by, the issue date...) and, on `glare`, a place of birth that is cut off ("Mun. Sib"):
+   it is shown with the warning *Looks cut off on the scan (… Sibiu?)* but not filled in, and a
+   name that is cut off is finished from the machine readable zone. Correct what is wrong and
+   save each time; in `docfill learn stats` the accuracy of the method behind that field drops.
+   Once a method is corrected more often than accepted for a field, its values stop being filled
+   in automatically and wait for you under **Needs attention**.
 4. **A new label.** Upload `fisa_popescu.docx` on its own: the place of birth is empty. Type
    "Sibiu", save: *New labels: localitatea natala → place_of_birth*. Then
    `fisa_dumitru.docx`: the place of birth ("Cluj-Napoca") is found, method *learned*.
@@ -161,8 +163,8 @@ fresh database.
 * **Measure errors:** save a fully corrected Anexa 4 once and use it as the reference for
   another scan of the same person, e.g.
   `docfill evaluate -t onrc-anexa-4 --expected output/ci_popescu_clean.pdf examples/samples/learning/ci_popescu_glare.jpg`
-  (on a fresh database: clean and faded 24/24 values match, glare 22/24, lowres 21/24, photo
-  20/24). Run it again after more reviews to see the difference.
+  (on a fresh database, the 24 values read from the card: clean and faded 24/24 match, glare
+  23/24, photo 22/24, lowres 21/24). Run it again after more reviews to see the difference.
 * **Start over:** `docfill learn reset --yes` forgets what was learned (standard documents and
   legal knowledge stay).
 
@@ -170,8 +172,6 @@ fresh database.
 
 Found while writing this guide; worth confirming, and reporting if you see others:
 
-* "Alba Iulia" is read as "Alba lulia" (I read as l), even on the clean card: the city becomes
-  "Mun. Alba" and *issued by* "SPCLEP Alba lulia".
 * Diacritics in names are lost ("Ștefănescu" → "Stefanescu"). Correcting them does not stop it:
   each correction lowers the trust of one method, but another one (the MRZ, then a learned label)
   proposes the same value, which is still filled in after 5 corrections.
