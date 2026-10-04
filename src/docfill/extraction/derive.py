@@ -395,8 +395,8 @@ def _derive_roles(result: ExtractionResult) -> None:
     # who the representative filing the request is: "prin avocat, conform împuternicirii
     # avocațiale" (IV), "în calitate de avocat, conform ..." (XII)
     if kind := fields.get("representative_type"):
-        for name, value in representation(kind.value).items():
-            result.offer(_derived(name, value, 0.9, kind.value, kind.document))
+        for name, written in representation(kind.value).items():
+            result.offer(_derived(name, written, 0.9, kind.value, kind.document))
 
     # the beneficial owner declaration is filed by the proxy when there is one
     if filer := fields.get("filer_last_name"):

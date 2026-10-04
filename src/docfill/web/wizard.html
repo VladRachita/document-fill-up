@@ -895,6 +895,17 @@ function applyReview(result) {
   schedulePreview();
 }
 
+// The values of the fields the ticked documents use. A value typed for a document that is not
+// ticked any more (the previous document) never reaches the next one.
+function reviewValues() {
+  const values = {};
+  for (const row of state.rows) {
+    const value = state.values[row.name];
+    if (value) values[row.name] = value;
+  }
+  return values;
+}
+
 function documentsPayload() {
   return state.documents.map((d) => ({ source: d.source, text: d.text, doc_type: d.doc_type, detected_type: d.detected_type, person: d.person ?? 1 }));
 }
@@ -1236,7 +1247,7 @@ async function refreshPreview() {
   const seq = ++previewSeq;
   try {
     const body = await (await postJSON("/wizard/preview", { templates: state.selected, procedure: state.procedure,
-      values: state.values, derived: Object.keys(state.derivedFrom) })).json();
+      values: reviewValues(), derived: Object.keys(state.derivedFrom) })).json();
     if (seq !== previewSeq) return;
     state.previews = body.previews;
     state.issues = body.issues || {};
@@ -1393,7 +1404,7 @@ async function exportPdf() {
   button.disabled = true;
   try {
     const body = await (await postJSON("/wizard/export", {
-      templates: state.selected, procedure: state.procedure, values: state.values, filename: state.filename,
+      templates: state.selected, procedure: state.procedure, values: reviewValues(), filename: state.filename,
       allow_missing: state.allowMissing, rows: state.rows, documents: documentsPayload(),
       derived: Object.keys(state.derivedFrom), legal_acknowledged: state.legalAck,
     })).json();
@@ -1431,15 +1442,24 @@ function download(file) {
   link.remove();
 }
 
+// A new document starts from nothing: the documents just created are unticked and everything
+// of their review (files, values, previews, the file checklist) is cleared from the page. What
+// was saved stays: the PDFs in the output folder, what docfill learned and the details it
+// remembers (in the database).
 function restart() {
   Object.assign(state, { step: 1, maxStep: 1, files: [], repFiles: [], repType: "", filesDirty: true, documents: [], activeDoc: 0,
     rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {}, previews: [],
     activePreview: 0, filename: "", filenameTouched: false, allowMissing: false, legal: [], legalAck: false });
-  put($("save-result"));
+  ["save-result", "save-missing", "save-legal", "dossier", "final-tabs", "final-preview", "doc-tabs",
+   "doc-type", "doc-badges", "doc-warnings", "found-chips", "fields", "preview-tabs", "preview", "legal-box"]
+    .forEach((id) => { if ($(id)) put($(id)); });
+  $("raw-text").textContent = "";
+  $("clean-text").value = "";
+  setSelection([]);
   renderFiles();
   renderRepresentative();
-  renderSteps();
   showBanner("");
+  window.scrollTo(0, 0);
 }
 
 // ------------------------------------------------------------------ wiring

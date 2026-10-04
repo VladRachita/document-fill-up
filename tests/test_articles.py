@@ -578,6 +578,22 @@ def test_representative_writes_prin_and_conform(kind, who, basis):
     assert derived["represented_by"][0] == who and derived["filer_basis"][0] == basis
 
 
+def test_lawyer_or_proxy_chosen_without_anybody_filing(settings):
+    # "lawyer" chosen but no representative read (only the act uploaded): no crash, and the
+    # beneficial owner declaration is filed by the legal representative
+    values = {
+        "representative_type": REPRESENTATIVE_TYPES[0],
+        "last_name": "Popescu",
+        "beneficial_owner": CONTROL_OPTIONS[0],
+    }
+    derived = complete_values(values)
+    assert derived["represented_by"][0] == "avocat"
+    assert derived["bo_filed_by"][0] == "reprezentantul legal"
+    docfill = DocFill(settings)
+    for name in ("onrc-anexa-4", "onrc-anexa-2a", "onrc-declaratie-beneficiari-reali"):
+        assert docfill.fill(document(name), None, values, allow_missing=True).pdf
+
+
 def test_lawyer_or_proxy_is_asked_each_time():
     request = document("onrc-anexa-2a")
     remembered = set(request.remember)
