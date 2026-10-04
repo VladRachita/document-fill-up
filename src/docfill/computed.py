@@ -13,7 +13,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 
 from docfill.extraction.fields import PERSON_PREFIXES
-from docfill.ro import format_amount, parse_amount
+from docfill.ro import format_amount, parse_amount, split_room
 
 Compute = Callable[[Mapping[str, str]], str | None]
 
@@ -35,7 +35,7 @@ def _get(values: Mapping[str, str], name: str) -> str:
 
 
 _STREET_KIND = re.compile(
-    r"(?i)^(str(ada)?|bd|b-dul|bulevardul|calea|aleea|al|șos|sos|șoseaua|soseaua|splaiul|"
+    r"(?i)^(str(ada)?|bd|b-dul|bulevardul|calea|aleea|ale|al|șos|sos|șoseaua|soseaua|splaiul|"
     r"piața|piata|p-ța|intrarea|intr|drumul|sat|satul)\b\.?"
 )
 
@@ -50,6 +50,9 @@ def address_line(values: Mapping[str, str], prefix: str = "", county: str = "reg
         return None
     parts = [city] if city else []
     number = _get(values, prefix + "street_number")
+    room = None
+    if street and (split := split_room(street)):  # "Ale. Teilor, camera 1": after the apartment
+        street, room = split
     if street:
         street = street if _STREET_KIND.match(street) else f"Str. {street}"
         parts.append(f"{street} nr. {number}" if number else street)
@@ -62,7 +65,9 @@ def address_line(values: Mapping[str, str], prefix: str = "", county: str = "reg
         ("apartment", "ap."),
     ):
         if value := _get(values, prefix + key):
-            parts.append(f"{label} {value}")
+            parts.append(value if value.casefold().startswith("cam") else f"{label} {value}")
+    if room:
+        parts.append(room)
     if region:
         folded = region.casefold()
         bare = folded.startswith(("sector", "jud", "municipiul bucure"))
@@ -116,6 +121,32 @@ def _activities_at_third_parties(values: Mapping[str, str]) -> str | None:
     return "\n".join(kept.values()) or None
 
 
+def _main_class(values: Mapping[str, str]) -> str | None:
+    rows = _caen_rows(values)
+    return rows[0][0] if rows and re.fullmatch(r"\d{4}", rows[0][0]) else None
+
+
+def _main_activity_name(values: Mapping[str, str]) -> str | None:
+    rows = _caen_rows(values)
+    return rows[0][1] or None if rows else None
+
+
+def _secondary_activity_lines(values: Mapping[str, str]) -> str | None:
+    """``— clasa CAEN 4725 și denumirea activității Comerț cu amănuntul al băuturilor;``, one
+    line per secondary activity (the last one ends the list with a full stop)."""
+    rows = _caen_rows(values)[1:]
+    lines = [f"— clasa CAEN {code} și denumirea activității {name}".rstrip() for code, name in rows]
+    return "\n".join(f"{line}{'.' if i == len(lines) - 1 else ';'}" for i, line in enumerate(lines))
+
+
+def with_de(count: float) -> str:
+    """``50 de`` (părți sociale), ``10`` (părți sociale), ``120 de``, ``101``: Romanian puts "de"
+    after a number whose last two digits make 20 or more, or are 00."""
+    number = format_amount(count)
+    rest = int(count) % 100
+    return f"{number} de" if rest >= 20 or (rest == 0 and count >= 100) else number
+
+
 def _caen_line(row: tuple[str, str]) -> str:
     return f"{row[0]} - {row[1]}" if row[1] else row[0]
 
@@ -141,6 +172,81 @@ def _sex(values: Mapping[str, str], prefix: str) -> str:
 def _agreeing(word: str, prefix: str) -> Compute:
     """``născut`` for a man, ``născută`` for a woman, ``născut(ă)`` when the sex is unknown."""
     return lambda values: {"M": word, "F": word + "ă"}.get(_sex(values, prefix), word + "(ă)")
+
+
+BLANK = "_" * 20
+# What identifies a person in an act: name, CNP, domicile, birth and identity card.
+IDENTITY = (
+    "last_name", "first_name", "cnp", "city", "street", "street_number", "building", "entrance",
+    "floor", "apartment", "region", "country", "citizenship", "place_of_birth", "birth_county",
+    "birth_country", "date_of_birth", "sex", "id_type", "id_series", "id_number", "id_issued_by",
+    "id_issue_date", "id_expiry_date",
+)  # fmt: skip
+
+
+def person_name(values: Mapping[str, str], prefix: str = "") -> str:
+    """``POPESCU ION``: family name first, in capitals, as acts write it."""
+    names = (_get(values, prefix + "last_name"), _get(values, prefix + "first_name"))
+    return " ".join(name.upper() for name in names if name)
+
+
+def identification(values: Mapping[str, str], prefix: str = "") -> str | None:
+    """The identification clause of acts and statements: ``POPESCU ION, CNP ..., cu domiciliul
+    în ..., țara România, cetățenia Română, născut în ..., jud. ..., țara România, la data de
+    ..., identificat prin CI, seria AX, nr. ..., emisă de ..., la data de ..., valabilă până la
+    data de ...``. What is not known is left blank, to be filled in by hand."""
+    name = person_name(values, prefix)
+    if not name and not _get(values, prefix + "cnp"):
+        return None
+
+    def get(field: str) -> str:
+        return _get(values, prefix + field) or BLANK
+
+    born, identified = _agreeing("născut", prefix)(values), _agreeing("identificat", prefix)(values)
+    return (
+        f"{name or BLANK}, CNP {get('cnp')}, cu domiciliul în "
+        f"{address_line(values, prefix) or BLANK}, țara {get('country')}, cetățenia "
+        f"{get('citizenship')}, {born} în {get('place_of_birth')}, jud. {get('birth_county')}, "
+        f"țara {get('birth_country')}, la data de {get('date_of_birth')}, {identified} prin "
+        f"{get('id_type')}, seria {get('id_series')}, nr. {get('id_number')}, emisă de "
+        f"{get('id_issued_by')}, la data de {get('id_issue_date')}, valabilă până la data de "
+        f"{get('id_expiry_date')}"
+    )
+
+
+def _with_role(values: Mapping[str, str], roles: tuple[str, ...]) -> str | None:
+    """The prefix of the first person having one of ``roles``."""
+    return next((p for p in PERSON_PREFIXES if any(_get(values, p + role) for role in roles)), None)
+
+
+def associate_prefix(values: Mapping[str, str]) -> str | None:
+    """The sole associate: the person marked as associate (or holding shares); when nobody is
+    marked, person 1."""
+    found = _with_role(values, ("associate", "shares"))
+    if found is None and (person_name(values) or _get(values, "cnp")):
+        return ""
+    return found
+
+
+def administrator_prefix(values: Mapping[str, str]) -> str | None:
+    """The administrator: the person with a board role; when nobody is marked, the associate."""
+    found = _with_role(values, ("board_role",))
+    return found if found is not None else associate_prefix(values)
+
+
+def _of(choose: Callable[[Mapping[str, str]], str | None], render) -> Compute:
+    def compute(values: Mapping[str, str]) -> str | None:
+        prefix = choose(values)
+        return render(values, prefix) if prefix is not None else None
+
+    return compute
+
+
+_ROLE_INPUTS = tuple(
+    prefix + name
+    for prefix in PERSON_PREFIXES
+    for name in ("associate", "shares", "board_role", *IDENTITY)
+)
 
 
 def _person_computed(prefix: str, person: str) -> list[Computed]:
@@ -263,6 +369,56 @@ _SPECS: list[Computed] = [
         ("caen_activities",),
         ("caen_activities",),
         _main_group,
+    ),
+    Computed(
+        "main_caen_class",
+        "CAEN class of the main activity",
+        ("caen_activities",),
+        ("caen_activities",),
+        _main_class,
+    ),
+    Computed(
+        "main_activity_name",
+        "Name of the main activity (first CAEN line)",
+        ("caen_activities",),
+        ("caen_activities",),
+        _main_activity_name,
+    ),
+    Computed(
+        "secondary_activity_lines",
+        "Secondary activities, one per line (act constitutiv SRL)",
+        ("caen_activities",),
+        (),
+        _secondary_activity_lines,
+    ),
+    Computed(
+        "share_count_de",
+        "Number of shares, with “de” when Romanian needs it (50 de părți sociale)",
+        ("share_count",),
+        ("share_count",),
+        lambda values: with_de(v) if (v := _number(values, "share_count")) else None,
+    ),
+    Computed(
+        "associate_identification",
+        "The sole associate (asociat unic), identified",
+        _ROLE_INPUTS,
+        # person 1 is the associate, or the administrator when the associate is another person
+        ("last_name", "first_name", "cnp"),
+        _of(associate_prefix, identification),
+    ),
+    Computed(
+        "associate_name",
+        "The sole associate's name",
+        _ROLE_INPUTS,
+        (),
+        _of(associate_prefix, lambda values, prefix: person_name(values, prefix) or None),
+    ),
+    Computed(
+        "administrator_identification",
+        "The administrator, identified",
+        _ROLE_INPUTS,
+        (),
+        _of(administrator_prefix, identification),
     ),
     Computed(
         "caen_at_office",

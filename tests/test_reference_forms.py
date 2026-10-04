@@ -36,6 +36,11 @@ REFERENCES = {
     "model-act-constitutiv-sa-sistem-unitar.doc": (
         "971dde85350881fb48eed3585ed97cf393481095b437429e872efc6c5a2b683b"
     ),
+    # the act constitutiv of an SRL with a sole associate, as filers write it (its metadata,
+    # the names of who edited it, removed)
+    "model-act-constitutiv-srl-asociat-unic.docx": (
+        "b0238b5b8e476d383a704b9248bcbbe60b1af250435b031995903ab7f8f710e9"
+    ),
 }
 TODAY_DIGITS = date.today().strftime("%d%m%Y")
 

@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from docfill.extraction.clauses import CLAUSE_CONFIDENCE, clause_fields, fold, split_name
 from docfill.extraction.fields import CONTROL_OPTIONS, MAX_PERSONS, PERSON_PREFIXES
 from docfill.extraction.text_utils import clean_value
+from docfill.lexicon import given_names, street_words, surnames
 from docfill.models import ExtractedField
 from docfill.ro import check_cnp, format_amount, normalize_date, parse_amount
 
@@ -557,6 +558,7 @@ def extract_articles(text: str, document: str | None = None) -> list[ExtractedFi
         for name, value in person.fields.items():
             put(prefix + name, value, CLAUSE_CONFIDENCE, evidence)
         if person.is_associate:
+            put(prefix + "associate", "x", ROLE_CONFIDENCE, evidence)
             put(prefix + "shares", person.shares, ROLE_CONFIDENCE, evidence)
         if person.is_administrator:
             role = "administrator unic" if len(administrators) == 1 else "administrator"
@@ -589,6 +591,20 @@ def extract_name_reservation(text: str, document: str | None = None) -> list[Ext
     return found
 
 
+def _capital_i(text: str) -> str:
+    """``Ale. lancu Jianu`` -> ``Ale. Iancu Jianu``: a word OCR started with a lowercase l
+    that, with a capital I, is a name or a street word the lists know (and is not one as read)."""
+
+    def known(word: str) -> bool:
+        return any(words.known(word) for words in (given_names(), street_words(), surnames()))
+
+    def fix(match: re.Match[str]) -> str:
+        word = match.group()
+        return "I" + word[1:] if known("I" + word[1:]) and not known(word) else word
+
+    return re.sub(r"(?<![\w])l[a-zăâîșț]{2,}", fix, text)
+
+
 def extract_premises(text: str, document: str | None = None) -> list[ExtractedField]:
     """The proof of the registered office (comodat, lease, owner's statement): the address of
     the premises and the company it is lent to. The owner is not a person of the request."""
@@ -599,7 +615,7 @@ def extract_premises(text: str, document: str | None = None) -> list[ExtractedFi
         text,
     )
     if match:
-        address = _sentence_from(text, match.end())
+        address = _capital_i(_sentence_from(text, match.end()))
         if len(address) > 8:
             evidence = _line_at(text, match.start())
             found.append(

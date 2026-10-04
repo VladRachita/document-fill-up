@@ -312,7 +312,8 @@ def suggest_filename(
     """``<template>_<company or person>_<date>``; with several documents the template name is
     left out (each file gets it as a suffix)."""
     templates = _templates(templates)
-    subject = values.get("company_name") if any(t.kind == "pdf_form" for t in templates) else None
+    about_company = any(t.kind == "pdf_form" or t.doc_type == "act_constitutiv" for t in templates)
+    subject = values.get("company_name") if about_company else None
     parts = [templates[0].name] if len(templates) == 1 else []
     parts += [subject] if subject else [values.get("last_name"), values.get("first_name")]
     parts.append(date.today().isoformat())

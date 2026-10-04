@@ -265,10 +265,10 @@ def test_registered_office_written_in_several_ways(line):
 def test_registered_office_parts_keep_the_room_and_the_floor():
     address = "Mun. Timișoara, Ale. Teilor nr. 4, bl. 12, et. VII, ap. 31, camera 1, jud. Timiș"
     parts = parse_ro_address(address)
-    assert parts["street"] == "Aleea Teilor"
+    assert parts["street"] == "Ale. Teilor"
     assert (parts["floor"], parts["apartment"], parts["room"]) == ("VII", "31", "camera 1")
     derived = complete_values({"company_address": address})
-    assert derived["company_street"][0] == "Aleea Teilor, camera 1"  # no box for the room
+    assert derived["company_street"][0] == "Ale. Teilor, camera 1"  # no box for the room
     assert derived["company_apartment"][0] == "31"
     assert derived["company_county"][0] == "Timiș"
     assert derived["orc_office"][0] == "Timiș"

@@ -818,6 +818,7 @@ CONTROL_OPTIONS = (
 BOARD_ROLES = ("președinte", "membru", "administrator unic", "administrator")
 
 _ROLE_SPECS = [
+    _f("associate", "associate / shareholder (asociat / acționar)", "checkbox", "roles"),
     _f("shares", "shares subscribed (number of shares)", "short", "roles", (), 15),
     _f("board_role", "board role", "text", "roles", (), 40, BOARD_ROLES),
     _f("general_director", "appointed general director", "checkbox", "roles"),
@@ -855,6 +856,14 @@ _SPECS += [
         30,
     ),
     _f("name_reservation_date", "Name availability proof: date", "date", "articles", (), 30),
+    _f(
+        "activity_object",
+        "Object of activity (obiectul de activitate; proposed: the main CAEN activity)",
+        "text",
+        "articles",
+        (),
+        200,
+    ),
     _f(
         "main_activity_domain",
         "Main field of activity (domeniul principal, name of the CAEN group)",

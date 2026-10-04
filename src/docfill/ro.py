@@ -345,7 +345,10 @@ _STREET = re.compile(
 )
 _PARTS = {
     "street_number": re.compile(r"\bnr\.?\s*(?P<v>\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)", re.I),
-    "building": re.compile(r"\bbl(?:oc)?\.?\s*(?P<v>[A-Za-z0-9][\w\-/]*)", re.I),
+    # "BI. 69": the l of "Bl." read as a capital I by OCR
+    "building": re.compile(
+        r"\b(?:bl(?:oc)?|(?-i:B[I1](?=\.)))\.?\s*(?P<v>[A-Za-z0-9][\w\-/]*)", re.I
+    ),
     "entrance": re.compile(r"\bsc(?:ara)?\.?\s*(?P<v>[A-Za-z0-9]+)", re.I),
     "floor": re.compile(
         r"\bet(?:aj)?\.?\s*(?P<v>\d+|parter|P|D|M|[IVX]{1,4}(?=[\s,.;]|$))\b", re.I
@@ -361,7 +364,7 @@ _KEEP_STREET_KIND = {
     "bulevardul": "Bd.",
     "calea": "Calea",
     "aleea": "Aleea",
-    "ale": "Aleea",
+    "ale": "Ale.",
     "al": "Aleea",
     "sos": "Șos.",
     "șos": "Șos.",
@@ -453,7 +456,7 @@ def compose_street_line(values: dict[str, str]) -> str | None:
         return None
     parts = [
         street
-        if re.match(r"(?i)(bd|calea|aleea|șos|splaiul|piața|intrarea|drumul)", street)
+        if re.match(r"(?i)(bd|calea|aleea|ale\.|șos|splaiul|piața|intrarea|drumul)", street)
         else f"Str. {street}"
     ]
     labels = (

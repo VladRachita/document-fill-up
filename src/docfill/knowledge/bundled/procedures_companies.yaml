@@ -38,6 +38,12 @@ procedures:
         note: >
           Câte una pentru fiecare administrator (persoanele cu un rol în consiliu / administrator
           unic; solicitantul, dacă nu este marcat niciun administrator).
+      - title: Actul constitutiv al SRL cu asociat unic
+        template: act-constitutiv-srl
+        note: >
+          Denumirea din dovada disponibilității firmei, sediul din contractul de comodat /
+          închiriere, asociatul unic și administratorul din actele lor de identitate; activitățile
+          CAEN și capitalul social se completează în formular.
     documents: &documents_infiintare_srl
       - title: Actul constitutiv
         doc_type: act_constitutiv
@@ -137,7 +143,12 @@ procedures:
     operation: infiintare
     title: Înființare SRL-D (înmatriculare)
     description: Înmatricularea unui SRL în regimul întreprinzătorilor debutanți.
-    forms: *forms_infiintare_societate
+    forms:
+      - *form_anexa_2a
+      - *form_anexa_4
+      - *form_anexa_1_fiscal
+      - *form_beneficiari_reali
+      - *form_declaratie_administrator
     documents:
       - title: Actul constitutiv
         doc_type: act_constitutiv
