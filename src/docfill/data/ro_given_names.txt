@@ -1,0 +1,108 @@
+# Given names used in Romania, as the identity card prints them (comma-below ș ț, ă â î).
+#
+# Written for docfill from common Romanian usage: the traditional names, the saints' and
+# Biblical names, the diminutives that are registered as names, the names of recent years and
+# the Hungarian names common in Transylvania. Compound names ("Ana-Maria", "Ion-Cristian") are
+# split at the hyphen: only their parts are listed.
+#
+# Sections: [M] male, [F] female, [U] used for both. Names are separated by blanks; lines
+# starting with "#" are comments. Sorted, one name once: tests/test_lexicon.py checks it.
+#
+# docfill uses the list to restore the diacritics that OCR loses and to repair the names OCR
+# misread ("JOANA" -> "IOANA"). A name that is not listed is never changed unless a digit or a
+# look-alike letter makes it one that is.
+
+[M]
+Abel Ábel Abraham Achim Adalbert Adam Ádám Adelin Adin Adinel Adrian Adrianel Ágoston Ákos
+Albert Alecsandru Aleodor Alexandru Alexe Alexie Alexis Alfred Alin Alistar Aloisiu Alvin
+Ambrozie Amedeu Amza Anastase Anastasie Anatolie Andrei Andrian Angel Anghel Antim Anton Antonie
+Antonio Antoniu Apostol Arcadie Arian Aristide Aristotel Ariton Armand Aron Árpád Arsenie Artur
+Atanase Atanasie Attila Augustin Aurel Aurelian Aureliu Aurică Avram Axente Axinte Balázs Bálint
+Bănel Barbu Bartolomeu Basarab Bazil Bebe Béla Bence Benedict Beniamin Benone Bernard Bertalan
+Bogdan Bogdănel Boris Botond Brăduț Bratu Bucur Bujor Caius Călin Calistrat Camil Cantemir Carol
+Casian Cătălin Cazimir Cezar Chiriac Chirilă Ciprian Claudiu Clement Codin Codrin Codruț Coman
+Constantin Corin Coriolan Cornel Corneliu Cornelius Corvin Cosmin Costache Costachi Costel
+Costică Costin Costinel Crăciun Crin Cristache Cristea Cristi Cristian Cristinel Cristofor Csaba
+Dacian Damian Dan Daniel Daniil Dănuț Dănuțel Darius David Dávid Decebal Demeter Dénes Denis
+Dennis Dezideriu Dezső Dimitrie Dinu Dionisie Doinel Dominic Dorel Dorian Dorin Dorinel Doru
+Dragomir Dragoș Ducu Dumitrel Dumitru Edgar Edmond Eduard Eftimie Elek Eleodor Előd Elvis
+Emanoil Emanuel Emanuil Emil Emilian Enache Endre Eremia Eric Erik Ernest Ervin Eugen Eugeniu
+Eusebiu Eustațiu Fabian Fane Fănel Fănică Felician Felix Ferdinand Ferenc Filip Fiodor Flaviu
+Flavius Florea Florentin Florian Florin Florinel Francisc Frederic Gabor Gábor Gabriel Gavril
+Gavrilă Gellért Gelu George Georgel Georgian Gergely Géza Ghenadie Gheorghe Gheorghiță Gheorghiu
+Gherasim Ghiță Gică Gicu Gigel Gigi Grațian Grigore Grigorie Gruia Gyula Haralamb Haralambie
+Henri Herman Horațiu Horea Horia Hristache Hristu Iacob Iancu Ianis Ieremia Ignat Ilarie Ilarion
+Ilie Imre Inocențiu Ioachim Ioan Ioil Ion Ionel Ionică Ioniță Ionuț Iordache Iordan Iosef Iosif
+Iov Irimie Irinel Isac Isaia Isidor Istrate Istvan István Iulian Iuliu Iulius Iurie Iustin
+Iustinian Ivan Jan Janos János Jean Jenică Jenő Jozsef József Julian Justin Kálmán Károly Kevin
+Kornél Kristóf Ladislau Lajos Lascăr Laszlo László Laur Laurențiu Laurian Lazăr Lăzărică Lenuț
+Leon Leonard Leonid Leonida Leonte Leontin Leopold Levente Lică Liviu Loránd Lóránd Lorenzo
+Lorin Luca Lucian Lucrețiu Ludovic Luigi Lupu Mădălin Manole Manuel Marcel Marco Marcu Marcus
+Mărgărit Marian Maricel Marin Marinel Marinică Mario Marius Márk Martin Marton Márton Máté Matei
+Mateiu Mátyás Maxim Maximilian Melinte Michael Mihai Mihail Mihaiță Mihăiță Mihnea Mihuț Miklós
+Mircea Mirel Miron Mitică Mitrea Mitru Mitruț Mitu Moise Mugur Mugurel Nae Nándor Narcis Nastase
+Nastasie Natan Naum Neagu Nechifor Nectarie Neculae Neculai Nedelcu Nedelea Nelu Nică Nichifor
+Nichita Nicoară Nicodim Nicolae Nicolai Nicolaie Nicolas Niculae Niculai Nicușor Nicuță Ninel
+Nistor Noel Norbert Nuțu Octav Octavian Octaviu Olimpiu Olivér Oliviu Onorel Oprea Orbán Orest
+Oscar Oszkár Otto Ottó Ovidiu Pál Pamfil Panait Panaite Pantelie Pantelimon Pantilie Pascal
+Pascu Patrick Pătru Paul Paulin Pavăl Pavel Péter Petrache Petre Petrea Petrică Petrișor
+Petronel Petroniu Petru Petruț Pompei Pompiliu Puiu Radu Răducu Rafael Rajmund Rareș Raul Răzvan
+Relu Remus Rică Richárd Robert Róbert Roberto Roman Romeo Romulus Ronald Rudolf Sabin Samson
+Samuel Sandor Sándor Șandor Sandu Sava Savu Scarlat Sebastian Sebi Septimiu Serafim Șerban
+Șerbănel Serghei Sergiu Sevastian Sever Severin Sică Sidor Silvestru Silvian Silviu Simion Simon
+Solomon Sorin Sorinel Spiridon Stan Stanciu Stancu Stanel Ștefan Ștefănel Stelian Stelică Stere
+Sterian Stoian Szabolcs Szilárd Szilveszter Tache Tamás Tănase Tavi Teodor Teodosie Teofil
+Teohari Theodor Tiberiu Tibor Tihamér Timotei Titi Titu Titus Toader Todor Toma Tomiță Toni
+Traian Trandafir Trifan Tudor Tudorache Tudorel Tudose Valentin Valer Valerian Valeriu Valter
+Vasile Vasilică Vasilie Veaceslav Veniamin Vergil Vicențiu Victor Viktor Viliam Vilmos Vincențiu
+Vintilă Viorel Virgil Virgiliu Visarion Vitalie Vlad Vladimir Vlădimir Vladislav Vlăduț Vlaicu
+Voicu Zaharia Zaharie Zamfir Zeno Zenovie Zoltan Zoltán Zorel Zosim Zsigmond Zsolt
+
+[F]
+Ada Adela Adelaida Adelina Adina Adriana Afrodita Agafia Agapia Agata Aglaia Ágnes Agripina Aida
+Alberta Albertina Alecsandra Alecsandrina Alessia Alexa Alexandra Alexandrina Alexia Alice Alida
+Alina Alis Alisa Alma Amalia Amanda Amelia Amira Ana Anabela Anamaria Anastasia Anca Ancuța Anda
+Andra Andrada Andreea Andreia Anemona Aneta Angela Angelica Anghelina Anica Anikó Anisia
+Anișoara Anita Anna Annamária Antoaneta Antonela Antoneta Antonia Anuța Arabela Aranka Argentina
+Ariadna Ariana Arina Aristița Artemisa Aspazia Astrid Atena Augusta Augustina Aura Aurelia
+Aureliana Aurica Aurora Axenia Barbara Beáta Beatrice Beatrix Betina Bianca Bibiana Blanca
+Bogdana Boglárka Brândușa Călina Camelia Camila Carina Carla Carmen Carmina Carolina Casandra
+Casiana Cătălina Caterina Catinca Catrina Catrinel Cecilia Celia Celina Cerasela Cezara Cezarina
+Cintia Cipriana Clara Clarisa Claudia Clementina Cleopatra Codrina Codruța Constanța Constantina
+Consuela Coralia Corina Cornelia Cosmina Crenguța Crina Cristiana Cristina Cristinela Csilla
+Dacia Daciana Dafina Daiana Dalia Dana Daniela Dănuța Daria Dariana Delia Demetra Denisa Despina
+Diana Dida Didina Dimitrina Dina Dobrița Dochia Doina Doinița Domnica Dora Doriana Dorica Dorina
+Dorotea Draga Dumitra Dumitrița Ecaterina Edit Edith Eftimia Elena Eleonora Eliana Elina Elisa
+Elisabeta Elisaveta Eliza Elvira Ema Emanuela Emese Emilia Emma Enikő Erica Erika Erzsébet
+Esmeralda Estera Eszter Eufemia Eufrosina Eugenia Eusebia Eva Éva Evelina Fabia Fabiana Fabiola
+Fănica Felicia Filofteia Fiona Fira Flavia Floare Floarea Flora Florența Florentina Flori
+Floriana Florica Florina Florinela Francesca Francisca Frusina Gabriela Gabriella Galina Geanina
+Genoveva Gențiana Georgeta Georgia Georgiana Georgina Gertruda Geta Gheorghița Gherghina Gianina
+Gilda Gina Giorgiana Gloria Grațiana Grațiela Greta Hajnal Hajnalka Hanna Haritina Helga
+Henrieta Hermina Herta Hortensia Hristina Ibolya Ica Ida Ildikó Ileana Iliana Ilinca Ilona Ina
+Ioana Ioanina Iolanda Ionela Ionelia Ionica Iosefina Irena Irina Iris Irma Isabela Isabella
+Iulia Iuliana Iustina Ivana Ivona Izabela Jana Janeta Janina Jasmina Jeana Jenica Jessica Jolán
+Judit Julia Júlia Julieta Justina Karina Karla Katalin Kinga Kitti Klára Krisztina Lăcrămioara
+Lăcrimioara Larisa Laura Laurenția Lavinia Leana Lelia Lenke Lenuța Leonora Leontina Leopoldina
+Letiția Lia Liana Lidia Ligia Lili Lilia Liliana Lilla Lina Livia Lívia Loredana Lorena Luana
+Lucia Luciana Lucica Lucreția Ludmila Ludovica Luiza Luminița Mădălina Magda Magdalena Maia
+Mălina Malvina Manuela Mara Marcela Marga Margareta Margit Maria Mária Mariana Maricica Marilena
+Marina Marinela Marioara Mărioara Mariuța Marta Matilda Melania Melina Melinda Mia Michaela
+Mihaela Mihaiela Milena Milica Mina Minerva Minodora Mioara Mira Mirabela Mircela Mirela Mirona
+Miruna Mona Monica Nadejda Nadia Nadina Narcisa Nastasia Natalia Natașa Nela Neli Nicoleta
+Nicolina Nicolița Niculina Nikoletta Nina Niță Noémi Nora Nóra Norica Oana Octavia Octaviana
+Ofelia Olga Olimpia Olivia Oltea Orsolya Ortansa Otilia Ozana Parascheva Paraschiva Patricia
+Paula Paulica Paulina Petra Petronela Petruța Piroska Polixenia Pompilia Profira Rada Rădița
+Rafila Raisa Raluca Ramona Rebeca Reghina Réka Renata Renáta Roberta Rodica Romanița Romica
+Romina Roxana Roza Rozalia Rozália Ruxanda Ruxandra Sabina Sabrina Safta Salomea Sanda Săndica
+Sandra Sânziana Sara Saveta Savina Selena Sevastița Severina Sidonia Silvana Silvia Silviana
+Simina Simona Sînziana Smaranda Sofia Sofica Sonia Sorana Sorina Speranța Stana Stanca Ștefana
+Ștefania Stela Steliana Stelica Steluța Sultana Susana Suzana Svetlana Szilvia Tamara Tania
+Tanța Tatiana Teodora Teodosia Teofila Tereza Terezia Theodora Tiberia Timea Tímea Tinca Tincuța
+Titiana Tudora Tudorina Tudorița Ursula Uța Valentina Valeria Valerica Vanesa Varvara Vasilica
+Venera Vera Verginia Verona Veronica Veronika Veta Vica Victoria Victorița Viktória Vilma Viola
+Violeta Viorela Viorica Virginia Viviana Voica Voichița Xenia Zamfira Zenobia Zenovia Zina
+Zinaida Zita Zoe Zoia Zorica Zorina Zsófia Zsuzsanna
+
+[U]
+Adi Alex Andrea Cris Dani Gabi Nicola Nicu Sasha Vali

@@ -5,13 +5,18 @@ from __future__ import annotations
 
 import re
 
+from docfill import names
 from docfill.extraction.text_utils import clean_value, is_address_continuation, parse_address
 from docfill.models import ExtractedField
-from docfill.mrz import read_mrz, split_ro_document_number
+from docfill.mrz import cnp_from_mrz, read_mrz, split_ro_document_number
 from docfill.ro import CITIZENSHIP_BY_CODE, check_cnp, format_date, normalize_date
 
 STREET_CONFIDENCE = 0.55
 LOCALITY_CONFIDENCE = 0.5
+PRINTED_CNP_CONFIDENCE = 0.9
+MRZ_CNP_CONFIDENCE = 0.88  # a second, independent source: below the printed one, above a guess
+MRZ_NAMES = 0.6
+MRZ_NAMES_TRUSTED = 0.8  # the check digits of the zone all match: it was read well
 
 _EN_SUFFIX = (
     r"(?i:street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|court|ct|place|pl|"
@@ -83,6 +88,19 @@ def _address_fields(address: str, document: str | None) -> list[ExtractedField]:
 # --------------------------------------------------------------------------- identity documents
 
 _CNP = re.compile(r"(?<!\d)[1-9](?:\s?\d){12}(?!\d)")
+# The CNP after its label, where OCR may have read some digits as letters ("l" for 1, "O" for 0).
+_LOOKALIKES = {
+    **dict.fromkeys("OoQD", "0"),
+    **dict.fromkeys("Il|!L", "1"),
+    **dict.fromkeys("Zz", "2"),
+    **dict.fromkeys("Ss", "5"),
+    "G": "6",
+    "T": "7",
+    "B": "8",
+}
+_CNP_LABELLED = re.compile(
+    r"\bCNP\b[\s:.]*(?P<token>(?:[\dOoQDIl|!LZzSsGTB]\s?){12}[\dOoQDIl|!LZzSsGTB])(?![\dA-Za-z])"
+)
 _SERIES_NUMBER = re.compile(
     r"\bSERIA\s*[:.]?\s*(?P<series>[A-Z]{2})\s*(?:NR|N[RO])\s*[:.]?\s*(?P<number>\d{6,7})\b",
     re.IGNORECASE,
@@ -114,8 +132,12 @@ def extract_identity(
     for match in _CNP.finditer(text):
         cnp = match.group().replace(" ", "")
         if check_cnp(cnp).valid:
-            found.append(_field("cnp", cnp, 0.9, "pattern", match.group(), document))
+            found.append(
+                _field("cnp", cnp, PRINTED_CNP_CONFIDENCE, "pattern", match.group(), document)
+            )
             break
+    else:
+        found.extend(_printed_cnp(text, document))
     if match := _SERIES_NUMBER.search(text):
         confidence = 0.9 if on_id_card else 0.7
         found.append(
@@ -137,17 +159,45 @@ def extract_identity(
     return found
 
 
+def _printed_cnp(text: str, document: str | None) -> list[ExtractedField]:
+    """A CNP after its label that is not valid as read. Letters OCR takes for digits are put
+    back; if the control digit then matches it is the CNP. Otherwise the number is offered to be
+    corrected (the validators flag it), never filled in: one wrong digit is quicker to fix than
+    thirteen to type."""
+    for match in _CNP_LABELLED.finditer(text):
+        token = re.sub(r"\s", "", match["token"])
+        digits = "".join(_LOOKALIKES.get(char, char) for char in token)
+        if digits[0] == "0" or sum(char.isdigit() for char in token) < 8:
+            continue  # not a number: random letters after the label
+        confidence = 0.8 if check_cnp(digits).valid else 0.5
+        return [_field("cnp", digits, confidence, "pattern", match.group(), document)]
+    return []
+
+
+def _mrz_name(value: str, kind: str, romanian: bool) -> str:
+    value = value.title()
+    return names.fix_name(value, kind).value if romanian else value
+
+
 def _from_mrz(text: str, document: str | None) -> list[ExtractedField]:
     mrz = read_mrz(text)
     if mrz is None:
         return []
     evidence = f"MRZ ({mrz.layout})"
     found: list[ExtractedField] = []
-    # Names have no check digit and no diacritics: useful to confirm, weaker on their own.
+    if cnp := cnp_from_mrz(mrz):
+        found.append(_field("cnp", cnp, MRZ_CNP_CONFIDENCE, "mrz", evidence, document))
+    # Names have no check digit and no diacritics: useful to confirm, weaker on their own. When
+    # the check digits of the zone all match it was read well, and its names can finish a
+    # printed name that is cut off (see docfill.validation).
+    names_confidence = MRZ_NAMES_TRUSTED if mrz.fully_valid else MRZ_NAMES
+    romanian = mrz.issuing_state == "ROU"  # the diacritics the zone lacks come from the lists
     if mrz.surname:
-        found.append(_field("last_name", mrz.surname.title(), 0.7, "mrz", evidence, document))
+        surname = _mrz_name(mrz.surname, names.FAMILY, romanian)
+        found.append(_field("last_name", surname, names_confidence, "mrz", evidence, document))
     if mrz.given_names:
-        found.append(_field("first_name", mrz.given_names.title(), 0.7, "mrz", evidence, document))
+        given = _mrz_name(mrz.given_names, names.GIVEN, romanian)
+        found.append(_field("first_name", given, names_confidence, "mrz", evidence, document))
     if mrz.valid.get("document_number"):
         split = split_ro_document_number(mrz.document_number)
         if split and mrz.issuing_state == "ROU":

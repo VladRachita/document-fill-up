@@ -58,6 +58,7 @@ docfill = [
     "standard_documents/*.pdf",
     "standard_documents/*.doc",
     "knowledge/bundled/*.yaml",
+    "data/*.txt",
     "web/*.html",
 ]
 

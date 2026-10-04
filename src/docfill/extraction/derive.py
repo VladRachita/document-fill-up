@@ -18,24 +18,31 @@ from collections.abc import Callable
 
 from docfill.extraction.clauses import fold, split_name
 from docfill.extraction.fields import PERSON_PREFIXES, split_person
+from docfill.extraction.idcard import SUSPECT_CONFIDENCE
 from docfill.extraction.text_utils import compose_address, parse_address, split_full_name
 from docfill.models import ExtractedField, ExtractionResult
 from docfill.ro import (
     check_cnp,
     compose_street_line,
+    county_code,
     county_name,
     format_amount,
     format_date,
     looks_romanian_address,
     parse_amount,
     parse_ro_address,
+    place_doubt,
     split_room,
 )
 from docfill.templates.placeholders import split_row
 
 DERIVED_FACTOR = 0.95
+SUGGESTED_CONFIDENCE = SUSPECT_CONFIDENCE - 0.01  # offered to a person, never filled in
+_COUNTY_TRUSTED = 0.7  # a county read from the text; not the one a CNP was issued in
 _ADDRESS_PARTS = ("street_address", "postal_code", "city", "region", "country")
 _RO_PARTS = ("street", "street_number", "building", "entrance", "floor", "apartment", "city")
+_STREET_WORD = re.compile(r"\b(?:str|strada|bd|b-dul|aleea|calea|sos|soseaua|nr|bl|sc|et|ap)\b")
+_NOT_READ = {"manual", "form", "default", "memory"}  # values that are not read from a text
 
 
 def _derived(
@@ -72,8 +79,11 @@ def _address_parts(text: str) -> dict[str, str]:
         if street_line:
             parts["street_address"] = street_line
         for key in ("postal_code", "city", "country"):
-            if key not in parts and key in generic:
-                parts[key] = generic[key]
+            if key in parts or key not in generic:
+                continue
+            if key == "city" and _STREET_WORD.search(fold(generic["city"])):
+                continue  # the generic parser took the street line for the locality
+            parts[key] = generic[key]
     else:
         parts.update(generic)
     return parts
@@ -153,16 +163,20 @@ def _derive_person(result: ExtractionResult) -> None:
         elif not current:
             result.offer(_derived("full_address", composed, confidence, composed, None))
 
-    # place of birth written as on identity cards: "Jud.SB Mun.Mediaș"
+    # place of birth written as on identity cards: "Jud.SB Mun.Mediaș", "Mun.București Sec.2"
     if (birth := fields.get("place_of_birth")) and looks_romanian_address(birth.value):
         ro = parse_ro_address(birth.value)
+        place = ro.get("city")
+        if place and "sector" in ro:  # Bucharest: the sector is part of the place of birth
+            place = f"{place} {ro['sector']}"
+        county = ro.get("county") or ("București" if "sector" in ro else None)
         parts = {}
-        if "city" in ro:
-            parts["place_of_birth"] = ro["city"]
-        if "county" in ro:
-            parts["birth_county"] = ro["county"]
+        if place:
+            parts["place_of_birth"] = place
+        if county:
+            parts["birth_county"] = county
             parts["birth_country"] = "România"
-        if parts.get("place_of_birth") and parts["place_of_birth"] != birth.value:
+        if place and place != birth.value:
             result.replace(
                 _derived(
                     "place_of_birth",
@@ -172,7 +186,41 @@ def _derive_person(result: ExtractionResult) -> None:
                     birth.document,
                 )
             )
+        elif not place:  # "Jud.IS" and a smudge: that is not a place of birth to write in a form
+            problem = "The locality could not be read: check the place of birth"
+            suspect = {"confidence": min(birth.confidence, SUSPECT_CONFIDENCE)}
+            result.replace(birth.model_copy(update={**suspect, "issues": [*birth.issues, problem]}))
         offer_all(birth, parts)
+
+    # a municipality that is not one, a place cut off by glare or a fold: shown, not filled in
+    # (for text read from a document, not for what a person typed or a filled form says)
+    for name, county_name_ in (("place_of_birth", "birth_county"), ("city", "region")):
+        field = fields.get(name)
+        if field is None or field.source in _NOT_READ:
+            continue
+        scope = fields.get(county_name_)
+        county = county_code(scope.value) if scope and scope.confidence >= _COUNTY_TRUSTED else None
+        doubt = place_doubt(field.value, birth=name == "place_of_birth", county=county)
+        if doubt is None:
+            continue
+        doubted = field.model_copy(
+            update={
+                "confidence": min(field.confidence, SUSPECT_CONFIDENCE),
+                "issues": [*field.issues, doubt.problem],
+            }
+        )
+        if len(doubt.suggestions) == 1:
+            # cut off, or one letter off, and one name of the register fits: shown as the value
+            # to check, the reading kept next to it
+            result.replace(doubted.model_copy(update={"confidence": SUGGESTED_CONFIDENCE - 0.1}))
+            suggested = _derived(
+                name, doubt.suggestions[0], SUGGESTED_CONFIDENCE, field.value, None
+            )
+            result.replace(suggested.model_copy(update={"issues": [doubt.problem]}))
+            continue
+        result.replace(doubted)
+        for suggestion in doubt.suggestions:
+            result.offer(_derived(name, suggestion, SUGGESTED_CONFIDENCE, field.value, None))
 
     # CNP
     if (cnp := fields.get("cnp")) and (info := check_cnp(cnp.value)).valid:

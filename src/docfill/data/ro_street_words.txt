@@ -1,0 +1,33 @@
+# Words with Romanian diacritics that are common in street names (nominative and genitive
+# forms: "Libertății", "Păcii", "Școlii"), as the identity card prints them. Names of people
+# and places are not listed here: they come from the other lists in this directory. Names
+# separated by blanks; lines starting with "#" are comments. Sorted, one word once:
+# tests/test_lexicon.py checks it.
+#
+# docfill uses the list to restore the diacritics OCR loses in the street of a domicile
+# ("Str. Libertatii" -> "Str. Libertății"). A word that is not listed is never changed.
+
+[WORDS]
+Argeșului Aviației Bacăului Bărăganului Bărbătescu Bătrân Bătrână Bătrânul Bistrița Bistriței
+Botoșanilor Brăilei Brașovului Bucureștilor Buzăului Călărași Călărașilor Călugăreni Căminului
+Câmpia Câmpina Câmpului Câmpulung Câmpurilor Cântecului Căpitan Căprioarei Căpșunilor
+Cărămidarilor Cărării Cărbunarilor Centrală Cetățeni Cetății Ciocârliei Cireșilor Cireșului
+Ciucaș Comerțului Constanței Cooperației Crișului Dâmbovița Dâmboviței Dâmbului Domnească
+Domnița Dorobanți Dorobanților Făgărașului Făgetului Fânețe Fânețelor Fântânelor Fântânii
+Fântânilor Făurari Focșanilor Frăției Frumoasă Frunzișului Galațiului Gării Gârlei Grădinarilor
+Grădinii Grădinilor Grădiniței Griviței Iașului Împăratul Împăratului Înălțării Independenței
+Înfrățirea Înfrățirii Întregirii Învățătorilor Învățătorului Învingătorilor Lăcătușilor
+Lăpușneanu Lăstunilor Libertății Măcelari Măcelarilor Măceșului Măcinului Măgurei Măgurii
+Mănăstirea Mănăstirii Mândră Maramureșului Mărășești Mărăști Mărgăritarului Mărginenilor
+Mărțișorului Mehedințiului Meșterilor Meșteșugarilor Mică Mioriței Morăriei Moșilor Moșului
+Mureșului Mușatinilor Năsăudului Neamțului Nouă Nufărului Oțelarilor Oțelului Păcii Păcurari
+Păcurarilor Pădurari Pădurea Păduricii Pădurii Păltinișului Pârâul Pârâului Părăului Pârâurilor
+Păstorilor Păstorului Păstrăvului Pășunii Păunului Pescărușilor Piața Pitești Piteștiului
+Ploieștilor Poștașilor Poștei Primăriei Primăverii Principală Răchitei Răchitelor Râmnicului
+Rândunelelor Rândunicii Răsăritului Răscoalei Răzoare Reșiței Revoluției Sălajului Salcâmilor
+Salcâmului Sănătății Șantierelor Șantierului Șanțului Școlii Școlilor Șelari Șerpuită Sfânta
+Sfântul Sfinților Sighișoarei Șoimarilor Șoimilor Șoimului Șosea Șoseaua Speranței Știrbei
+Ștrandului Studenților Tăbăcarilor Tăietorilor Tâmplarilor Țăranilor Țărănimii Târgoviște
+Târgoviștei Târgul Târgului Țării Țarinei Țesătoriei Țesătorilor Timișoarei Timișului Văii
+Văilor Vâlcii Vămii Vânătoarei Vânători Vânătorilor Vântului Vișin Vișinelor Vișinilor Vlădeasa
+Vlăsiei Vodă Zalăului Zâmbetului Zăpezii Zăvoiului

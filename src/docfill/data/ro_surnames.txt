@@ -1,0 +1,113 @@
+# Surnames used in Romania, as the identity card prints them (comma-below ș ț, ă â î).
+#
+# Written for docfill from common Romanian usage. [RO] holds the Romanian surnames in their
+# standard spelling (Ștefănescu, Țurcanu, Lăzărescu...), [HU] and [DE] the Hungarian and
+# German ones common in Transylvania, [XX] a few of other communities. Names are separated by
+# blanks; lines starting with "#" are comments. Sorted, one name once: tests/test_lexicon.py
+# checks it.
+#
+# docfill uses the list to restore the diacritics OCR loses ("STEFANESCU" -> "ȘTEFĂNESCU").
+# Only the Romanian diacritics (ă â î ș ț) are ever restored: a Hungarian or German name is
+# recognised with or without its accents and left as it was read. A surname that is not listed
+# is never changed.
+
+[RO]
+Aanei Ababei Abăluță Achim Achiței Adam Adămescu Adăscăliței Agache Aioanei Alb Albescu Albu
+Albulescu Aldea Aldescu Alecsandru Alecu Alexa Alexandrescu Alexandru Alexe Alexiu Ambrozie
+Anastasiu Anca Andone Andreescu Andrei Andrieș Andronache Andronic Anghel Anghelache Anghelescu
+Antal Antohi Anton Antonescu Antonie Apetrei Apostol Apostolescu Ardelean Ardeleanu Arghir Arhip
+Armașu Arnăutu Arsene Arsenie Asandei Atanasiu Avădanei Avram Avrămescu Axente Axinte Băbeanu
+Băcanu Baciu Bădărău Bădău Badea Bădescu Bădilă Badiu Bădoiu Bădulescu Băjenaru Bălăceanu
+Bălăianu Bălan Bălănescu Bălănică Bălașa Bălășescu Bălcescu Băleanu Baltag Băltărețu Bălțatu
+Bălteanu Băluță Băncilă Banciu Bănescu Bănică Banu Băraru Bărbat Bărbieru Bărbulescu Bârlădeanu
+Bârlea Bârsan Bârzu Bejan Bejenaru Bejinariu Berariu Berbec Bercea Berinde Bilă Biriș Bîrlea
+Bivol Blaga Blaj Blăjan Bobe Boboc Bobocea Bodea Boeru Bogdan Bogdănescu Bogza Boitan Bolboceanu
+Boldea Bolocan Bolohan Bondor Borcea Bordea Borș Borza Bota Botezatu Botnaru Boțoc Brad Brănescu
+Brânzan Brânzei Brătescu Brătianu Bratosin Bratu Bucătaru Bucșă Bucur Bucura Budeanu Budescu
+Bulai Bulgaru Bunea Bunescu Burcea Burduja Burghelea Burlacu Burnei Busuioc Butnaru Butuc Buzatu
+Buzea Buzoianu Cadar Calancea Căldăraru Călin Călinescu Calotă Călugăreanu Călugăru Cămărășescu
+Câmpean Câmpeanu Căpățână Capră Căprar Caragea Caraman Cărăușu Cărbunaru Cârciumaru Cârjan
+Cârlan Cârnu Carp Cârstea Cătană Cătănescu Cătărău Cătuneanu Cazacu Cernat Chelaru Chelu Chicu
+Chifor Chiper Chira Chirea Chiriac Chirilă Chiriță Chirtoacă Chirvase Chițu Cîmpeanu Ciobanu
+Ciobotaru Ciobotea Ciocan Ciocârlie Ciocoiu Ciolacu Ciorbea Ciornei Cîrstea Ciubotaru Ciucă
+Ciuhureanu Ciulei Ciupercă Ciuraru Ciurdea Ciurea Cobzaru Cocoș Codreanu Cojan Cojocariu
+Cojocaru Colceag Coldea Colțea Coman Comănescu Comșa Condrea Condurache Constantin
+Constantinescu Constantinovici Corbu Cornea Corneanu Cornescu Coroiu Cosma Cosor Costache Costea
+Costescu Costin Cotoi Covaci Cozma Cozmei Cozmin Crăciun Crăciunescu Crăciunoiu Creangă Creața
+Crețeanu Crețu Crețulescu Crișan Cristea Cristescu Cristian Croitoru Cuciuc Cucoș Cucu Culea
+Curea Curelaru Cușnir Cuza Dăianu Dan Dănăilă Dăncilă Dănciulescu Dănescu Dănilă Dărăbanț
+Dăscălescu Dascălu David Davidescu Deac Deaconu Dediu Dima Dimitrescu Dimitriu Dincă Dinescu
+Dinu Dobos Dobre Dobrescu Dobrică Dobrin Dobrovolschi Dogaru Doinaru Dolofan Donciu Dorneanu
+Dorobanțu Drăgan Drăgănescu Drăghici Dragnea Dragoi Drăgoi Dragomir Dragomirescu Dragoș Dragu
+Drăgulescu Drăgușin Drăguț Dubălaru Dudu Dulgheru Dumbravă Dumitrache Dumitraș Dumitrașcu
+Dumitrescu Dumitriu Dumitru Duță Eftimie Enache Enăchescu Ene Enescu Făgărășanu Fărcaș Fărcășanu
+Fătu Filimon Filip Filipescu Fira Florea Florescu Floroiu Fodor Fotache Frâncu Frățilă Frunză
+Fulga Gâdea Găină Găitan Gălățeanu Gălbează Gâlcă Gălușcă Găman Gârbea Găvan Gavrilă Gavriliu
+Georgescu Gheorghe Gheorghescu Gheorghiță Gheorghiu Ghica Ghiță Giurgea Giurgiu Goga Gologan
+Gonța Grădinariu Grădinaru Grama Grigoraș Grigore Grigorescu Grosu Grozavu Grozea Gurău Gușă
+Guțu Hagiu Haidu Haiduc Harabagiu Herghelegiu Hodoroabă Holban Horga Horvat Hudișteanu Hulea
+Hurduc Hutanu Huzum Iacob Iacobescu Iacov Iancu Iatan Ifrim Iftimie Ignat Ignatescu Ilie Iliescu
+Ilinca Ioan Ioana Ioanid Ioaniță Ionașcu Ionel Ionescu Ionică Ioniță Iordache Iordan Iordănescu
+Iorga Iorgulescu Iosif Iosub Irimia Irimie Isac Isăilă Istrate Istrătescu Iuga Iuliu Iușcă Ivan
+Ivanciuc Ivănescu Jacob Jianu Jinga Jipa Jitaru Joița Jora Jordan Jucan Jucu Jugănaru Juravle
+Jurca Jurcă Jurj Lăcătuș Lăcătușu Lăpușneanu Lascu Lazăr Lăzărescu Lăzăroiu Lazarovici Lazea
+Lazia Lefter Leonte Leontescu Lepădatu Lica Lixandru Loghin Luca Lucaci Lucescu Lungu Lupașcu
+Lupescu Lupu Lupulescu Macovei Maftei Mafteiu Măgureanu Maier Mândru Manea Mănescu Mănoiu
+Manolache Manole Manolescu Mărăcineanu Marcu Mărculescu Mărcuță Mărgărit Mărginean Mărgineanu
+Marian Marin Marinescu Matache Mateescu Matei Maxim Mazăre Mazilescu Mazilu Melinte Mercea
+Mihaescu Mihăescu Mihai Mihăilă Mihăilescu Mihalache Mihalcea Mihu Mihuț Miron Mironescu Mitrea
+Mitrică Mitroi Mitu Mocanu Mocioi Moisă Moise Moldovan Moldoveanu Moraru Moroianu Moroșanu
+Moșneagu Munteanu Murărașu Muraru Mureșan Murgeanu Murgu Mușat Muscalu Năstase Năstăsescu Năsui
+Neacșu Neagoe Neagu Nechita Neculai Neculce Nedelcu Nedelea Negoiță Negrea Negrescu Negrilă
+Negru Nemeș Nica Nichita Nicoară Nicolae Nicolaescu Nicolescu Nicolici Nicula Niculae Niculescu
+Niculiță Nistor Niță Nițescu Nițu Noica Nuță Oană Oancea Olariu Olaru Oltean Olteanu Onea Onescu
+Onofrei Oprea Oprean Oprescu Oprișan Oprișor Orbu Ordean Ostafi Oțel Oțelea Păcurar Pădurariu
+Păduraru Pădureanu Pană Panainte Panait Panaitescu Pandele Pantazi Pantea Papadopol Pârjol
+Pârvan Pârvu Pârvulescu Pașca Pașcanu Pascu Pătrășcanu Pătrașcu Păun Păunescu Păvăloiu Pavel
+Pavelescu Peneș Petcu Petrache Petraru Petre Petrea Petrescu Petrică Petrișor Petru Petruș
+Pintea Pintilie Pîrvu Pitaru Pițigoi Pleșa Pleșu Podaru Poenaru Pop Popa Popescu Popovici
+Popoviciu Porumb Poștaru Potra Preda Predescu Predoiu Pricop Prisăcaru Prodan Prună Pruteanu
+Puiu Pușcaș Pușcașu Racoviță Rădescu Rădoi Radu Răducanu Rădulescu Răileanu Rățoi Răuț Răvăruț
+Rebegea Roman Romanescu Roșca Roșianu Roșu Rotariu Rotaru Rus Ruset Russu Rusu Sabău Sala
+Sălăgean Sălăjan Sălceanu Șandor Șandru Sandu Săndulescu Șaramet Sârbu Șarpe Sava Savin Savu
+Săvulescu Șchiopu Șelaru Șerban Șerbănescu Șerbănoiu Șerbu Sima Simion Simionescu Simon Șincai
+Sîrbu Șoimu Șoșoacă Șova Spătaru Spiridon Stan Stanca Stancea Stăncescu Stanciu Stănciulescu
+Stancu Stănescu Stănilă Ștefan Ștefănescu Ștefănică Ștefănoiu Știrbu Știucă Stoenescu Stoian
+Stoica Stoicescu Stoleru Stroe Suciu Surdu Șuteu Tabacu Tămaș Tănase Tănăsescu Tănăsie Tănăsoiu
+Țăran Țăranu Țârdea Târziu Tătărescu Tătaru Teodor Teodorescu Teodosiu Țicu Țifrea Țiplea Tiron
+Titu Țoca Tocilă Tofan Țolea Toma Tomescu Tomoiagă Tomozei Traian Trandafir Trandafirescu Trifan
+Tudor Tudorache Tudorescu Tudose Tudosie Țugulea Tulbure Turcanu Țurcanu Turcu Țuțu Țuțuianu
+Ungurean Ungureanu Urs Ursache Ursescu Ursu Urzică Uță Uțu Văcaru Văduva Vâlcu Vălean Văleanu
+Vâlsan Vârlan Vasilache Vasile Vasilescu Vasiliu Vintilă Vișan Vișinescu Vișoiu Vitan Vlad
+Vlădescu Vlădoiu Vlădulescu Vlăduț Vlaicu Vlase Voicescu Voicu Voiculescu Voinea Voinescu
+Vrăjitoru Vulcu Vulpe Vulpescu Vultur Zaharescu Zaharia Zaharie Zamfir Zamfirescu Zănoagă
+Zărnescu Zăvoianu Zbarcea Zegrea Zlatea Zorilă Zugravu Zvâncă Zvîncă
+
+[HU]
+Albert Bakó Balázs Bálint Balogh Bán Barta Bartha Bartók Bencze Benedek Biró Bíró Bodó Bogdán
+Boros Csáki Csibi Csiki Csizmadia Csongor Demeter Dénes Dezső Fábián Farkas Fazakas Fehér Fekete
+Ferencz Fülöp Gábor Gál Gergely Gulyás Gyárfás György Hajdú Halmágyi Hegedűs Hornyák Horváth
+Imre Incze István Jakab Jakabffy Juhász Kádár Kálmán Karácsony Kardos Kassai Kelemen Kemény
+Kerekes Kis Kiss Kocsis Kondor Kósa Köteles Kovacs Kovács Kozák Kozma Kun Lakatos László Lázár
+Lőrinc Lőrincz Lukács Madaras Magyar Márton Máté Mátis Mátyás Mészáros Mezei Mihály Miklós
+Molnár Nagy Nagyi Nemes Németh Nyárádi Oláh Orbán Pál Pálffy Páll Pap Papp Pásztor Pataki Péter
+Petres Pintér Rácz Ráduly Rigó Sándor Sárkány Sebestyén Simó Sipos Sütő Szabó Szakács Szántó
+Szász Székely Szekeres Szilágy Szilágyi Szőcs Szűcs Takács Tamás Tőkés Tompa Török Tóth Vajda
+Varga Vass Vincze Vitos Zsolt
+
+[DE]
+Albrecht Arnold Bauer Baumann Beck Becker Berger Bergmann Binder Böhm Brandt Braun Busch
+Dietrich Engel Fabritius Fischer Frank Franke Friedrich Fuchs Graf Gross Günther Haas Hahn
+Hartmann Heinrich Hermann Herrmann Hoffmann Hofmann Horn Huber Iohannis Jäger Johannis Jung
+Kaiser Keller Klein Koch Köhler König Konnerth Krämer Kraus Krause Krüger Kuhn Kühn Lang Lange
+Lehmann Lorenz Ludwig Mayer Meier Möller Müller Neumann Otto Peters Pfeiffer Pohl Richter Roth
+Sauer Schäfer Schmid Schmidt Schmitt Schneider Scholz Schreiber Schröder Schubert Schuller
+Schulte Schulz Schulze Schumacher Schuster Schwarz Seidel Sommer Stein Thomas Vogel Vogt Voigt
+Wagner Walter Weber Werner Winkler Winter Wolf Wolff Ziegler Zimmermann
+
+[XX]
+Agopian Aksoy Ali Arslan Aslanian Bedros Bondar Christou Dimitriou Dimitrov Fedorov Georgiev
+Georgiou Hagop Ibraim Ioannou Ismail Ivanov Jovanović Kevorkian Konstantinou Kostić Kovalenko
+Kuzmin Manoukian Mardirosian Marinou Marković Mehmed Melnic Milošević Mustafa Nicolaou Nikolić
+Nikolov Omer Ostapenko Papadopoulos Pappas Pavlović Petrov Petrović Popov Popović Sokolov
+Stanković Stojanović Stoyanov Tkaci Todorov Vartan Yilmaz Đorđević

@@ -53,7 +53,7 @@ def id_card_image() -> Image.Image:
 # --------------------------------------------------------------------------- learning set
 
 # Fictitious people (valid CNP and MRZ). Each has something worth checking: diacritics lost by
-# OCR, a small commune docfill does not know, an expired card, a holder under 18.
+# OCR, a made-up commune that docfill does not know, an expired card, a holder under 18.
 PEOPLE = {
     "popescu": Person(),
     "stefanescu": Person(
@@ -64,7 +64,7 @@ PEOPLE = {
         birth_county_code="SB",
         birth_locality="Mun.Mediaș",
         county_code="TM",
-        locality="Com.Săcălaz",
+        locality="Com.Șerpărești",
         street_line="Str.Principală nr.12",
         series="TZ",
         number="604213",

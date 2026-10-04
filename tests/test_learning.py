@@ -12,6 +12,7 @@ from docfill.learning import (
     mask_text,
     outcome_of,
 )
+from docfill.lexicon import gazetteer
 from docfill.models import ExtractedField, SanitizedDocument
 
 
@@ -90,14 +91,35 @@ def test_calibration_raises_a_method_that_is_always_right(app):
 
 
 def test_spelling_fix_is_learned(app):
+    # a made-up commune: docfill knows the real ones (and their diacritics) from the register
+    assert not gazetteer().find("Sărbătoreni")
     app.learning.record_review(
         Review(
             templates=["t"],
-            fields=[ReviewedField("city", "Mun. Săcălaz", Found("Mun. Sacalaz", "label", 0.95))],
+            fields=[
+                ReviewedField("city", "Com. Sărbătoreni", Found("Com. Sarbatoreni", "label", 0.95))
+            ],
         )
     )
-    fixed = extract(app, "City: Mun. Sacalaz").fields["city"]
-    assert fixed.value == "Mun. Săcălaz" and "spelling learned" in fixed.evidence
+    fixed = extract(app, "City: Com. Sarbatoreni").fields["city"]
+    assert fixed.value == "Com. Sărbătoreni" and "spelling learned" in fixed.evidence
+
+
+def test_a_spelling_fix_reaches_the_city_derived_from_an_address(app):
+    app.learning.record_review(
+        Review(
+            templates=["t"],
+            fields=[
+                ReviewedField("city", "Com. Sărbătoreni", Found("Com. Sarbatoreni", "label", 0.95))
+            ],
+        )
+    )
+    address = "Address: Jud.TM Com.Sarbatoreni, Str.Principala nr.12"
+    assert extract(app, address).fields["city"].value == "Com. Sărbătoreni"
+
+
+def test_known_places_need_no_learning(app):
+    assert extract(app, "City: Com. Sacalaz").fields["city"].value == "Com. Săcălaz"
 
 
 def test_confirmed_document_types_train_the_classifier(app):

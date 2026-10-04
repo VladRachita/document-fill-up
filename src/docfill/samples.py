@@ -17,7 +17,7 @@ from datetime import date
 from PIL import Image, ImageDraw, ImageFont
 
 from docfill.mrz import make_td2
-from docfill.ro import cnp_control_digit, county_name
+from docfill.ro import CNP_COUNTIES, cnp_control_digit, county_name
 
 _FONT_CANDIDATES = {
     "sans": ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "DejaVuSans.ttf", "arial.ttf"),
@@ -43,6 +43,16 @@ def _font(kind: str, size: int) -> ImageFont.ImageFont:
     return ImageFont.load_default(size=size)
 
 
+def _cnp_county_digits(code: str) -> str:
+    """The two county digits (JJ) of a CNP for a county code printed on cards (``SB`` -> ``32``);
+    Sibiu when the code is unknown."""
+    name = county_name(code)
+    for number, county in CNP_COUNTIES.items():
+        if county == name:
+            return f"{number:02d}"
+    return "32"
+
+
 @dataclass
 class Person:
     """A fictitious person; defaults produce a consistent, valid identity."""
@@ -63,13 +73,27 @@ class Person:
     expires: date = date(2032, 11, 14)
     serial: str = "123"
     extra: dict[str, str] = field(default_factory=dict)
+    # The lines exactly as printed, for layouts the fields above cannot express (Bucharest prints
+    # "Mun.București Sec.2" without a county); they replace the generated lines.
+    birth_line: str | None = None
+    domicile_lines: tuple[str, ...] | None = None
+
+    @property
+    def birth_place_line(self) -> str:
+        return self.birth_line or f"Jud.{self.birth_county_code} {self.birth_locality}"
+
+    @property
+    def domicile_card_lines(self) -> list[str]:
+        if self.domicile_lines is not None:
+            return list(self.domicile_lines)
+        return [f"Jud.{self.county_code} {self.locality}", self.street_line]
 
     @property
     def cnp(self) -> str:
         century_digit = {("M", 19): "1", ("F", 19): "2", ("M", 20): "5", ("F", 20): "6"}[
             (self.sex, self.birth.year // 100)
         ]
-        county = {"SB": "32", "CJ": "12", "AB": "01", "B": "40"}.get(self.birth_county_code, "32")
+        county = _cnp_county_digits(self.birth_county_code)
         first12 = f"{century_digit}{self.birth:%y%m%d}{county}{self.serial}"
         return first12 + cnp_control_digit(first12)
 
@@ -132,14 +156,10 @@ def ro_id_card(person: Person | None = None, noise: bool = True) -> Image.Image:
     item("Sex/Sexe/Sex", [person.sex], (1400, y + 190))
     item(
         "Loc naștere/Lieu de naissance/Place of birth",
-        [f"Jud.{person.birth_county_code} {person.birth_locality}"],
+        [person.birth_place_line],
         (x, y + 285),
     )
-    item(
-        "Domiciliu/Adresse/Address",
-        [f"Jud.{person.county_code} {person.locality}", person.street_line],
-        (x, y + 380),
-    )
+    item("Domiciliu/Adresse/Address", person.domicile_card_lines, (x, y + 380))
     item("Emisă de/Delivree par/Issued by", [person.issued_by], (x, y + 520))
     item(
         "Valabilitate/Validite/Validity",

@@ -5,8 +5,20 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
+from functools import cache
+
+from docfill.lexicon import (
+    ROMANIAN_MARKS,
+    gazetteer,
+    given_names,
+    plain,
+    street_words,
+    surnames,
+    with_case_of,
+)
 
 # Two-letter county codes printed on identity cards and car plates.
 COUNTY_CODES = {
@@ -158,15 +170,55 @@ def _fold(text: str) -> str:
 
 
 _COUNTY_BY_FOLDED = {_fold(name): name for name in COUNTY_CODES.values()}
+_CODE_BY_COUNTY = {name: code for code, name in COUNTY_CODES.items()}
+
+
+# A county code as OCR misreads it: the hook of J becomes ) } ], the capital I is a bar.
+_COUNTY_CODE_OCR = str.maketrans(
+    {")": "J", "}": "J", "]": "J", "|": "I", "!": "I", "1": "I", "l": "I", "0": "O", "$": "S"}
+)
+
+
+_COUNTY_TOKEN = re.compile(r"(?i:\bjud)\.?\s*(?P<code>[A-Za-z|!1)}\]]{2})(?=[\s,.;]|$)")
+
+
+def repair_county_codes(text: str) -> str:
+    """``Jud.C} Or.Huedin`` -> ``Jud.CJ Or.Huedin``: a county code that OCR misread is put back
+    when the letters it can only be make a real county code."""
+
+    def fix(match: re.Match[str]) -> str:
+        code = match["code"].translate(_COUNTY_CODE_OCR).upper()
+        if code not in COUNTY_CODES:
+            return match.group()
+        return match.group()[: match.start("code") - match.start()] + code
+
+    return _COUNTY_TOKEN.sub(fix, text)
 
 
 def county_name(text: str) -> str | None:
-    """``AB`` / ``Alba`` / ``jud. alba`` -> ``Alba``; ``None`` if it is not a Romanian county."""
+    """``AB`` / ``Alba`` / ``jud. alba`` -> ``Alba``; ``None`` if it is not a Romanian county.
+    A code whose letters OCR mixed up (``C}`` for ``CJ``, ``!S`` for ``IS``) is read as the
+    county code it can only be."""
     cleaned = re.sub(r"^(?:jud(?:e[tț]ul?)?\.?)\s*", "", text.strip(), flags=re.IGNORECASE)
     cleaned = cleaned.strip(" .,")
     if cleaned.upper() in COUNTY_CODES:
         return COUNTY_CODES[cleaned.upper()]
+    if len(cleaned) == 2:
+        repaired = cleaned.translate(_COUNTY_CODE_OCR).upper()
+        if repaired in COUNTY_CODES:
+            return COUNTY_CODES[repaired]
     return _COUNTY_BY_FOLDED.get(_fold(cleaned))
+
+
+def county_code(text: str | None) -> str | None:
+    """``Cluj`` / ``CJ`` / ``jud. cluj`` / ``Sector 2`` -> ``CJ`` / ``CJ`` / ``CJ`` / ``B``;
+    ``None`` if it is not a Romanian county."""
+    if not text:
+        return None
+    if re.match(r"\s*sec(?:tor(?:ul)?)?\b", text, re.IGNORECASE):
+        return "B"
+    name = county_name(text)
+    return _CODE_BY_COUNTY.get(name) if name else None
 
 
 # --------------------------------------------------------------------------- CNP
@@ -274,12 +326,15 @@ _STOP_WORDS = (
 )
 _NAME_WORD = rf"(?!{_STOP_WORDS})[A-ZĂÂÎȘȚ][\wăâîșțĂÂÎȘȚ\-]*"
 _LOCALITY_PREFIX = re.compile(
-    r"\b(?P<kind>Mun(?:icipiul)?|Ora[sș](?:ul)?|Or\.|Com(?:una)?|Sat(?:ul)?)(?:\.\s*|\s+)"
+    r"\b(?P<kind>Mun(?:icipiul)?|Ora[sș](?:ul)?|Or|Com(?:una)?|Sat(?:ul)?)(?:\.\s*|\s+)"
     rf"(?P<name>{_NAME_WORD}(?:\s+{_NAME_WORD})*)"
 )
+_OCR_CODE = r"[A-Za-z|!1)}\]]"
 _COUNTY = re.compile(
     r"\b(?i:jud(?:e[tț]ul?)?)(?:\.\s*|\s+)"
-    r"(?P<county>[A-Z]{1,2}\b|[A-ZĂÂÎȘȚ][\wăâîșț\-]+(?:\s[A-ZĂÂÎȘȚ][\wăâîșț]+)?)",
+    rf"(?P<county>{_OCR_CODE}{_OCR_CODE}(?=[\s,.;]|$)"  # the code, possibly misread: "C}"
+    r"|[A-Z]{1,2}\b"
+    r"|[A-ZĂÂÎȘȚ][\wăâîșț\-]+(?:\s[A-ZĂÂÎȘȚ][\wăâîșț]+)?)",
 )
 _SECTOR = re.compile(r"\bSec(?:tor(?:ul)?)?\.?\s*(?P<sector>[1-6])\b", re.IGNORECASE)
 _STREET = re.compile(
@@ -359,11 +414,15 @@ def parse_ro_address(text: str) -> dict[str, str]:
             result["county"] = county
     if match := _SECTOR.search(text):
         result["sector"] = f"Sector {match['sector']}"
-    localities = [format_locality(m["kind"], m["name"]) for m in _LOCALITY_PREFIX.finditer(text)]
+    code = _CODE_BY_COUNTY.get(result.get("county", "")) or ("B" if "sector" in result else None)
+    localities = [
+        format_locality(m["kind"], spell_locality(m["kind"], m["name"], code))
+        for m in _LOCALITY_PREFIX.finditer(text)
+    ]
     if localities:  # "Com. Hărman, Sat Podu Oltului"
-        result["city"] = ", ".join(localities)
+        result["city"] = restore_diacritics(", ".join(localities))
     if match := _STREET.search(text):
-        name = match["name"].strip(" ,.")
+        name = restore_diacritics(match["name"].strip(" ,."))
         kind = _KEEP_STREET_KIND.get(_fold(match["kind"]).rstrip("."))
         result["street"] = f"{kind} {name}" if kind else name
     for part, pattern in _PARTS.items():
@@ -419,12 +478,14 @@ Târgu Mureș, Piatra Neamț, Slatina, Ploiești, Satu Mare, Zalău, Sibiu, Suce
 Timișoara, Tulcea, Vaslui, Râmnicu Vâlcea, Focșani, Onești, Comănești, Moinești, Mediaș,
 Făgăraș, Săcele, Codlea, Râșnov, Zărnești, Câmpina, Bârlad, Pașcani, Roman, Turda, Dej, Gherla,
 Câmpia Turzii, Hunedoara, Petroșani, Lugoj, Medgidia, Mangalia, Năvodari, Sighișoara, Reghin,
-Câmpulung, Curtea de Argeș, Caransebeș, Fetești, Tecuci, Rădăuți, Fălticeni, Vatra Dornei, Adjud,
+Câmpulung, Câmpulung Moldovenesc, Curtea de Argeș, Caransebeș, Fetești, Tecuci, Rădăuți, Fălticeni,
+Vatra Dornei, Adjud,
 Mărășești, Otopeni, Voluntari, Pantelimon, Popești-Leordeni, Chitila, Bragadiru, Mioveni,
 Târgu Neamț, Huși, Negrești, Dorohoi, Sighetu Marmației, Borșa, Vișeu de Sus, Carei, Beiuș,
 Salonta, Marghita, Aiud, Blaj, Sebeș, Cugir, Orăștie, Brad, Vulcan, Lupeni, Petrila, Făget,
 Buziaș, Jimbolia, Sânnicolau Mare, Lipova, Ineu, Motru, Băilești, Calafat, Caracal, Balș,
-Drăgășani, Horezu, Rovinari, Târgu Cărbunești, Zimnicea, Roșiori de Vede, Turnu Măgurele,
+Drăgășani, Horezu, Rovinari, Târgu Cărbunești, Zimnicea, Roșiori de Vede, Roșiorii de Vede,
+Turnu Măgurele,
 Oltenița, Urziceni, Rm. Sărat, Râmnicu Sărat, Tulcea, Măcin, Babadag, Cernavodă, Eforie,
 Techirghiol, Odobești, Panciu, Târgu Secuiesc, Odorheiu Secuiesc, Gheorgheni, Toplița,
 Târgu Frumos, Hârlău, Bicaz, Sângeorz-Băi, Năsăud, Beclean, Șimleu Silvaniei, Jibou,
@@ -434,26 +495,60 @@ Luduș, Sovata, Târnăveni, Cisnădie, Avrig, Agnita, Dumbrăveni
 _PLACE_BY_FOLDED = {
     _fold(p.strip()): p.strip() for p in _PLACES.replace("\n", " ").split(",") if p.strip()
 }
+_KNOWN_TOWNS = frozenset(_PLACE_BY_FOLDED)  # municipalities and towns, without the counties
 _PLACE_BY_FOLDED.update({_fold(name): name for name in COUNTY_CODES.values()})
-_MAX_PLACE_WORDS = max(len(p.split()) for p in _PLACE_BY_FOLDED.values())
+
+
+@cache
+def _places() -> tuple[dict[str, str], int]:
+    """The places whose diacritics can be restored, by their accent-free name, and the number of
+    words of the longest: the list above, the counties and every municipality, town and commune
+    of the register that is spelled one way wherever it is (``Săcălaz``)."""
+    by_key = dict(_PLACE_BY_FOLDED)
+    spellings: dict[str, set[str]] = defaultdict(set)
+    for locality in gazetteer().entries("MOC"):
+        spellings[_fold(locality.name)].add(locality.name)
+    for key, names in spellings.items():
+        if len(names) == 1 and key not in by_key:
+            by_key[key] = next(iter(names))
+    return by_key, max(len(name.split()) for name in by_key.values())
+
+
+def _restore_words(text: str) -> str:
+    """The diacritics of the names of people and the street words that the lists spell with
+    them (``Stefan`` -> ``Ștefan``, ``Libertatii`` -> ``Libertății``)."""
+
+    def fix(match: re.Match[str]) -> str:
+        word = match.group()
+        for words in (street_words(), given_names(), surnames()):
+            found = words.lookup(word)
+            if found.status == "restorable" and found.spelling:
+                return found.spelling
+            if found.status in ("exact", "known"):
+                break
+        return word
+
+    return re.sub(r"[^\W\d_]{4,}", fix, text)
 
 
 def restore_diacritics(text: str) -> str:
     """Replace known place names written without (or with wrong) diacritics by their correct
-    spelling: "Fagaras" / "Focşani" (cedilla) -> "Făgăraș" / "Focșani".
+    spelling: "Fagaras" / "Focşani" (cedilla) -> "Făgăraș" / "Focșani"; the same for the names
+    of people and the words of street names ("Str. Stefan cel Mare" -> "Str. Ștefan cel Mare").
 
     Only whole words matching a known name accent-insensitively are replaced, so unknown names
     and names already written correctly are left alone.
     """
+    places, longest = _places()
     tokens = re.split(r"(\s+|[.,;:/()])", text)
     words = [(i, t) for i, t in enumerate(tokens) if t and not re.fullmatch(r"\s+|[.,;:/()]", t)]
     position = 0
     while position < len(words):
-        for size in range(min(_MAX_PLACE_WORDS, len(words) - position), 0, -1):
+        for size in range(min(longest, len(words) - position), 0, -1):
             chunk = words[position : position + size]
             first, last = chunk[0][0], chunk[-1][0]
             original = "".join(tokens[first : last + 1])
-            proper = _PLACE_BY_FOLDED.get(_fold(" ".join(t for _, t in chunk)))
+            proper = places.get(_fold(" ".join(t for _, t in chunk)))
             if proper and _fold(original) == _fold(proper):
                 if original.lower() != proper.lower():  # missing or wrong diacritics
                     fixed = proper.upper() if original.isupper() else proper
@@ -462,7 +557,146 @@ def restore_diacritics(text: str) -> str:
                 break
         else:
             position += 1
-    return "".join(tokens)
+    return _restore_words("".join(tokens))
+
+
+# --------------------------------------------------------------------------- doubtful places
+
+# The letter the register uses for the kind of a locality, by the prefix a card prints.
+_KIND_OF_PREFIX = {"mun": "M", "oras": "O", "com": "C", "sat": "S"}
+_PLACE_PART = re.compile(r"(?P<kind>Mun\.|Oraș|Com\.|Sat)\s+(?P<name>[^,]+?)\s*$")
+
+
+def _marks(text: str) -> int:
+    return sum(char in ROMANIAN_MARKS for char in text)
+
+
+def spell_locality(kind_prefix: str, name: str, county: str | None = None) -> str:
+    """The name of a locality as the register spells it: ``Harman`` -> ``Hărman``, ``Cluj Napoca``
+    -> ``Cluj-Napoca``. Only when the register has one such locality in the county (anywhere in
+    the country when the county is not known); the name is left as it was read otherwise."""
+    letter = _KIND_OF_PREFIX.get(_fold(kind_prefix).rstrip("."))
+    found = gazetteer().find(name, county)
+    found = [item for item in found if item.kind == letter] or found
+    spellings = {item.name for item in found}
+    if len(spellings) != 1:
+        return name
+    spelling = next(iter(spellings))
+    # a register spelling without diacritics never takes away those that were read
+    return name if _marks(name) > _marks(spelling) else with_case_of(name, spelling)
+
+
+@dataclass(frozen=True)
+class PlaceDoubt:
+    problem: str
+    suggestions: tuple[str, ...] = ()  # whole values to offer instead, in the form of the field
+    completed: bool = False  # the value is the beginning of the suggestions: it was cut off
+
+
+def _part_doubt(
+    prefix: str, name: str, birth: bool, county: str | None
+) -> tuple[str, list[str], bool] | None:
+    """The doubt about one locality (``Mun. Sib``), the names that could replace it and whether
+    it is the beginning of them."""
+    key = _fold(name).strip(" .")
+    if key.startswith("bucuresti"):
+        if birth and key == "bucuresti":
+            return "The sector of Bucharest is missing: check it against the card", [], False
+        return None
+    letter = _KIND_OF_PREFIX.get(_fold(prefix).rstrip("."), "")
+    register = gazetteer()
+    # a status changes over the years (a town becomes a municipality): "Mun." and "Oraș" accept
+    # any of the three, but neither a village, which no card prints with them
+    accepted = "MOC" if letter in ("M", "O") else "MOCS"
+    if register.find(name, county, accepted):
+        return None
+    where = f"județul {COUNTY_CODES.get(county or '', county)}" if county else None
+    elsewhere = register.find(name, None, accepted)
+    if not elsewhere and key in _KNOWN_TOWNS and letter in ("M", "O"):
+        return None  # a name the register spells differently (an abbreviation, a variant)
+    # a name that is in the register, but in another county: the county or the name was misread
+    if county and elsewhere:
+        others = sorted({COUNTY_CODES.get(item.county, item.county) for item in elsewhere})
+        return (
+            f"Not a locality of {where} (there is one in {', '.join(others)}): "
+            "check the county and the place",
+            [],
+            False,
+        )
+    # the kind printed in front of the name comes first: "Mun." is a municipality, if one fits
+    kinds = {"M": ("M", "MO"), "O": ("O", "MO"), "C": ("C",), "S": ("S",)}.get(letter, ())
+    if kinds == ("S",) and not county:  # too many villages to search the whole country
+        kinds = ()
+    cut = next((found for k in kinds if (found := register.completions(name, county, k))), [])
+    if cut:
+        names = list(dict.fromkeys(item.name for item in cut))
+        return f"Looks cut off on the scan (… {names[0]}?): check it against the card", names, True
+    near = next((found for k in kinds if (found := register.similar(name, county, k))), [])
+    if near:
+        names = list(dict.fromkeys(item.name for item in near))
+        scope = f"Not a locality of {where}" if where else "Not a known locality"
+        return f"{scope}: did you mean {names[0]}? Check it against the card", names, False
+    if letter == "M":  # the municipalities are a closed list that the register has in full
+        return "Not a known municipality: check the spelling against the card", [], False
+    return None
+
+
+_OFFICE = re.compile(r"^(?P<office>[A-ZĂÂÎȘȚ]{3,8})\s+(?P<place>[^\d]+?)\s*$")
+
+
+def office_doubt(office: str) -> PlaceDoubt | None:
+    """Why the place in the name of an issuing office (``SPCLEP Cluj-Napoca``) cannot be trusted:
+    it is a municipality, a town or a commune, so a name that is none of them was misread
+    (``Drobeta-Tumu Severin``) or cut off. A sector of Bucharest is not a place of the register."""
+    match = _OFFICE.match(office.strip())
+    if not match or plain(match["place"]).startswith("sec"):
+        return None
+    place = match["place"].strip(" .")
+    register = gazetteer()
+    if len(plain(place)) < 3 or register.find(place, None, "MOC") or _fold(place) in _KNOWN_TOWNS:
+        return None
+    for kinds in ("M", "MO", "MOC"):
+        cut = register.completions(place, None, kinds)
+        if cut:
+            names = list(dict.fromkeys(item.name for item in cut))
+            problem = f"Looks cut off on the scan (… {names[0]}?): check it against the card"
+            return PlaceDoubt(problem, tuple(f"{match['office']} {name}" for name in names), True)
+    if near := register.similar(place, None, "MOC"):
+        names = list(dict.fromkeys(item.name for item in near))
+        problem = f"Not a known locality: did you mean {names[0]}? Check it against the card"
+        return PlaceDoubt(problem, tuple(f"{match['office']} {name}" for name in names))
+    return None
+
+
+def place_doubt(locality: str, birth: bool = False, county: str | None = None) -> PlaceDoubt | None:
+    """Why a locality read from a card cannot be trusted, with the names it may be instead.
+
+    The register of localities has every municipality, town, commune and village of a county,
+    so a name it does not have was misread or cut off: ``Mun. Sib`` (Sibiu), ``Mun. Cluj``
+    (Cluj-Napoca, glare took the end of the line), ``Oraș Huedi``, ``Com. Harmann``. A name that
+    is not in the register and looks like no name in it is left alone (it may be new). A place
+    of birth in Bucharest is printed with its sector, so without one the line was cut. ``county``
+    is the code a card prints (``CJ``, ``B``); without it the whole country is searched."""
+    parts = [part.strip() for part in locality.split(",")]
+    for index, part in enumerate(parts):
+        match = _PLACE_PART.match(part)
+        if not match:
+            continue
+        found = _part_doubt(match["kind"], match["name"], birth, county)
+        if found:
+            problem, names, completed = found
+            suggestions = tuple(
+                ", ".join([*parts[:index], f"{match['kind']} {name}", *parts[index + 1 :]])
+                for name in names
+            )
+            return PlaceDoubt(problem, suggestions, completed)
+    return None
+
+
+def doubtful_place(locality: str, birth: bool = False, county: str | None = None) -> str | None:
+    """The problem :func:`place_doubt` finds with a locality, or ``None``."""
+    doubt = place_doubt(locality, birth, county)
+    return doubt.problem if doubt else None
 
 
 _ROOM_SUFFIX = re.compile(r"^(?P<street>.*?)[\s,]+(?P<room>cam(?:era)?\.?\s*\d+\w*)$", re.I)
