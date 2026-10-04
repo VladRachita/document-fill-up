@@ -226,8 +226,10 @@ def test_anexa_4(filled):
     values = read_form_values(filled["onrc-anexa-4"][0])
     assert (values["SubNume"], values["SubCNP"]) == ("POPESCU", Person().cnp)
     assert values["InmFirma"] == "EXEMPLU INVEST S.A."
-    assert (values["clasa_caen.0.0"], values["clasa_caen.0.1"]) == ("6201", "6202")
-    assert values["clasa_caen_desc.0.1"] == "Activități de consultanță în tehnologia informației"
+    # the activities at third parties (3.2) unless carried out at the registered office (3.1)
+    assert (values["clasa_caen.1.0"], values["clasa_caen.1.1"]) == ("6201", "6202")
+    assert values["clasa_caen_desc.1.1"] == "Activități de consultanță în tehnologia informației"
+    assert "clasa_caen.0.0" not in values
 
 
 # --------------------------------------------------------------------------- Anexa 1 (fiscal)

@@ -91,22 +91,24 @@ def _caen_rows(values: Mapping[str, str]) -> list[tuple[str, str]]:
     return rows
 
 
-def _no_activity_at_office(values: Mapping[str, str]) -> bool:
-    return bool(_get(values, "office_without_activity"))
+def _activity_at_office(values: Mapping[str, str]) -> bool:
+    return bool(_get(values, "activities_at_office"))
 
 
 def _activities_at_office(values: Mapping[str, str]) -> str | None:
-    """Anexa 4, 3.1: the activities of the company, unless the registered office has none."""
-    if _no_activity_at_office(values):
+    """Anexa 4, 3.1: the activities of the company, when they are carried out at the
+    registered office."""
+    if not _activity_at_office(values):
         return None
     return _get(values, "caen_activities") or None
 
 
 def _activities_at_third_parties(values: Mapping[str, str]) -> str | None:
-    """Anexa 4, 3.2: the other activities at third parties, after the activities of the company
-    when the registered office has none (the main one first, each class once)."""
+    """Anexa 4, 3.2: the activities of the company (the main one first), unless they are
+    carried out at the registered office, then the other activities at third parties (each
+    class once). A registered office without activity is the usual case."""
     lines = _get(values, "caen_third_party").splitlines()
-    if _no_activity_at_office(values):
+    if not _activity_at_office(values):
         lines = _get(values, "caen_activities").splitlines() + lines
     kept: dict[str, str] = {}
     for line in filter(None, (line.strip() for line in lines)):
@@ -265,7 +267,7 @@ _SPECS: list[Computed] = [
     Computed(
         "caen_at_office",
         "Anexa 4, 3.1: activities at the registered office",
-        ("caen_activities", "office_without_activity"),
+        ("caen_activities", "activities_at_office"),
         (),
         _activities_at_office,
         read_as="caen_activities",
@@ -273,7 +275,7 @@ _SPECS: list[Computed] = [
     Computed(
         "caen_at_third_parties",
         "Anexa 4, 3.2: activities at third parties",
-        ("caen_activities", "office_without_activity", "caen_third_party"),
+        ("caen_activities", "activities_at_office", "caen_third_party"),
         (),
         _activities_at_third_parties,
         read_as="caen_third_party",

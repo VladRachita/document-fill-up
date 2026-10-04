@@ -269,11 +269,11 @@ the people in them (the trade register's letterhead, the owner lending the premi
 persons of the request, so they never fill the applicant.
 
 **Where Anexa 4 writes the activities.** The activities of the company (`caen_activities`, read
-from the act) go to the registered office (3.1). When the proof of the registered office (or the
-act) says the office has no activity (`sediu social fără desfășurare de activitate`), the box
-*The registered office has no activity* is ticked and Anexa 4 lists them at third parties
-(3.2. Activități desfășurate la terți), the main one first, followed by any other activity at
-third parties (`caen_third_party`). The box can be ticked or unticked in the review.
+from the act) go to **3.2. Activități desfășurate la terți**, the main one first, followed by any
+other activity at third parties (`caen_third_party`): a registered office without activity
+(`sediu social fără desfășurare de activitate`) is the usual case. Tick *The activities are
+carried out at the registered office* in the review to list them under 3.1 (sediu social /
+profesional) instead.
 
 ## Several persons
 
