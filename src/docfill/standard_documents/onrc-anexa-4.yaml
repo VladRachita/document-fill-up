@@ -57,12 +57,13 @@ field_map:
   DataCerere: today
 
 # 3.1 activities at the registered office, 3.2 activities carried out at third parties:
-# one per line, "<CAEN class> <activity name>".
+# one per line, "<CAEN class> <activity name>". The activities of the company go to 3.1, or to
+# 3.2 when the registered office has no activity ("office_without_activity", see computed.py).
 lists:
-  caen_activities:
+  caen_at_office:
     rows: 18
     columns: ["clasa_caen.0.{i}", "clasa_caen_desc.0.{i}"]
-  caen_third_party:
+  caen_at_third_parties:
     rows: 18
     columns: ["clasa_caen.1.{i}", "clasa_caen_desc.1.{i}"]
 
@@ -86,5 +87,5 @@ optional_fields:
   - company_email
   - company_phone
   - company_website
-  - caen_activities
-  - caen_third_party
+  - caen_at_office
+  - caen_at_third_parties

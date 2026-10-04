@@ -84,6 +84,15 @@ _CAPACITY_ROLES = (
     ("administrator", r"administrator"),
 )
 
+# "Spațiul va fi utilizat cu destinația de sediu social fără desfășurare de activitate", "la
+# sediul social nu se desfășoară activitate" (accent-free, lower case).
+_NO_ACTIVITY = re.compile(
+    r"\bsediu\w*(?:\s+social|\s+profesional)?(?:[\s,]+[a-z]+){0,3}?[\s,]+fara\s+(?:desfasurare\s+"
+    r"(?:de\s+)?|exercitare\s+(?:de\s+)?|nicio\s+|vreo\s+)?activitat"
+    r"|\bsediu\w*(?:\s+social|\s+profesional)?\s+nu\s+se\s+(?:va\s+)?desfas\w*\s+(?:nicio\s+)?"
+    r"activitat"
+)
+
 _PERCENT = re.compile(r"(?P<pct>\d{1,3}(?:[.,]\d+)?)\s*%")
 _SHARES = re.compile(
     r"(?P<count>\d[\d.]*)\s+(?:de\s+)?(?P<kind>p[aă]r[tț]i\s+sociale|ac[tț]iuni)\b", re.I
@@ -520,6 +529,8 @@ def extract_articles(text: str, document: str | None = None) -> list[ExtractedFi
     put("company_duration", duration_years(text), ARTICLES_CONFIDENCE, "durata societății")
     if activities := caen_activities(text):
         put("caen_activities", "\n".join(activities), ARTICLES_CONFIDENCE, activities[0])
+    if evidence := office_without_activity(text):
+        put("office_without_activity", "x", ARTICLES_CONFIDENCE, evidence)
 
     persons = _persons(text)
     administrators = [p for p in persons if p.is_administrator]
@@ -589,10 +600,21 @@ def extract_name_reservation(text: str, document: str | None = None) -> list[Ext
     return found
 
 
+def office_without_activity(text: str) -> str | None:
+    """The sentence saying the registered office has no activity, or ``None``."""
+    match = _NO_ACTIVITY.search(fold(text))
+    return _collapse(text[match.start() : match.end() + 20]) if match else None
+
+
 def extract_premises(text: str, document: str | None = None) -> list[ExtractedField]:
     """The proof of the registered office (comodat, lease, owner's statement): the address of
-    the premises and the company it is lent to. The owner is not a person of the request."""
+    the premises, the company it is lent to and whether the office has no activity (Anexa 4
+    then lists the activities at third parties). The owner is not a person of the request."""
     found: list[ExtractedField] = []
+    if evidence := office_without_activity(text):
+        found.append(
+            _field("office_without_activity", "x", PREMISES_CONFIDENCE, evidence, document)
+        )
     match = _search_folded(
         r"\b(?:imobil\w*|spati\w*|apartament\w*|sediu\w*|cladir\w*|incaper\w*)\s+(?:\w+\s+){0,3}?"
         r"situat\w*\s+(?:in|la)\s*:?\s*",

@@ -9,7 +9,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from docfill.computed import with_computed
+from docfill.computed import COMPUTED, with_computed
 from docfill.config import Settings, get_settings
 from docfill.doctypes import DocTypeClassifier, Prediction, match_form
 from docfill.errors import MissingFieldsError
@@ -126,7 +126,11 @@ def read_template_values(
         name, _ = parse_expression(expression)
         if value and name not in found:
             found[name] = (value, pdf_field)
-    for name, spec in template.lists.items():
+    for listed, spec in template.lists.items():
+        # a list printed from a computed value is read back as the field it says (3.1 of
+        # Anexa 4: the activities of the company)
+        computed = COMPUTED.get(listed)
+        name = computed.read_as if computed and computed.read_as else listed
         cells = list_cells(spec)
         rows = []
         for row_cells in cells:

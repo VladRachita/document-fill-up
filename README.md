@@ -263,6 +263,13 @@ date, and the **proof of the registered office** (comodat, lease) the address of
 the people in them (the trade register's letterhead, the owner lending the premises) are not
 persons of the request, so they never fill the applicant.
 
+**Where Anexa 4 writes the activities.** The activities of the company (`caen_activities`, read
+from the act) go to the registered office (3.1). When the proof of the registered office (or the
+act) says the office has no activity (`sediu social fără desfășurare de activitate`), the box
+*The registered office has no activity* is ticked and Anexa 4 lists them at third parties
+(3.2. Activități desfășurate la terți), the main one first, followed by any other activity at
+third parties (`caen_third_party`). The box can be ticked or unticked in the review.
+
 ## Several persons
 
 Opening a company involves several people: the applicant who signs the forms, the shareholders,
@@ -612,8 +619,7 @@ ruff check src tests examples && ruff format --check src tests examples
   the diacritics OCR lost (the wizard shows it; correct it once), and is never "repaired". The
   corrections made on cards were measured on synthetic cards only.
 * CAEN activity names are read from the act constitutiv (or a filled Anexa 4) or typed; a CAEN
-  Rev. 3 list could fill the name from the code. They go to the registered office (Anexa 4,
-  3.1): when the office has no activity, move them to the activities at third parties (3.2).
+  Rev. 3 list could fill the name from the code.
 * The list of submitted documents (Anexa 2a, IX) is typed (and remembered), not built from the
   uploaded files yet.
 * Three persons at most (the three blocks of the beneficial owner declaration); founders that

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from docfill.api import create_app
 from docfill.app import build_app
+from docfill.computed import with_computed
 from docfill.doctypes import DocType, DocTypeClassifier
 from docfill.export.pdf_form import read_form_values
 from docfill.extraction import FieldExtractor
@@ -23,7 +24,8 @@ from docfill.extraction.clauses import extract_clauses
 from docfill.extraction.derive import complete_values, representation
 from docfill.extraction.fields import CONTROL_OPTIONS, REPRESENTATIVE, REPRESENTATIVE_TYPES
 from docfill.extraction.patterns import extract_identity
-from docfill.models import SanitizedDocument
+from docfill.models import ExtractedField, SanitizedDocument
+from docfill.pipeline import DocFill, form_values
 from docfill.ro import parse_ro_address
 from docfill.samples import Person, ro_id_card_jpeg, sworn_statement_docx, sworn_statement_text
 from docfill.templates import TemplateRepository, bundled_specs_dir, load_directory
@@ -153,7 +155,8 @@ COMODAT = [
     "ART. 2 - OBIECTUL CONTRACTULUI",
     "Cedarea, de către comodant, cu titlu de împrumut gratuit, a dreptului de folosință pentru",
     "imobilul situat în Jud. Timiș, Mun. Timișoara, Ale. Teilor, Nr. 4, Bl. 12, Et. VII, Ap. 31,",
-    "Camera 1. Spațiul antemenționat va fi utilizat cu destinația de sediu social.",
+    "Camera 1. Spațiul antemenționat va fi utilizat cu destinația de sediu social fără desfășurare",
+    "de activitate.",
 ]
 
 
@@ -293,10 +296,49 @@ def test_name_reservation_proof():
 def test_proof_of_registered_office():
     found = values_of(extract_premises(text_of(COMODAT)))
     assert found == {
+        "office_without_activity": "x",  # "sediu social fără desfășurare de activitate"
         "company_address": "Jud. Timiș, Mun. Timișoara, Ale. Teilor, Nr. 4, Bl. 12, Et. VII, "
         "Ap. 31, Camera 1",
         "company_name": "EXEMPLU VERDE SRL",
     }
+    without = [line.replace(" fără desfășurare", "") for line in COMODAT[:-1]]
+    assert "office_without_activity" not in values_of(extract_premises(text_of(without)))
+
+
+ACTIVITIES = "6201 Activități de realizare a software-ului la comandă\n6202 Consultanță IT"
+
+
+@pytest.mark.parametrize(
+    ("no_activity", "at_office", "at_third_parties"),
+    [
+        ("", ["6201", "6202"], ["4321", "6202"]),  # a class may be at both
+        ("x", [], ["6201", "6202", "4321"]),  # the main activity first, each class once
+    ],
+)
+def test_anexa_4_places_the_activities_by_the_registered_office(
+    no_activity, at_office, at_third_parties
+):
+    values = {
+        "caen_activities": ACTIVITIES,
+        "caen_third_party": "4321 Lucrări de instalații electrice\n6202 Consultanță IT",
+        "office_without_activity": no_activity,
+    }
+    filled = form_values(document("onrc-anexa-4"), with_computed(values))
+    assert [filled[f"clasa_caen.0.{i}"] for i in range(len(at_office))] == at_office
+    assert f"clasa_caen.0.{len(at_office)}" not in filled
+    rows = [filled[f"clasa_caen.1.{i}"] for i in range(len(at_third_parties))]
+    assert rows == at_third_parties
+    assert f"clasa_caen.1.{len(at_third_parties)}" not in filled
+
+
+def test_a_filled_anexa_4_is_read_back_as_the_activities(settings):
+    template = document("onrc-anexa-4")
+    docfill = DocFill(settings, templates=lambda: [template])
+    for no_activity, field in (("", "caen_activities"), ("x", "caen_third_party")):
+        values = {"caen_activities": ACTIVITIES, "office_without_activity": no_activity}
+        pdf = docfill.fill(template, None, values, allow_missing=True).pdf
+        analysis = docfill.analyze_bytes(pdf, "anexa4.pdf")
+        assert analysis.extraction.fields[field].value.splitlines()[0].startswith("6201")
 
 
 def test_a_party_to_a_contract_is_not_the_applicant(settings):
@@ -432,6 +474,27 @@ def test_without_an_act_the_first_identity_card_is_the_applicant(context):
     ]
     docfill.combine(analyses)
     assert [a.person for a in analyses] == [1, 2]
+
+
+def test_with_an_office_without_activity_anexa_4_lists_them_at_third_parties(context):
+    docfill = context.docfill
+    analyses = [
+        docfill.analyze_bytes(make_docx(ACT_SOLE_ASSOCIATE), "act.docx"),
+        docfill.analyze_bytes(make_docx(COMODAT), "comodat.docx"),
+    ]
+    combined = docfill.combine(analyses)
+    assert analyses[1].doc_type.doc_type == "dovada_sediu"
+    assert combined.fields["office_without_activity"].value == "x"
+    assert combined.fields["company_name"].value == "EXEMPLU VERDE S.R.L."  # the act's
+    combined.offer(
+        ExtractedField(name="caen_activities", value=ACTIVITIES, confidence=0.99, source="manual")
+    )
+    declaration = read_form_values(
+        docfill.fill(document("onrc-anexa-4"), combined, allow_missing=True).pdf
+    )
+    assert "clasa_caen.0.0" not in declaration
+    assert (declaration["clasa_caen.1.0"], declaration["clasa_caen.1.1"]) == ("6201", "6202")
+    assert "office_without_activity" in document("onrc-anexa-4").input_fields()
 
 
 @requires_tesseract
