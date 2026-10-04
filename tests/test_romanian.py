@@ -474,8 +474,8 @@ def test_onrc_forms_are_filled_with_correct_fields(onrc):
     anexa4 = _template(onrc, "onrc-anexa-4")
     values4 = read_form_values(onrc.docfill.fill(anexa4, None, ONRC_VALUES, True).pdf)
     assert values4["SubNume"] == "ȘTEFĂNESCU" and values4["InmFirma"] == "EXEMPLU SOFT S.R.L."
-    assert values4["clasa_caen.0.0"] == "6201"
-    assert values4["clasa_caen_desc.0.1"] == "Activități de consultanță în tehnologia informației"
+    assert values4["clasa_caen.1.0"] == "6201"  # 3.2: at third parties
+    assert values4["clasa_caen_desc.1.1"] == "Activități de consultanță în tehnologia informației"
 
 
 def test_filled_anexa_2a_is_recognised_and_fills_anexa_4(onrc):

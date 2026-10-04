@@ -40,6 +40,7 @@ from docfill.wizard import (
     safe_filename,
     save_output,
     suggest_filename,
+    with_operation,
 )
 
 MAX_DOCUMENT_CHARS = 500_000
@@ -199,6 +200,8 @@ def register_wizard(
         extraction: ExtractionResult | None,
         procedure: ProcedureSpec | None = None,
     ) -> dict[str, Any]:
+        if procedure:  # the operation ticks its request (înmatriculare / modificare / radiere)
+            extraction = with_operation(extraction, procedure.operation, procedure.title, templates)
         rows = field_rows(
             templates,
             extraction,

@@ -550,8 +550,8 @@ _SPECS = [
         ),
         20,
     ),
-    # The activities of the company (its object of activity). Anexa 4 writes them at the
-    # registered office (3.1), or at third parties (3.2) when the office has no activity.
+    # The activities of the company (its object of activity). Anexa 4 writes them at third
+    # parties (3.2), or at the registered office (3.1) when they are carried out there.
     _f(
         "caen_activities",
         "CAEN activities of the company (one per line: code name, the main one first)",
@@ -561,9 +561,9 @@ _SPECS = [
         4000,
     ),
     _f(
-        "office_without_activity",
-        "The registered office has no activity (sediu social fără desfășurare de activitate): "
-        "Anexa 4 lists the activities at third parties (3.2)",
+        "activities_at_office",
+        "The activities are carried out at the registered office: Anexa 4 lists them under 3.1 "
+        "(unticked: under 3.2, activități desfășurate la terți)",
         "checkbox",
         "company",
     ),

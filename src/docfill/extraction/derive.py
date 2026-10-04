@@ -398,13 +398,19 @@ def _derive_roles(result: ExtractionResult) -> None:
         for name, written in representation(kind.value).items():
             result.offer(_derived(name, written, 0.9, kind.value, kind.document))
 
-    # the beneficial owner declaration is filed by the proxy when there is one
+    # the beneficial owner declaration is filed by the proxy when there is one. Derived again
+    # from what is known now: the act constitutiv alone said "no proxy" before the proxy's
+    # identity card was merged in. A value read or typed is kept.
+    filed_by = None
     if filer := fields.get("filer_last_name"):
-        result.offer(_derived("bo_filed_by", "împuternicit", 0.9, filer.value, filer.document))
+        filed_by = _derived("bo_filed_by", "împuternicit", 0.9, filer.value, filer.document)
     elif any(value(prefix + "beneficial_owner") for prefix in PERSON_PREFIXES):
-        result.offer(
-            _derived("bo_filed_by", "reprezentantul legal", 0.9, "no proxy (filer) given", None)
+        filed_by = _derived(
+            "bo_filed_by", "reprezentantul legal", 0.9, "no proxy (filer) given", None
         )
+    current = fields.get("bo_filed_by")
+    if filed_by and (current is None or current.source == "derived"):
+        result.replace(filed_by)
 
 
 def representation(kind: str) -> dict[str, str]:

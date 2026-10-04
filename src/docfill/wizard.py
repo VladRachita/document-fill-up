@@ -34,6 +34,14 @@ from docfill.validation import validate_values
 MAX_ALTERNATIVES = 4
 SPECIAL_LABELS = {"today": "Date (today)"}
 
+# The request each operation files: its box on the forms (înmatriculare / modificare - înscriere
+# mențiuni / radiere), e.g. II. of the beneficial owner declaration.
+OPERATION_REQUESTS = {
+    "infiintare": "request_registration",
+    "modificare": "request_mentions",
+    "radiere": "request_closure",
+}
+
 
 def field_label(name: str) -> str:
     if name in FIELDS:
@@ -154,6 +162,31 @@ def field_rows(
         ][:MAX_ALTERNATIVES]
         rows.append(row)
     return rows
+
+
+def with_operation(
+    extraction: ExtractionResult | None,
+    operation: str,
+    title: str,
+    templates: StandardDocument | Sequence[StandardDocument],
+) -> ExtractionResult | None:
+    """The extraction with the request box of the operation chosen in step 1 ticked (Înființare:
+    înmatriculare; Modificare: modificare / mențiuni; Radiere: radiere), when a chosen document
+    has that box. Shown as a default: it can be unticked in the review."""
+    name = OPERATION_REQUESTS.get(operation)
+    if not name or not any(name in t.input_fields() for t in _templates(templates)):
+        return extraction
+    extraction = extraction or ExtractionResult()
+    extraction.offer(
+        ExtractedField(
+            name=name,
+            value="x",
+            confidence=0.99,
+            source="default",
+            evidence=f"the operation chosen in step 1: {title}",
+        )
+    )
+    return extraction
 
 
 def other_fields(

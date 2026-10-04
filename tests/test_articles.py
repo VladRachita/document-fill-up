@@ -24,7 +24,7 @@ from docfill.extraction.clauses import extract_clauses
 from docfill.extraction.derive import complete_values, representation
 from docfill.extraction.fields import CONTROL_OPTIONS, REPRESENTATIVE, REPRESENTATIVE_TYPES
 from docfill.extraction.patterns import extract_identity
-from docfill.models import ExtractedField, SanitizedDocument
+from docfill.models import SanitizedDocument
 from docfill.pipeline import DocFill, form_values
 from docfill.ro import parse_ro_address
 from docfill.samples import Person, ro_id_card_jpeg, sworn_statement_docx, sworn_statement_text
@@ -296,32 +296,34 @@ def test_name_reservation_proof():
 def test_proof_of_registered_office():
     found = values_of(extract_premises(text_of(COMODAT)))
     assert found == {
-        "office_without_activity": "x",  # "sediu social fără desfășurare de activitate"
         "company_address": "Jud. Timiș, Mun. Timișoara, Ale. Teilor, Nr. 4, Bl. 12, Et. VII, "
         "Ap. 31, Camera 1",
         "company_name": "EXEMPLU VERDE SRL",
     }
-    without = [line.replace(" fără desfășurare", "") for line in COMODAT[:-1]]
-    assert "office_without_activity" not in values_of(extract_premises(text_of(without)))
 
 
 ACTIVITIES = "6201 Activități de realizare a software-ului la comandă\n6202 Consultanță IT"
 
 
 @pytest.mark.parametrize(
-    ("no_activity", "at_office", "at_third_parties"),
+    ("activities_at_office", "at_office", "at_third_parties"),
     [
-        ("", ["6201", "6202"], ["4321", "6202"]),  # a class may be at both
-        ("x", [], ["6201", "6202", "4321"]),  # the main activity first, each class once
+        # by default at third parties: the main activity first, each class once
+        ("", [], ["6201", "6202", "4321"]),
+        (
+            "x",
+            ["6201", "6202"],
+            ["4321", "6202"],
+        ),  # carried out at the office; a class may be at both
     ],
 )
-def test_anexa_4_places_the_activities_by_the_registered_office(
-    no_activity, at_office, at_third_parties
+def test_anexa_4_places_the_activities_at_third_parties_unless_at_the_office(
+    activities_at_office, at_office, at_third_parties
 ):
     values = {
         "caen_activities": ACTIVITIES,
         "caen_third_party": "4321 Lucrări de instalații electrice\n6202 Consultanță IT",
-        "office_without_activity": no_activity,
+        "activities_at_office": activities_at_office,
     }
     filled = form_values(document("onrc-anexa-4"), with_computed(values))
     assert [filled[f"clasa_caen.0.{i}"] for i in range(len(at_office))] == at_office
@@ -334,8 +336,8 @@ def test_anexa_4_places_the_activities_by_the_registered_office(
 def test_a_filled_anexa_4_is_read_back_as_the_activities(settings):
     template = document("onrc-anexa-4")
     docfill = DocFill(settings, templates=lambda: [template])
-    for no_activity, field in (("", "caen_activities"), ("x", "caen_third_party")):
-        values = {"caen_activities": ACTIVITIES, "office_without_activity": no_activity}
+    for at_office, field in (("x", "caen_activities"), ("", "caen_third_party")):
+        values = {"caen_activities": ACTIVITIES, "activities_at_office": at_office}
         pdf = docfill.fill(template, None, values, allow_missing=True).pdf
         analysis = docfill.analyze_bytes(pdf, "anexa4.pdf")
         assert analysis.extraction.fields[field].value.splitlines()[0].startswith("6201")
@@ -446,10 +448,12 @@ def test_the_act_names_the_persons_and_a_stranger_files_the_request(context):
     assert declaration["SubCalitate"] == "asociat și administrator"
     assert declaration["InmFirma"] == "EXEMPLU SOFT S.R.L."
     assert declaration["InmLocalitatea"] == "Mun. Cluj-Napoca"
-    assert [declaration[f"clasa_caen.0.{i}"] for i in range(3)] == ["6201", "6202", "6209"]
+    # the activities of the act, at third parties (3.2): nothing at the registered office (3.1)
+    assert [declaration[f"clasa_caen.1.{i}"] for i in range(3)] == ["6201", "6202", "6209"]
     assert (
-        declaration["clasa_caen_desc.0.0"] == "Activități de realizare a software-ului la comandă"
+        declaration["clasa_caen_desc.1.0"] == "Activități de realizare a software-ului la comandă"
     )
+    assert "clasa_caen.0.0" not in declaration
 
 
 def test_a_card_with_a_misread_cnp_still_goes_to_its_person(context):
@@ -466,6 +470,19 @@ def test_a_card_with_a_misread_cnp_still_goes_to_its_person(context):
     assert (statement.person, lawyer.person) == (1, REPRESENTATIVE)
 
 
+def test_the_beneficial_owner_declaration_is_filed_by_the_lawyer(context):
+    # the act alone says nobody else files it; merged with the lawyer's card, the lawyer does
+    docfill = context.docfill
+    act = docfill.analyze_bytes(make_docx(ACT_SOLE_ASSOCIATE), "act.docx")
+    assert act.extraction.fields["bo_filed_by"].value == "reprezentantul legal"
+    lawyer = docfill.analyze_bytes(
+        sworn_statement_docx(LAWYER), "avocat.docx", "declaratie_administrator"
+    )
+    combined = docfill.combine([act, lawyer])
+    assert combined.fields["bo_filed_by"].value == "împuternicit"
+    assert docfill.combine([act]).fields["bo_filed_by"].value == "reprezentantul legal"
+
+
 def test_without_an_act_the_first_identity_card_is_the_applicant(context):
     docfill = context.docfill
     analyses = [
@@ -476,25 +493,21 @@ def test_without_an_act_the_first_identity_card_is_the_applicant(context):
     assert [a.person for a in analyses] == [1, 2]
 
 
-def test_with_an_office_without_activity_anexa_4_lists_them_at_third_parties(context):
+def test_anexa_4_from_the_act_alone_lists_the_activities_at_third_parties(context):
     docfill = context.docfill
-    analyses = [
-        docfill.analyze_bytes(make_docx(ACT_SOLE_ASSOCIATE), "act.docx"),
-        docfill.analyze_bytes(make_docx(COMODAT), "comodat.docx"),
-    ]
-    combined = docfill.combine(analyses)
-    assert analyses[1].doc_type.doc_type == "dovada_sediu"
-    assert combined.fields["office_without_activity"].value == "x"
-    assert combined.fields["company_name"].value == "EXEMPLU VERDE S.R.L."  # the act's
-    combined.offer(
-        ExtractedField(name="caen_activities", value=ACTIVITIES, confidence=0.99, source="manual")
+    combined = docfill.combine([docfill.analyze_bytes(make_docx(ACT_TWO_ASSOCIATES), "act.docx")])
+    template = document("onrc-anexa-4")
+    declaration = read_form_values(docfill.fill(template, combined, allow_missing=True).pdf)
+    assert "clasa_caen.0.0" not in declaration  # 3.1. Sediu social/profesional
+    assert [declaration[f"clasa_caen.1.{i}"] for i in range(3)] == ["6201", "6202", "6209"]
+    # ticked in the review: carried out at the registered office
+    ticked = docfill.fill(template, combined, {"activities_at_office": "x"}, allow_missing=True)
+    declaration = read_form_values(ticked.pdf)
+    assert declaration["clasa_caen.0.0"] == "6201" and "clasa_caen.1.0" not in declaration
+    rows = {row.name: row for row in field_rows(template, combined, 0.5)}
+    assert rows["activities_at_office"].value == "" and rows["activities_at_office"].kind == (
+        "checkbox"
     )
-    declaration = read_form_values(
-        docfill.fill(document("onrc-anexa-4"), combined, allow_missing=True).pdf
-    )
-    assert "clasa_caen.0.0" not in declaration
-    assert (declaration["clasa_caen.1.0"], declaration["clasa_caen.1.1"]) == ("6201", "6202")
-    assert "office_without_activity" in document("onrc-anexa-4").input_fields()
 
 
 @requires_tesseract
@@ -676,3 +689,58 @@ def test_the_page_offers_the_same_representative_types():
     page = wizard_page()
     assert all(f'"{kind}"' in page for kind in REPRESENTATIVE_TYPES)
     assert 'id="rep-input"' in page
+
+
+# --------------------------------------------------------------------------- the operation
+
+
+@pytest.mark.parametrize(
+    ("procedure", "ticked", "box", "other_box"),
+    [
+        ("srl.infiintare", "request_registration", "Box1", "Box2"),  # înmatriculare
+        ("srl.modificare", "request_mentions", "Box2", "Box1"),  # modificare
+        (None, None, None, None),  # no operation chosen: nothing ticked
+    ],
+)
+def test_the_operation_ticks_its_request_on_the_beneficial_owner_declaration(
+    settings, context, tmp_path, procedure, ticked, box, other_box
+):
+    settings = settings.model_copy(update={"output_dir": tmp_path / "out"})
+    templates = ["onrc-declaratie-beneficiari-reali"]
+    act = ("act.docx", make_docx(ACT_SOLE_ASSOCIATE), "application/octet-stream")
+    data = {"templates": templates, **({"procedure": procedure} if procedure else {})}
+    with TestClient(create_app(settings)) as client:
+        body = client.post("/wizard/analyze", files=[("files", act)], data=data).json()
+        rows = {row["name"]: row for row in body["rows"]}
+        by_hand = client.post(
+            "/wizard/reextract",
+            json={"templates": templates, "procedure": procedure, "documents": []},
+        ).json()
+        manual_rows = {row["name"]: row["value"] for row in by_hand["rows"]}
+        for request in ("request_registration", "request_mentions"):
+            expected = "x" if request == ticked else ""
+            assert rows[request]["value"] == expected and manual_rows[request] == expected
+        if ticked:
+            assert rows[ticked]["found"]["source"] == "default"  # can be unticked in the review
+        values = {name: row["value"] for name, row in rows.items() if row["value"]}
+        exported = client.post(
+            "/wizard/export",
+            json={
+                "templates": templates,
+                "procedure": procedure,
+                "values": values,
+                "allow_missing": True,
+                "legal_acknowledged": True,
+            },
+        ).json()
+        form = read_form_values((tmp_path / "out" / exported["files"][0]["filename"]).read_bytes())
+        if box:
+            assert box in form and other_box not in form
+        else:
+            assert "Box1" not in form and "Box2" not in form
+        # a document without the box is left alone (nothing "other" to show either)
+        alone = client.post(
+            "/wizard/analyze", files=[("files", act)], data={**data, "templates": ["onrc-anexa-4"]}
+        ).json()
+        assert "request_registration" not in {row["name"] for row in alone["rows"]}
+        assert "request_registration" not in {field["name"] for field in alone["other_fields"]}
