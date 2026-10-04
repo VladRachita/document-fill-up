@@ -47,6 +47,22 @@ doc_types:
         situat în declar că sunt de acord cu stabilirea sediului social profesional al firmei
         în imobilul proprietatea mea extras de carte funciară număr cadastral
 
+  - key: dovada_denumire
+    title: Dovada disponibilității denumirii
+    description: >
+      Dovada privind disponibilitatea și rezervarea denumirii firmei (Formular nr. 17),
+      emisă de Oficiul Național al Registrului Comerțului.
+    seeds:
+      - >
+        MINISTERUL JUSTIȚIEI OFICIUL NAȚIONAL AL REGISTRULUI COMERȚULUI Formular nr. 17 DOVADĂ
+        privind disponibilitatea și rezervarea denumirii firmei În temeiul art. 50 alin. (6) din
+        Legea nr. 265/2022 s-a procedat la verificarea disponibilității denumirii firmei
+        solicitată de în calitate de Rezervarea firmei este valabilă până la data Data emiterii
+      - >
+        Dovada disponibilitatii si rezervarii denumirii firmei verificarea si rezervarea
+        denumirii firmei s-au efectuat la optiunea si pe raspunderea solicitantului denumirea
+        rezervata nu este constitutiva de drepturi rezervarea firmei este valabila pana la data
+
   - key: hotarare_aga
     title: Hotărâre AGA / decizia asociatului unic
     description: >

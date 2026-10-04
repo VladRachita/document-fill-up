@@ -126,6 +126,9 @@ class StandardDocumentSpec(BaseModel):
     # One copy per person having any of these roles (e.g. ["board_role"]: a sworn statement for
     # each administrator), written with the plain person fields ({{ last_name }}...).
     per_person: list[str] = Field(default_factory=list, max_length=10)
+    # Fields asked in the review though no box prints them: they decide values that are printed
+    # (e.g. ["representative_type"]: a lawyer or a proxy writes "prin ... conform ...").
+    asks: list[str] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def _check(self) -> StandardDocumentSpec:
@@ -212,6 +215,8 @@ class StandardDocumentSpec(BaseModel):
             options["filled_when"] = {k: list(v) for k, v in self.filled_when.items()}
         if self.per_person:
             options["per_person"] = list(self.per_person)
+        if self.asks:
+            options["asks"] = list(self.asks)
         return options
 
     def checksum(self) -> str:
@@ -311,6 +316,10 @@ class StandardDocument(Base):
     def per_person(self) -> list[str]:
         return self.option("per_person", [])
 
+    @property
+    def asks(self) -> list[str]:
+        return self.option("asks", [])
+
     def pdf_field_names(self) -> list[str]:
         """Every PDF field this document fills (mapped fields, list cells, boxes)."""
         names = list(self.field_map) + [name for name in self.ticks if name not in self.field_map]
@@ -349,6 +358,7 @@ class StandardDocument(Base):
         from docfill.extraction.fields import PERSON_FIELDS, PERSON_PREFIXES
 
         names = expand(self.field_names())
+        names += [name for name in self.asks if name not in names]
         if not self.per_person:
             return names
         names += [role for role in self.per_person if role not in names]

@@ -19,11 +19,17 @@ from pydantic import BaseModel, Field, model_validator
 
 from docfill.app import App
 from docfill.errors import MissingFieldsError
-from docfill.extraction.fields import MAX_PERSONS, person_prefix
+from docfill.extraction import merge_extractions
+from docfill.extraction.fields import (
+    MAX_PERSONS,
+    REPRESENTATIVE,
+    REPRESENTATIVE_TYPES,
+    person_prefix,
+)
 from docfill.knowledge import ProcedureSpec, RuleResult
 from docfill.learning import Review, ReviewedDocument, reviewed_fields_from_rows
-from docfill.models import ExtractionResult
-from docfill.pipeline import DocumentAnalysis
+from docfill.models import ExtractedField, ExtractionResult
+from docfill.pipeline import NAMED_PERSONS_DOC_TYPES, NO_PERSON_DOC_TYPES, DocumentAnalysis
 from docfill.templates import TemplateRepository
 from docfill.templates.models import StandardDocument
 from docfill.wizard import (
@@ -62,8 +68,10 @@ class DocumentText(BaseModel):
     text: str = Field(max_length=MAX_DOCUMENT_CHARS)
     doc_type: str | None = None
     detected_type: str | None = None
-    # Whose document it is: 1 = the applicant, 2 or 3 = another person (shareholder...).
-    person: int = Field(default=1, ge=1, le=MAX_PERSONS)
+    # Whose document it is: 1 = the applicant, 2 or 3 = another person (shareholder...), 0 = the
+    # representative filing the request (avocat / împuternicit). Ignored for documents that name
+    # their persons themselves (act constitutiv) or none (proof of the firm name / office).
+    person: int = Field(default=1, ge=REPRESENTATIVE, le=MAX_PERSONS)
 
 
 class ReextractIn(_Templates):
@@ -117,7 +125,7 @@ def _document_json(analysis: DocumentAnalysis) -> dict[str, Any]:
         "type_confidence": prediction.confidence if prediction else None,
         "type_method": prediction.method if prediction else None,
         "type_scores": prediction.scores if prediction else {},
-        "person": analysis.person or 1,
+        "person": analysis.person,
     }
 
 
@@ -216,30 +224,67 @@ def register_wizard(
 
     @app.get("/doctypes", tags=["wizard"])
     def doc_types() -> list[dict[str, str]]:
-        """Document types docfill can recognise (built-in and taught in the knowledge base)."""
+        """Document types docfill can recognise (built-in and taught in the knowledge base).
+        ``persons``: ``one`` (the document is one person's), ``named`` (it names its persons
+        itself: an act constitutiv) or ``none`` (it is about no person of the request)."""
         return [
-            {"name": d.name, "label": d.label, "description": d.description}
+            {
+                "name": d.name,
+                "label": d.label,
+                "description": d.description,
+                "persons": "named"
+                if d.name in NAMED_PERSONS_DOC_TYPES
+                else "none"
+                if d.name in NO_PERSON_DOC_TYPES
+                else "one",
+            }
             for d in docfill.classifier.types().values()
         ]
 
     @app.post("/wizard/analyze", tags=["wizard"])
     def analyze(
         repo: Repo,
-        files: Annotated[list[UploadFile], File()],
+        files: Annotated[list[UploadFile] | None, File()] = None,
         templates: Annotated[list[str] | None, Form()] = None,
         template: Annotated[str | None, Form()] = None,
         procedure: Annotated[str | None, Form()] = None,
+        representative: Annotated[list[UploadFile] | None, File()] = None,
+        representative_type: Annotated[str | None, Form()] = None,
     ) -> dict[str, Any]:
         """Step 2: read + sanitize each file, detect its type, extract fields for the chosen
-        reference documents (and the procedure's own fields)."""
+        reference documents (and the procedure's own fields). ``representative``: the identity
+        card of the lawyer / proxy filing the request, given apart in step 1 (it fills "Filed
+        by" and the contact person, never a person); ``representative_type``: lawyer or proxy,
+        as chosen with it."""
         names = [n for n in [template, *(templates or [])] if n]
         if not names:
             raise HTTPException(422, "choose at least one reference document")
+        if not files and not representative:
+            raise HTTPException(422, "add at least one file to read")
+        if representative_type and representative_type not in REPRESENTATIVE_TYPES:
+            raise HTTPException(422, f"representative_type: one of {list(REPRESENTATIVE_TYPES)}")
         chosen = load(repo, list(dict.fromkeys(names)))
         spec = procedure_of(procedure)
-        uploads = [read_upload(upload, settings.max_file_size) for upload in files]
+        uploads = [read_upload(upload, settings.max_file_size) for upload in files or []]
         analyses = [docfill.analyze_bytes(data, name) for name, data in uploads]
+        for upload in representative or []:
+            name, data = read_upload(upload, settings.max_file_size)
+            analysis = docfill.analyze_bytes(data, name)
+            analysis.person = REPRESENTATIVE  # given as the representative's: kept as such
+            analyses.append(analysis)
         extraction = docfill.combine(analyses)  # assigns each identity card to a person
+        if representative_type:  # chosen in step 1: writes "prin ... conform ..." (derived)
+            chosen_type = ExtractionResult()
+            chosen_type.offer(
+                ExtractedField(
+                    name="representative_type",
+                    value=representative_type,
+                    confidence=1.0,
+                    source="manual",
+                    evidence="chosen with the representative's identity card",
+                )
+            )
+            extraction = merge_extractions([extraction, chosen_type])
         return {
             "documents": [_document_json(a) for a in analyses],
             **review(chosen, extraction, spec),

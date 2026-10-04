@@ -88,6 +88,9 @@
   .drop.over { border-color: var(--accent); background: var(--accent-weak); }
   .drop strong { display: block; }
   .drop input { display: none; }
+  .drop.small { padding: 12px; }
+  .rep { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 12px; }
+  .rep h3 { font-size: 15px; margin: 0 0 4px; }
   ul.files { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
   ul.files li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
   ul.files li span.name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -277,6 +280,18 @@
           <span class="muted" style="font-size:13px">.pdf · .docx · .doc · .png · .jpg · .jpeg · photos and scans are read with OCR</span>
         </label>
         <ul class="files" id="file-list"></ul>
+        <div class="rep" id="rep-box">
+          <h3>Representative filing the request <span class="muted">(optional)</span></h3>
+          <p class="hint">A lawyer or a proxy who files the request for the company: their data is kept apart, in “Filed by” (XII) and the contact person (VII), never as a person of the company.</p>
+          <label class="drop small" id="rep-drop">
+            <input type="file" id="rep-input" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
+            <strong>Their identity card</strong>
+            <span class="muted" style="font-size:13px">photo, scan or PDF</span>
+          </label>
+          <ul class="files" id="rep-list"></ul>
+          <p class="pick-label" style="margin-top:10px">The representative is</p>
+          <div class="picker" id="rep-type" role="group" aria-label="The representative is"></div>
+        </div>
       </div>
     </div>
     <div class="actions">
@@ -400,7 +415,14 @@ const GROUPS = [
   ["changes", "Changes (mențiuni)"], ["closure", "Closure (radiere)"], ["contact", "Contact person"],
   ["billing", "Billing"], ["filer", "Filed by"], ["parents", "Parents"], ["other", "Other"],
 ];
-const PERSONS = [[1, "Person 1 (applicant)"], [2, "Person 2"], [3, "Person 3"]];
+// Who the representative is (the options of the "representative_type" field): asked every time.
+const REPRESENTATIVE_TYPES = [
+  ["avocat (împuternicire avocațială)", "Lawyer", "împuternicire avocațială"],
+  ["împuternicit (procură specială autentică)", "Proxy", "procură specială autentică"],
+  ["împuternicit (procură generală autentică)", "Proxy", "procură generală autentică"],
+];
+const PERSONS = [[1, "Person 1 (applicant)"], [2, "Person 2"], [3, "Person 3"],
+  [0, "Representative filing the request (avocat / împuternicit)"]];
 const LIST_HINTS = {
   caen_activities: "6201 Activități de realizare a soft-ului la comandă",
   control_members: "1. POPESCU ANA, CNP ..., domiciliată în ..., expert contabil",
@@ -414,7 +436,7 @@ const SEVERITY = { error: ["bad", "Error"], warning: ["warn", "Warning"], info: 
 
 const state = {
   step: 1, maxStep: 1, templates: [], selected: [], docTypes: [],
-  files: [], filesDirty: true, documents: [], activeDoc: 0,
+  files: [], repFiles: [], repType: "", filesDirty: true, documents: [], activeDoc: 0,
   rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {},
   previews: [], activePreview: 0, filter: "attention",
   filename: "", filenameTouched: false, allowMissing: false, learned: null,
@@ -489,6 +511,9 @@ const pct = (value) => `${Math.round(value * 100)}%`;
 const sizeLabel = (bytes) => bytes < 1048576 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 const describeSource = (c) => SOURCE_LABELS[c.source] || c.source;
 const docTypeLabel = (name) => (state.docTypes.find((d) => d.name === name) || { label: name || "unknown" }).label;
+// "one": the document is one person's; "named": it names the persons of the company (act
+// constitutiv); "none": it is about no person of the request (proof of the firm name / office).
+const docTypePersons = (name) => (state.docTypes.find((d) => d.name === name) || {}).persons || "one";
 const rowByName = (name) => state.rows.find((r) => r.name === name);
 const labelFor = (name) => (rowByName(name) || { label: name }).label;
 const valueOf = (name) => (state.values[name] || "").trim();
@@ -739,7 +764,10 @@ function renderUploadHint() {
   put($("upload-hint"),
     el("p", { class: "hint", style: "margin-bottom:4px" }, `For the ${chosen.length === 1 ? "document" : `${chosen.length} documents`} you ticked, upload:`),
     el("ul", {},
-      el("li", {}, el("strong", {}, "The identity card (CI) of the applicant"), ": the person signing the documents (person 1). A photo, a scan or a PDF."),
+      el("li", {}, el("strong", {}, "The identity card (CI) of the applicant"), ": the person signing the documents (person 1). A photo, a scan or a PDF. ",
+        "With the ", el("strong", {}, "act constitutiv"), " (Word or PDF), its administrator is the applicant and its associates, administrators and beneficial owners are persons 1-3: their data is read from the act."),
+      el("li", {}, "If a lawyer or a proxy files the request: ", el("strong", {}, "their identity card"),
+        " in the ", el("em", {}, "Representative"), " box below, and whether they are a lawyer or a proxy."),
       others ? el("li", {}, el("strong", {}, "The identity card of every other person involved"),
         roles.length ? ` (each ${roles.join(", ")})` : "",
         ": one file per person, up to 3 people; they become persons 2 and 3 in the order you add them (you can change it in the next step).") : null,
@@ -753,9 +781,10 @@ function toggleTemplate(name, on) {
 
 function updateScanButton() {
   const nothing = !state.selected.length;
-  $("scan-btn").disabled = nothing || !state.files.length;
+  const noFiles = !state.files.length && !state.repFiles.length;
+  $("scan-btn").disabled = nothing || noFiles;
   $("manual-btn").disabled = nothing;
-  $("scan-btn").title = nothing ? "Tick at least one document to fill" : !state.files.length ? "Add the files to read" : "";
+  $("scan-btn").title = nothing ? "Tick at least one document to fill" : noFiles ? "Add the files to read" : "";
 }
 
 function addFiles(fileList) {
@@ -776,6 +805,37 @@ function renderFiles() {
   updateScanButton();
 }
 
+// The representative (lawyer / proxy): their identity card apart from the other files, and
+// whether they are a lawyer or a proxy (asked every time, never remembered).
+function setRepresentative(fileList) {
+  const file = fileList && fileList[0];
+  if (!file) return;
+  state.repFiles = [file];
+  state.filesDirty = true;
+  renderRepresentative();
+}
+
+function renderRepresentative() {
+  put($("rep-list"), state.repFiles.map((file) =>
+    el("li", {},
+      el("span", { class: "name", title: file.name }, file.name),
+      el("span", { class: "size" }, sizeLabel(file.size)),
+      el("button", { type: "button", class: "btn link small", "aria-label": `Remove ${file.name}`,
+                     onclick: () => { state.repFiles = []; state.filesDirty = true; renderRepresentative(); } }, "Remove"))));
+  put($("rep-type"), REPRESENTATIVE_TYPES.map(([value, title, basis]) => el("button", {
+    type: "button", class: "pick", "aria-pressed": String(state.repType === value), title: value,
+    onclick: () => { state.repType = state.repType === value ? "" : value; state.filesDirty = true; renderRepresentative(); },
+  }, el("strong", {}, title), el("span", {}, basis))));
+  updateScanButton();
+}
+
+// Lawyer or proxy, chosen in step 1: a value set by the user, kept by every re-extraction.
+function keepRepresentativeType() {
+  if (!state.repType) return;
+  state.values.representative_type = state.repType;
+  state.manual.representative_type = true;
+}
+
 async function scan() {
   showBanner("");
   const button = $("scan-btn");
@@ -787,11 +847,14 @@ async function scan() {
       state.selected.forEach((name) => form.append("templates", name));
       if (state.procedure) form.append("procedure", state.procedure);
       state.files.forEach((file) => form.append("files", file, file.name));
+      state.repFiles.forEach((file) => form.append("representative", file, file.name));
+      if (state.repType) form.append("representative_type", state.repType);
       const result = await (await api("/wizard/analyze", { method: "POST", body: form })).json();
       state.documents = result.documents;
       state.activeDoc = 0;
       state.filesDirty = false;
       state.manual = {}; state.derivedFrom = {};
+      keepRepresentativeType();
       applyReview(result);
     } else {
       await reextract();
@@ -810,6 +873,7 @@ async function fillManually() {
   showBanner("");
   try {
     state.documents = []; state.filesDirty = true; state.manual = {}; state.derivedFrom = {};
+    keepRepresentativeType();
     applyReview(await (await postJSON("/wizard/reextract", { templates: state.selected, procedure: state.procedure, documents: [] })).json());
     unlock(4);
     goTo(3);
@@ -832,7 +896,7 @@ function applyReview(result) {
 }
 
 function documentsPayload() {
-  return state.documents.map((d) => ({ source: d.source, text: d.text, doc_type: d.doc_type, detected_type: d.detected_type, person: d.person || 1 }));
+  return state.documents.map((d) => ({ source: d.source, text: d.text, doc_type: d.doc_type, detected_type: d.detected_type, person: d.person ?? 1 }));
 }
 
 let reextractSeq = 0;
@@ -867,19 +931,26 @@ function renderDocuments() {
     onchange: (event) => { doc.doc_type = event.target.value; renderDocuments(); scheduleReextract(); } },
     state.docTypes.map((t) => el("option", { value: t.name, selected: t.name === doc.doc_type }, t.label)));
   const corrected = doc.doc_type !== doc.detected_type;
-  const person = el("select", { id: "doc-person-select", "aria-label": "Whose document",
-    title: "Each identity card (or personal statement) fills one person; documents with the same CNP go to the same person",
-    onchange: (event) => { doc.person = Number(event.target.value); scheduleReextract(); } },
-    PERSONS.map(([value, label]) => el("option", { value, selected: value === (doc.person || 1) }, label)));
+  const persons = docTypePersons(doc.doc_type);
+  const person = persons === "named"
+    ? el("span", { class: "pill accent", title: "The associates, administrators and beneficial owners it names become persons 1-3 (person 1: the administrator who signs); an identity card of anybody else is the representative filing the request" }, "names the persons of the company")
+    : persons === "none"
+      ? el("span", { class: "pill", title: "The persons in this document (the owner of the premises…) are not persons of the request" }, "about the company only")
+      : el("select", { id: "doc-person-select", "aria-label": "Whose document",
+          title: "Each identity card (or personal statement) fills one person; documents with the same CNP go to the same person. The representative's card fills “Filed by” and the contact person",
+          onchange: (event) => { doc.person = Number(event.target.value); scheduleReextract(); } },
+          PERSONS.map(([value, label]) => el("option", { value, selected: value === (doc.person ?? 1) }, label)));
   put($("doc-type"),
     el("label", { for: "doc-type-select", class: "muted", style: "font-size:13px" }, "Document type"),
     select,
-    el("label", { for: "doc-person-select", class: "muted", style: "font-size:13px" }, "Person"),
+    persons === "one" ? el("label", { for: "doc-person-select", class: "muted", style: "font-size:13px" }, "Person") : null,
     person,
     doc.type_method === "form fields"
       ? el("span", { class: "pill ok", title: "The form's fields match a registered standard document" }, "recognised from its form fields")
-      : el("span", { class: `pill ${confidenceClass(doc.type_confidence || 0)}`, title: "Detected by the document classifier (ML)" },
-          `detected: ${docTypeLabel(doc.detected_type)} · ${pct(doc.type_confidence || 0)}`),
+      : doc.type_method === "title" && !corrected
+        ? el("span", { class: "pill ok", title: "The document's title says what it is" }, `recognised from its title: ${docTypeLabel(doc.detected_type)}`)
+        : el("span", { class: `pill ${confidenceClass(doc.type_confidence || 0)}`, title: "Detected by the document classifier (ML)" },
+            `detected: ${docTypeLabel(doc.detected_type)} · ${pct(doc.type_confidence || 0)}`),
     corrected ? el("span", { class: "pill accent" }, "corrected by you: the classifier will learn it") : null);
 
   const redactions = Object.entries(doc.redactions || {}).map(([kind, count]) => `${count} ${kind.replace("_", " ")}`);
@@ -1361,11 +1432,12 @@ function download(file) {
 }
 
 function restart() {
-  Object.assign(state, { step: 1, maxStep: 1, files: [], filesDirty: true, documents: [], activeDoc: 0,
+  Object.assign(state, { step: 1, maxStep: 1, files: [], repFiles: [], repType: "", filesDirty: true, documents: [], activeDoc: 0,
     rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {}, previews: [],
     activePreview: 0, filename: "", filenameTouched: false, allowMissing: false, legal: [], legalAck: false });
   put($("save-result"));
   renderFiles();
+  renderRepresentative();
   renderSteps();
   showBanner("");
 }
@@ -1375,6 +1447,12 @@ function restart() {
 function init() {
   const drop = $("drop");
   $("file-input").addEventListener("change", (event) => { addFiles(event.target.files); event.target.value = ""; });
+  $("rep-input").addEventListener("change", (event) => { setRepresentative(event.target.files); event.target.value = ""; });
+  const repDrop = $("rep-drop");
+  repDrop.addEventListener("dragover", (event) => { event.preventDefault(); repDrop.classList.add("over"); });
+  repDrop.addEventListener("dragleave", () => repDrop.classList.remove("over"));
+  repDrop.addEventListener("drop", (event) => { event.preventDefault(); repDrop.classList.remove("over"); setRepresentative(event.dataTransfer.files); });
+  renderRepresentative();
   drop.addEventListener("dragover", (event) => { event.preventDefault(); drop.classList.add("over"); });
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
   drop.addEventListener("drop", (event) => { event.preventDefault(); drop.classList.remove("over"); addFiles(event.dataTransfer.files); });

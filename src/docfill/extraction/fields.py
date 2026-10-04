@@ -8,7 +8,8 @@ accent-insensitively ("Județ" == "judet"); multilingual labels printed on ident
 
 Several people can be involved (shareholders, beneficial owners, board members): person 1 is the
 applicant and uses the plain fields (``last_name``...); persons 2 and 3 use the same fields
-prefixed ``p2_`` / ``p3_``. Each uploaded identity card fills one person.
+prefixed ``p2_`` / ``p3_``. Each uploaded identity card fills one person, or the representative
+(avocat / împuternicit) who files the request: their card fills ``filer_*`` and ``contact_*``.
 """
 
 from __future__ import annotations
@@ -70,6 +71,15 @@ class FieldSpec:
     max_length: int = 120
     # The values a person picks from (shown as a list in the wizard).
     options: tuple[str, ...] = ()
+
+
+# A lawyer (împuternicire avocațială) or a proxy with a power of attorney (procură autentică):
+# the options of ``representative_type``, see derive.py for what each one writes in the forms.
+REPRESENTATIVE_TYPES = (
+    "avocat (împuternicire avocațială)",
+    "împuternicit (procură specială autentică)",
+    "împuternicit (procură generală autentică)",
+)
 
 
 def _f(name, label, kind, group, synonyms=(), max_length=120, options=()) -> FieldSpec:
@@ -728,6 +738,17 @@ _SPECS = [
         "closure",
     ),
     # ---------------------------------------------------------------- filed by (XII)
+    # Who the representative filing the request is: asked each time, never remembered (it
+    # decides "prin ... conform ..." of IV and "în calitate de ... conform ..." of XII).
+    _f(
+        "representative_type",
+        "Representative filing the request is",
+        "text",
+        "filer",
+        (),
+        80,
+        REPRESENTATIVE_TYPES,
+    ),
     _f("filer_last_name", "Filed by: last name", "name", "filer", (), 80),
     _f("filer_first_name", "Filed by: first name", "name", "filer", (), 80),
     _f("filer_id_type", "Filed by: ID document type", "short", "filer", (), 20),
@@ -1001,6 +1022,30 @@ PERSON_BASE = (
 )
 PERSON_ROLES = tuple(spec.name for spec in _ROLE_SPECS)
 PERSON_FIELDS = PERSON_BASE + PERSON_ROLES
+
+# The representative (avocat / împuternicit) who files the request for the company: not one of
+# the persons of the company. Their identity card fills "Filed by" (XII) and the contact person
+# (VII) instead of a person.
+REPRESENTATIVE = 0
+REPRESENTATIVE_FIELDS: dict[str, tuple[str, ...]] = {
+    "last_name": ("filer_last_name", "contact_last_name"),
+    "first_name": ("filer_first_name", "contact_first_name"),
+    "cnp": ("filer_cnp",),
+    "id_type": ("filer_id_type",),
+    "id_series": ("filer_id_series",),
+    "id_number": ("filer_id_number",),
+    "city": ("contact_city",),
+    "street": ("contact_street",),
+    "street_number": ("contact_street_number",),
+    "building": ("contact_building",),
+    "entrance": ("contact_entrance",),
+    "floor": ("contact_floor",),
+    "apartment": ("contact_apartment",),
+    "region": ("contact_county",),
+    "postal_code": ("contact_postal_code",),
+    "phone": ("contact_phone",),
+    "email": ("contact_email",),
+}
 
 
 def person_prefix(person: int) -> str:

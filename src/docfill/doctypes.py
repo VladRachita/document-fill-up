@@ -20,6 +20,25 @@ from functools import lru_cache
 
 UNKNOWN = "other"
 MIN_CONFIDENCE = 0.4
+TITLE_CONFIDENCE = 0.95
+
+# Documents that say what they are in their title (accent-free, lower case, at the start of a
+# line near the top). The title decides before the classifier, whose probabilities are spread
+# thin over many types: a long act constitutiv scores ~0.2.
+TITLES: tuple[tuple[str, str], ...] = (
+    ("act_constitutiv", r"^act(?:ul)?\s+constitutiv\b|^statut(?:ul)?\s+societatii\b"),
+    ("dovada_denumire", r"\bdisponibilitatea\s+(?:si\s+rezervarea\s+)?denumirii\s+firmei\b"),
+    (
+        "dovada_sediu",
+        r"^contract(?:ul)?\s+de\s+(?:comodat|inchiriere|locatiune|sublocatiune|sub-?inchiriere)\b",
+    ),
+    (
+        "hotarare_aga",
+        r"^hotararea?\s+(?:nr\.?\s*\S+\s+)?(?:a\s+)?adunarii\s+generale|^decizi[ae]\s+"
+        r"(?:nr\.?\s*\S+\s+)?(?:a\s+)?asociatului\s+unic",
+    ),
+)
+_TITLE_LINES = 12
 
 
 @dataclass(frozen=True)
@@ -224,7 +243,7 @@ def seed_examples(
 class Prediction:
     doc_type: str
     confidence: float
-    method: str  # "classifier" | "form fields" | "user"
+    method: str  # "classifier" | "title" | "form fields" | "user"
     scores: dict[str, float] = field(default_factory=dict)
 
     @property
@@ -297,7 +316,19 @@ class DocTypeClassifier:
             self._trained_on = None
             self._fit()
 
+    def by_title(self, text: str) -> str | None:
+        """The document type its title names (only a type the classifier knows)."""
+        lines = [line for line in text.splitlines() if line.strip()][:_TITLE_LINES]
+        head = "\n".join(" ".join(normalize_text(line).split()) for line in lines)
+        known = self.types()
+        for doc_type, pattern in TITLES:
+            if doc_type in known and re.search(pattern, head, re.M):
+                return doc_type
+        return None
+
     def predict(self, text: str) -> Prediction:
+        if titled := self.by_title(text):
+            return Prediction(titled, TITLE_CONFIDENCE, "title")
         with self._lock:
             self._fit()
             model = self._model

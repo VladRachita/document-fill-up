@@ -102,7 +102,7 @@ _CNP_LABELLED = re.compile(
     r"\bCNP\b[\s:.]*(?P<token>(?:[\dOoQDIl|!LZzSsGTB]\s?){12}[\dOoQDIl|!LZzSsGTB])(?![\dA-Za-z])"
 )
 _SERIES_NUMBER = re.compile(
-    r"\bSERIA\s*[:.]?\s*(?P<series>[A-Z]{2})\s*(?:NR|N[RO])\s*[:.]?\s*(?P<number>\d{6,7})\b",
+    r"\bSERIA\s*[:.]?\s*(?P<series>[A-Z]{2})\s*(?:NR|N[ROA])\s*[:.]?\s*(?P<number>\d{6,7})\b",
     re.IGNORECASE,
 )
 _VALIDITY = re.compile(
