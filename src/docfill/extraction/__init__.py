@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping
 
 from docfill.config import Settings, get_settings
-from docfill.extraction import idcard
+from docfill.extraction import cei, idcard
 from docfill.extraction.articles import EXTRACTORS
 from docfill.extraction.clauses import extract_clauses
 from docfill.extraction.derive import complete_values, derive_fields
@@ -51,6 +51,8 @@ class FieldExtractor:
     ) -> list[ExtractedField]:
         if doc_type in EXTRACTORS:  # company documents: their own reader (see articles.py)
             found = EXTRACTORS[doc_type](document.text, document.source)
+        elif doc_type == "id_card" and cei.is_export(document.text):  # electronic identity card
+            found = cei.extract(document.text, document.source)
         else:
             learned = self.learned_labels(doc_type) if self.learned_labels else None
             found = extract_labeled(document.text, document.source, doc_type, learned)

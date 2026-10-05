@@ -15,6 +15,7 @@ from difflib import get_close_matches
 from docfill import names
 from docfill.extraction.fields import FIELDS, FieldSpec
 from docfill.extraction.text_utils import fold
+from docfill.lexicon import normalize
 from docfill.models import ExtractedField
 from docfill.ro import office_doubt, repair_county_codes
 
@@ -70,11 +71,12 @@ def repair_text(text: str) -> str:
 
 
 def repair(spec: FieldSpec, value: str) -> str:
-    """The repair that fits the field: names, then places / addresses / the issuing office."""
+    """The repair that fits the field: names, then places / addresses / the issuing office. The
+    cedilla letters of old encodings (``ş``, ``ţ``) become the Romanian ``ș``, ``ț``."""
     if spec.kind == "name":
-        return repair_name(value)
+        return repair_name(normalize(value))
     if spec.kind in ("place", "address") or spec.name.endswith("id_issued_by"):
-        return repair_text(value)
+        return repair_text(normalize(value))
     return value
 
 

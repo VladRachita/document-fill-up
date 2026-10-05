@@ -12,9 +12,10 @@ knows each procedure (forms, documents of the file, legal checks with the articl
 from) and can be **fed and corrected over time**: laws, rules, procedures and document types,
 each versioned and verified by a named person (see [Legal knowledge](#legal-knowledge-romania)).
 
-The source is typically the **Romanian identity card (CI)** of each person involved (a birth
-certificate, an act constitutiv, a sworn statement or an already filled form can be added); the
-results are the files of the dossier, each saved as its own PDF:
+The source is typically the **Romanian identity card** (CI, or the electronic CEI) of each person
+involved (a birth certificate, an act constitutiv, a sworn statement or an already filled form
+can be added); the results are the files of the dossier, each saved as its own PDF (the act
+constitutiv of an SRL as a Word document, to edit before it is signed):
 
 | Result | What it is |
 |---|---|
@@ -24,7 +25,7 @@ results are the files of the dossier, each saved as its own PDF:
 | **ONRC Formular nr. 3** | declarație privind beneficiarii reali (Legea nr. 129/2019) - official PDF form |
 | **Declarație pe proprie răspundere - administrator** | one for each administrator, in the wording filers submit |
 | **Act constitutiv SA (sistem unitar)** | the ONRC model, filled: founders, capital and shares, board, director, censors |
-| **Act constitutiv SRL - asociat unic** | the model filers use, filled: the firm (proof of the name), the registered office (comodat), CAEN activities, capital, the sole associate, the administrator, the beneficial owner |
+| **Act constitutiv SRL - asociat unic** | the model filers use, filled: the firm (proof of the name), the registered office (comodat), CAEN activities, capital, the sole associate, the administrator, the beneficial owner - a **Word document (.docx)** laid out like the model |
 
 These are the **[reference documents](#reference-documents)**: kept exactly as they were given and
 checked by the tests after every change.
@@ -181,6 +182,18 @@ digit match. The second line of the zone is read on its own when a tilted photog
 first, and a lost or extra character in it is put back when exactly one reading matches. The
 printed names are confirmed against the MRZ.
 
+**Electronic identity card (CEI).** The PDF the **RO CEI Reader** application exports from the
+card is recognised by its footer (or by the labels only it prints) and read label by label:
+`Nume de familie`, `Prenume`, `Cetățenie: ROU` (*Română*), `Sex`, `CNP`, `Data nașterii`,
+`Locul nașterii: Jud.BV Mun.Brașov` (place and county of birth), `Număr document: BV1234567`
+(series `BV`, number `1234567`), `Data emiterii`, `Data expirării`, `Autoritatea emitentă`
+(printed over two lines) and `Domiciliu` (split like the card's). The document is written as
+`CEI` (*identificat prin CEI, seria BV, nr. 1234567*). The export's text layer runs some words
+together for one PDF reader (`Str.Exemplelornr.7Bl.B3`): the reader that keeps the blanks is
+used, and the parts of an address are separated again if they still touch. The cedilla letters
+of old encodings (`Braşov`) are written with the Romanian comma below (`Brașov`), on every
+identity card.
+
 **CNP.** It is read twice: as printed, and rebuilt from the MRZ (on the card with two lines its
 optional field holds the CNP without the date of birth, which the zone gives). The control digit
 is verified; letters OCR took for digits (`l` for 1, `O` for 0) are put back when that makes the
@@ -289,12 +302,18 @@ paragraph without blanks copied verbatim:
 | In the act | Comes from |
 |---|---|
 | the firm, `conform dovezii privind disponibilitatea firmei nr. … din …` | the proof of the firm name (ONRC, Formular nr. 17) |
-| `Art. 1.4. — Sediul societății este în …` | the proof of the registered office (contract de comodat / închiriere): `Ale. lancu`, `BI. 12`, `Timisoara` as OCR reads a scan are written `Ale. Iancu`, `bl. 12`, `Timișoara` |
+| `Art. 1.4. — Sediul societății este în …` | the proof of the registered office (contract de comodat / închiriere): the premises `situat în …`; `Ale. lancu`, `BI. 12`, `Et. Vil`, `Timisoara` as OCR reads a scan are written `Ale. Iancu`, `bl. 12`, `et. VII`, `Timișoara`. OCR may also misread the words around the address (`imobllul sltuat Tn`), or the title (the contract is then recognised by its parties, *comodant* and *comodatar*): the first address after the premises is taken, at a lower confidence |
 | `Art. 2.1.` the object of activity, the main domain (group and class), the main and the secondary activities | the CAEN activities typed in the review, the main one first; the object is proposed from the main activity and can be written otherwise |
 | `Art. 3.1.` the share capital, the number of părți sociale (`50 de părți sociale`) and their nominal value (computed) | typed in the review |
 | `Asociat unic:`, `Art. 3.2.` and `Art. 10.` (the beneficial owner, 100%) | the sole associate's identity card |
 | `Art. 6.1.` the administrator | the same person, or the administrator's identity card |
 | `Art. 12.1.` and `Data:` | the date of the documents (today, editable) |
+
+The act is created as a **Word document** (`.docx`), so it can still be edited before it is
+signed; every other document is a PDF. It is laid out like the model: Times New Roman 12,
+justified paragraphs, the title and the chapters centred in bold, the number of each article in
+bold, the firm, the object of activity, the associate and the administrator in bold, the date
+and the signature at the end.
 
 ## Several persons
 
@@ -475,7 +494,9 @@ optional_fields: [building, entrance, floor, apartment]
 ```
 
 **Text documents** with `{{ placeholders }}` (`# ` headings, `---` rules, filters `upper`,
-`lower`, `title`, `{{ today }}`) rendered to PDF with ReportLab. A line can start with a
+`lower`, `title`, `{{ today }}`) rendered to PDF with ReportLab, or to Word with python-docx when
+the document says `output: docx` (an act the filer edits before signing; `bold: [company_name,
+…]` names the fields whose values the Word document writes in bold). A line can start with a
 **condition** so one document covers the variants of a model: `[[p2_shares]] …` (the field has
 a value), `[[general_director|p2_general_director]] …` (any of them), `[[administration=
 administrator unic]] …` (this value), `[[!field]] …` (the opposite). `per_person: [board_role]`
@@ -544,7 +565,7 @@ docfill knowledge seed | list | show | add | verify | retire | export | ingest |
 | POST | `/wizard/analyze`, `/wizard/reextract` | Read, detect type, extract; re-extract after corrections |
 | POST | `/wizard/preview` | Live previews, validation problems, derived values |
 | POST | `/wizard/export` | Save one PDF per reference document and learn from the review |
-| GET | `/wizard/files/{name}`, `/learning/stats` | Download a saved PDF; what was learned |
+| GET | `/wizard/files/{name}`, `/learning/stats` | Download a saved document (PDF or Word); what was learned |
 | GET | `/knowledge` | The knowledge page (search, feed, verify, feedback) |
 | GET | `/knowledge/cases`, `/knowledge/procedures/{key}` | Legal forms, operations, procedures (forms, documents, rules) |
 | POST | `/knowledge/check` | Run a procedure's legal checks on values |

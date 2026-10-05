@@ -28,9 +28,10 @@ TITLE_CONFIDENCE = 0.95
 TITLES: tuple[tuple[str, str], ...] = (
     ("act_constitutiv", r"^act(?:ul)?\s+constitutiv\b|^statut(?:ul)?\s+societatii\b"),
     ("dovada_denumire", r"\bdisponibilitatea\s+(?:si\s+rezervarea\s+)?denumirii\s+firmei\b"),
-    (
+    (  # OCR may put a mark of the scan before the title ("| CONTRACT DE COMODAT")
         "dovada_sediu",
-        r"^contract(?:ul)?\s+de\s+(?:comodat|inchiriere|locatiune|sublocatiune|sub-?inchiriere)\b",
+        r"^[^a-z0]{0,4}contract(?:ul)?\s+de\s+(?:com[o0]dat|inchiriere|locatiune|sublocatiune"
+        r"|sub-?inchiriere)\b",
     ),
     (
         "hotarare_aga",
@@ -39,6 +40,13 @@ TITLES: tuple[tuple[str, str], ...] = (
     ),
 )
 _TITLE_LINES = 12
+# Documents recognised by words anywhere in them (accent-free, lower case, single blanks): the
+# "RO CEI Reader" export of an electronic identity card names the application in its footer.
+# A contract of loan for use names both its parties (comodant, comodatar) wherever its title is.
+SIGNATURES: tuple[tuple[str, str], ...] = (
+    ("id_card", r"\bro cei reader\b"),
+    ("dovada_sediu", r"\bcomodant(?:ul|ului)?\b.*\bcomodatar|\bcomodatar\w*\b.*\bcomodant"),
+)
 
 
 @dataclass(frozen=True)
@@ -62,6 +70,10 @@ _ID_CARD = (
     "ROU ROMÂNIA ROMANIA CARTE DE IDENTITATE IDENTITY CARD Nume Last name Prenume First name "
     "Cetățenie Nationality Sex Data nașterii Date of birth Locul nașterii Place of birth "
     "Domiciliu Address Emisă de Issued by Data expirării Date of expiry CNP IDROU<<",
+    "Nume de familie: Prenume: Cetățenie: ROU Sex: CNP: Data nașterii: Locul nașterii: Jud. Mun. "
+    "Număr document: Data emiterii: Data expirării: Autoritatea emitentă: SPCLEP Domiciliu: Jud. "
+    "Mun. Str. nr. Bl. sc. et. ap. Document foto Acest document este generat cu acordul "
+    "utilizatorului prin intermediul aplicației RO CEI Reader a MAI",
 )
 _BIRTH_CERTIFICATE = (
     "ROMÂNIA CERTIFICAT DE NAȘTERE CODUL NUMERIC PERSONAL SAALLZZNNNNNC Numele de familie "
@@ -151,8 +163,9 @@ DOC_TYPES: dict[str, DocType] = {
     for doc in (
         DocType(
             "id_card",
-            "Romanian identity card (CI)",
-            "Carte de identitate: name, CNP, domicile, ID series/number, MRZ",
+            "Romanian identity card (CI / CEI)",
+            "Carte de identitate (CI) or carte electronică de identitate (CEI, also the RO CEI "
+            "Reader export): name, CNP, domicile, ID series/number, MRZ",
             _ID_CARD,
         ),
         DocType(
@@ -317,12 +330,17 @@ class DocTypeClassifier:
             self._fit()
 
     def by_title(self, text: str) -> str | None:
-        """The document type its title names (only a type the classifier knows)."""
+        """The document type its title names, or a signature line in it (only a type the
+        classifier knows)."""
         lines = [line for line in text.splitlines() if line.strip()][:_TITLE_LINES]
         head = "\n".join(" ".join(normalize_text(line).split()) for line in lines)
         known = self.types()
         for doc_type, pattern in TITLES:
             if doc_type in known and re.search(pattern, head, re.M):
+                return doc_type
+        whole = " ".join(normalize_text(text).split())
+        for doc_type, pattern in SIGNATURES:
+            if doc_type in known and re.search(pattern, whole):
                 return doc_type
         return None
 

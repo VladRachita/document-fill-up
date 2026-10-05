@@ -17,6 +17,32 @@ from docfill.readers.ocr import ocr_image
 
 logger = logging.getLogger(__name__)
 
+# pdfium's text replaces pypdf's when it splits the same characters into this many more words.
+_MORE_WORDS = 1.25
+
+
+def _spaced(texts: list[str], data: bytes) -> list[str]:
+    """pypdf glues the words of some PDFs together ("Str.Exemplelornr.7Bl.B3" in the export of
+    an electronic identity card): where pdfium reads the same characters as clearly more words,
+    its text is used."""
+    try:
+        document = pdfium.PdfDocument(data)
+    except pdfium.PdfiumError:
+        return texts
+    try:
+        spaced = []
+        for index, text in enumerate(texts):
+            other = document[index].get_textpage().get_text_bounded()
+            other = other.replace("\r\n", "\n").replace("\r", "\n")
+            same = "".join(text.split()) == "".join(other.split())
+            more = len(other.split()) >= _MORE_WORDS * len(text.split())
+            spaced.append(other if text.strip() and same and more else text)
+        return spaced
+    except pdfium.PdfiumError:
+        return texts
+    finally:
+        document.close()
+
 
 def read_pdf(data: bytes, source: str, settings: Settings) -> RawDocument:
     try:
@@ -26,6 +52,7 @@ def read_pdf(data: bytes, source: str, settings: Settings) -> RawDocument:
         texts = [page.extract_text() or "" for page in reader.pages]
     except (PdfReadError, ValueError, KeyError, TypeError) as exc:
         raise DocumentReadError(f"{source}: invalid PDF ({exc})") from exc
+    texts = _spaced(texts, data)
 
     pages: list[Page] = []
     warnings: list[str] = []

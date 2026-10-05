@@ -391,10 +391,10 @@
         <div id="save-legal"></div>
         <div id="dossier"></div>
         <label for="filename" class="muted" style="font-size:13px">New file name</label>
-        <div class="filename"><input type="text" id="filename" autocomplete="off"><span>.pdf</span></div>
+        <div class="filename"><input type="text" id="filename" autocomplete="off"><span id="filename-ext">.pdf</span></div>
         <p class="hint" style="margin-top:6px" id="filename-hint"></p>
         <div class="actions" style="margin:12px 0 0">
-          <button class="btn primary" type="button" id="export-btn">Create PDF</button>
+          <button class="btn primary" type="button" id="export-btn">Create the document</button>
         </div>
         <div id="save-result"></div>
       </div>
@@ -419,7 +419,7 @@ const STEPS = [
   { title: "Documents", sub: "Procedure + sources" },
   { title: "Scan & clean", sub: "Check text and type" },
   { title: "Review fields", sub: "Correct values live" },
-  { title: "Save PDF", sub: "Choose a file name" },
+  { title: "Save", sub: "Choose a file name" },
 ];
 const SOURCE_LABELS = {
   label: "Label", learned: "Learned label", pattern: "Pattern", mrz: "Machine-readable zone",
@@ -719,6 +719,7 @@ function templateCard(t, form) {
   const badges = [
     form ? el("span", { class: `pill ${form.required ? "accent" : ""}` }, form.required ? "required in the file" : "if applicable") : null,
     (t.per_person || []).length ? el("span", { class: "pill accent", title: "One PDF for each person with this role" }, "one per administrator") : null,
+    t.output === "docx" ? el("span", { class: "pill", title: "Created as a Word document, to edit before signing" }, "Word (.docx)") : null,
     el("span", { class: "pill", title: `${t.required_fields.length} required` }, fieldCount(t)),
   ];
   return el("label", { class: `tpl ${on ? "on" : ""}`, for: `tpl-${t.name}` }, input,
@@ -1412,9 +1413,12 @@ function renderSave() {
   renderDossier($("dossier"));
   const input = $("filename");
   if (document.activeElement !== input) input.value = state.filename;
-  const names = previews.length > 1 ? previews.map((p) => `${state.filename || "document"}_${p.name}.pdf`) : [`${state.filename || "document"}.pdf`];
+  const ext = (p) => `.${p.output || "pdf"}`;
+  const names = previews.length > 1 ? previews.map((p) => `${state.filename || "document"}_${p.name}${ext(p)}`) : previews.map((p) => `${state.filename || "document"}${ext(p)}`);
+  const exts = [...new Set(previews.map(ext))];
+  $("filename-ext").textContent = exts.length === 1 ? exts[0] : "";
   $("filename-hint").textContent = `Creates ${names.join(", ")} in the server's output folder and downloads ${names.length > 1 ? "them" : "it"}. Existing files are never overwritten.`;
-  $("export-btn").textContent = previews.length > 1 ? `Create ${previews.length} PDFs` : "Create PDF";
+  $("export-btn").textContent = `Create ${documentsWord(previews.map((p) => p.output), previews.length)}`;
   updateExportButton();
   renderPreviewTabs("final-tabs", $("final-preview"));
 }
@@ -1458,6 +1462,14 @@ function updateExportButton() {
     (legalErrors().length > 0 && !state.legalAck);
 }
 
+// "PDF", "2 PDFs", "Word document", "3 documents": what the save step creates.
+function documentsWord(outputs, count, counted = false) {
+  const kinds = new Set(outputs.map((output) => output || "pdf"));
+  const word = kinds.size === 1 && kinds.has("pdf") ? "PDF" : kinds.size === 1 ? "Word document" : "document";
+  if (count === 1) return counted ? `1 ${word}` : word === "PDF" ? "PDF" : `the ${word}`;
+  return `${count} ${word === "PDF" ? "PDFs" : `${word}s`}`;
+}
+
 async function exportPdf() {
   showBanner("");
   const button = $("export-btn");
@@ -1473,7 +1485,7 @@ async function exportPdf() {
     const outcomes = Object.entries(learned.outcomes || {}).map(([k, n]) => `${n} ${k}`).join(", ");
     put($("save-result"),
       el("div", { class: "success" },
-        el("strong", {}, `${body.files.length} PDF${body.files.length === 1 ? "" : "s"} created ✓`),
+        el("strong", {}, `${documentsWord(body.files.map((file) => file.filename.split(".").pop()), body.files.length, true)} created ✓`),
         el("div", { class: "files-out" }, body.files.map((file) => el("div", {},
           el("a", { href: file.url, download: file.filename }, file.filename),
           el("span", { class: "muted" }, ` · ${file.title} · saved as `), el("code", {}, file.saved_to))))),

@@ -3,10 +3,12 @@ proof of the firm name, the proof of the registered office, the identity cards o
 associate and of the administrator, and the CAEN activities and share capital typed in the
 wizard. Every person and company here is fictitious."""
 
+import io
 import re
 
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from fastapi.testclient import TestClient
-from pypdf import PdfReader
 
 from docfill.api import create_app
 from docfill.app import build_app
@@ -15,7 +17,7 @@ from docfill.extraction.articles import extract_premises
 from docfill.extraction.derive import complete_values
 from docfill.extraction.fields import CONTROL_OPTIONS
 from docfill.knowledge import KnowledgeBase
-from docfill.pipeline import DocFill
+from docfill.pipeline import MEDIA_TYPES, DocFill
 from docfill.readers import read_bytes
 from docfill.samples import Person, sworn_statement_docx
 from docfill.templates import TemplateRepository, bundled_specs_dir, load_directory
@@ -54,15 +56,17 @@ POPESCU_CLAUSE = (
 )
 
 
-def act_text(pdf: bytes) -> str:
-    reader = PdfReader(__import__("io").BytesIO(pdf))
-    return " ".join(" ".join(page.extract_text() for page in reader.pages).split())
+def act_text(docx: bytes) -> str:
+    """The text of the act, a Word document, paragraph after paragraph."""
+    paragraphs = Document(io.BytesIO(docx)).paragraphs
+    return " ".join(" ".join(paragraph.text for paragraph in paragraphs).split())
 
 
 def fill(values: dict[str, str], settings) -> str:
     result = DocFill(settings).fill(document("act-constitutiv-srl"), None, values)
     assert result.missing == []
-    return act_text(result.pdf)
+    assert result.output == "docx"
+    return act_text(result.data)
 
 
 def test_the_act_copies_the_model_verbatim():
@@ -149,6 +153,52 @@ def test_the_associate_and_the_administrator_are_two_persons(settings):
     assert "beneficiarul real al societății este: POPESCU ION-ANDREI" in text
     assert "Asociat Unic: POPESCU ION-ANDREI" in text
     assert "Obiectul de activitate al societății este: Producția de software" in text
+
+
+def test_the_act_is_a_word_document_laid_out_like_the_model(settings):
+    values = {**statement_values(POPESCU), **COMPANY, "associate": "x"}
+    values["board_role"] = "administrator unic"
+    result = DocFill(settings).fill(document("act-constitutiv-srl"), None, values)
+    assert (result.output, result.suffix, result.data[:2]) == ("docx", ".docx", b"PK")
+    word = Document(io.BytesIO(result.data))
+    normal = word.styles["Normal"].font
+    assert (normal.name, normal.size.pt) == ("Times New Roman", 12)
+    section = word.sections[0]
+    assert (section.page_width.inches, section.left_margin.inches) == (8.5, 1)
+    paragraphs = {paragraph.text: paragraph for paragraph in word.paragraphs}
+
+    def runs(text: str) -> list[tuple[str, bool, bool]]:
+        found = next(p for t, p in paragraphs.items() if t.startswith(text))
+        return [(run.text, bool(run.bold), bool(run.italic)) for run in found.runs]
+
+    title = paragraphs["ACT CONSTITUTIV"]
+    assert title.alignment == WD_ALIGN_PARAGRAPH.CENTER and title.runs[0].font.size.pt == 14
+    assert runs("al Societății") == [("al Societății EXEMPLU VERDE S.R.L.", True, False)]
+    assert paragraphs["CAPITOLUL I"].alignment == WD_ALIGN_PARAGRAPH.CENTER
+    assert runs("CAPITOLUL I") == [("CAPITOLUL I", True, False)]
+    article = runs("Art. 1.3.")
+    assert article == [
+        ("Art. 1.3.", True, False),
+        (" — Durata de funcționare a societății este nedeterminată.", False, False),
+    ]
+    assert paragraphs[next(t for t in paragraphs if t.startswith("Art. 1.4."))].alignment == (
+        WD_ALIGN_PARAGRAPH.JUSTIFY
+    )
+    # the firm, the associate and the administrator in bold, as in the model
+    assert runs(POPESCU_CLAUSE[:20]) == [(POPESCU_CLAUSE, True, False), (".", False, False)]
+    assert runs("Asociat Unic:") == [
+        ("Asociat Unic: ", False, False),
+        ("POPESCU ION-ANDREI", True, False),
+    ]
+    assert runs("(semnătura)") == [("(semnătura)", False, True)]
+    assert word.core_properties.title == "Act constitutiv SRL - asociat unic"
+
+
+def test_the_other_documents_stay_pdf(settings):
+    values = {**statement_values(POPESCU), **COMPANY, "board_role": "administrator unic"}
+    result = DocFill(settings).fill(document("declaratie-administrator"), None, values, True)
+    assert (result.output, result.suffix, result.data[:4]) == ("pdf", ".pdf", b"%PDF")
+    assert result.pdf == result.data
 
 
 def test_without_secondary_activities_their_heading_is_left_out(settings):
@@ -281,9 +331,13 @@ def test_wizard_takes_the_associate_and_the_administrator_apart(settings, tmp_pa
             "/wizard/export",
             json={"templates": templates, "values": values, "allow_missing": True},
         ).json()
-        assert exported["files"][0]["filename"].startswith("act-constitutiv-srl_EXEMPLU_VERDE")
-        pdf = (tmp_path / "out" / exported["files"][0]["filename"]).read_bytes()
-        text = act_text(pdf)
+        (saved,) = exported["files"]
+        assert saved["filename"].startswith("act-constitutiv-srl_EXEMPLU_VERDE")
+        assert saved["filename"].endswith(".docx")  # the act is written in Word
+        download = client.get(saved["url"])
+        assert download.headers["content-type"] == MEDIA_TYPES["docx"]
+        assert download.content == (tmp_path / "out" / saved["filename"]).read_bytes()
+        text = act_text(download.content)
         assert f"Asociat unic: {POPESCU_CLAUSE}." in text
         assert "Administrarea societății se face de către: MUREȘAN VLAD" in text
 
@@ -316,7 +370,7 @@ def test_the_act_from_the_proofs_of_the_name_and_the_office(settings):
     combined = docfill.combine(analyses)
     values = {name: field.value for name, field in combined.fields.items()}
     values.update(caen_activities=ACTIVITIES, share_capital="1.000", share_count="100")
-    text = act_text(docfill.fill(document("act-constitutiv-srl"), None, values, True).pdf)
+    text = act_text(docfill.fill(document("act-constitutiv-srl"), None, values, True).data)
     assert "Denumirea societății este: EXEMPLU VERDE S.R.L.— societate" in text
     assert "disponibilitatea firmei nr. 123456 din 01.09.2026" in text
     assert (
