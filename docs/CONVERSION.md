@@ -5,6 +5,10 @@ from creating companies and documents, and scores **how faithful the converted d
 (0-100) against the original and, when you give it, against the **real document**. The real
 document is the PDF Word saves, or the Word document a PDF was made from.
 
+A **scanned PDF** (pictures of pages, from a scanner or a phone) is **read with OCR** and written
+as a Word document **you can edit like one typed in Word**: paragraphs that flow, titles, lists,
+bold words. See [Scanned PDFs](#scanned-pdfs-ocr-to-an-editable-word-document).
+
 | Where | What |
 |---|---|
 | **http://127.0.0.1:8000/convert** | the page: drop a file, optionally the real document, convert, download; scores, text differences and every page compared (*Differences / Original / Converted*). *Compare two documents* scores a document converted by any program against the real one |
@@ -41,9 +45,43 @@ checks that could be made.
 |---|---|---|
 | Word → PDF | text (every word of the Word file in the PDF; page headers and numbers printed on every page are not held against it), pages (as Word counted them), fonts, pictures. **Not the layout**: LibreOffice made the PDF, so it would be compared with its own layout | the PDF Word saves of the same document: **everything, page by page**. This is the true 1:1 score |
 | PDF → Word | everything: the Word document is laid out by LibreOffice and compared page by page with the PDF | the Word document the PDF was made from: both laid out the same way and compared |
+| scanned PDF → Word | the pages within 2 mm (the lines and paragraphs; a scan typed again breaks its lines a little differently than its printer did; stamps left out), the number of pages; **text: the confidence of the OCR** (the scan has no text to compare with), with the words read with little confidence listed to check | as for any PDF |
 
 A Word document is laid out by LibreOffice to be compared. When a font it uses is not installed
 on the server, the comparison says so: the layout score is then lower than it would be in Word.
+
+## Scanned PDFs: OCR to an editable Word document
+
+pdf2docx and LibreOffice can only put the picture of a scanned page into the Word document: the
+words cannot be edited. **Auto** detects a scan (pages that are pictures with no text of their
+own, or with only the invisible text a scanner app laid over them) and uses the **OCR engine**
+(`--engine ocr` to choose it):
+
+| Step | How |
+|---|---|
+| picture | each page drawn at 300 dpi; the paper evened out to white (a darker edge, the show-through of the other side fade, the ink stays); the page straightened |
+| stamps | blue and red ink is taken off before reading (the black text over a stamp stays); words still read on a stamp with little confidence are left out |
+| reading | Tesseract (Romanian and English), one process per page, four pages side by side: 8 pages in about 14 s |
+| noise | a signature, handwriting, a punched hole, a speck: lines read with little confidence, too small, or outside the text; a short last line of a paragraph read with little confidence is kept when it lines up under the text |
+| paragraphs | a line starts a paragraph after a blank line or a short line, when it is indented or centred, or starts with a dash; the lines of a paragraph flow (no line breaks), a word cut by a hyphen is joined; a paragraph that goes on to the next page stays one paragraph |
+| alignment, indents, spacing | justified, centred, right or left; the first-line indent; list items with a hanging indent and a tab after the dash; the space before a paragraph; the indents of the whole document evened out (a page photographed a little warped) |
+| letters | the size from the line pitch (12 pt for Word's single spacing of 14.2 pt) and, for a title, from the height of its capitals; **bold** from the thickness of the strokes, measured against the text of the same page; **underline** from the rule under a word |
+| pages | the margins and the line spacing of the scan; every page of the scan starts a page of the document ("page break before", unless a paragraph goes on); page numbers become Word's page number in the footer |
+| document | Times New Roman, the spelling checker in Romanian, columns on one row (signatures side by side) separated by tabs |
+
+Measured on a real act constitutiv of 8 pages scanned with a phone at 100 dpi (stamps over the
+text, signatures, punched holes, show-through):
+
+| Engine | Result | Score |
+|---|---|---|
+| pdf2docx | a Word document of 8 pictures: no word can be edited | – (no text) |
+| **ocr** | 2,853 words in paragraphs, titles, lists, bold and underlined words; 92% OCR confidence, 60 words listed to check; 13 s | **90.3**: layout 87.8 (pages 78-95), text 91.8, pages 8 for 8 |
+
+What it does not do: a table of a scan becomes lines with tabs, not a Word table; italics are not
+detected; the font is Times New Roman (that of almost every Romanian act); a stamp, a signature
+or a picture is left out (the document is to be signed again); handwriting is not read. A scan of
+little resolution (under 200 dpi) is read with more mistakes: **scan at 300 dpi** where possible,
+and check the words listed.
 
 ## Measured on the reference documents
 
@@ -103,7 +141,9 @@ What the scores show:
 | Adobe Acrobat / PDF Services API (Export PDF) | Adobe's engine | among the best, editable | desktop / cloud | commercial | the documents leave the machine (API) |
 | Aspose.PDF | *flow* or *text box* modes | very close | anywhere, offline | commercial | an option for better forms |
 | ABBYY FineReader | OCR and layout analysis | best for scans | desktop / server | commercial | for scanned documents |
-| ocrmypdf (Tesseract) + pdf2docx | adds a text layer to a scan first | editable text from a scan | anywhere | free (MPL-2.0 + pdf2docx) | next step for scans |
+| **Tesseract** + docfill's layout (the OCR engine) | reads the words and their boxes; docfill rebuilds paragraphs, alignment, indents, bold, sizes and pages from where the words are | an editable document from a scan, laid out like the scan | anywhere, offline | free (Apache-2.0); Tesseract is already docfill's OCR | **used for scans** |
+| ocrmypdf (Tesseract) + pdf2docx | adds an invisible text layer over the picture of each page, then converts | the picture of the page with the text hidden over it: not a document typed in Word | anywhere | free (MPL-2.0 + pdf2docx) | not used |
+| PaddleOCR (PP-Structure layout recovery), docTR | deep learning: layout analysis and OCR, a Word document out | good on tables | anywhere | free; large models and dependencies | an option for scans with tables |
 | Docling, Marker | machine learning to Markdown / HTML / JSON | the structure, not the layout | anywhere | free | not for 1:1 |
 
 ### Measuring fidelity
@@ -143,8 +183,8 @@ LibreOffice. Check with your legal adviser before offering the converter outside
 
 * Without Microsoft Word on the server, a Word document converted to PDF is not compared page by
   page against the original. Give the real PDF Word saves to get that score.
-* Scanned PDFs (pictures only) become Word documents of pictures. Next step: OCR first
-  (ocrmypdf + Tesseract, both already used by docfill for reading).
+* Scanned PDFs are read with OCR: check the words listed with the text score. Tables of a scan
+  become lines with tabs, and italics are not detected.
 * Forms with many boxes stay best as PDFs. To edit one in Word, check its score and its pages.
 * LibreOffice starts for every conversion (about 1 s). Next step for heavy use: unoserver.
 * LibreOffice opens untrusted documents: macros are not run when converting, but keep docfill on

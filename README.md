@@ -220,6 +220,7 @@ real one.
 |---|---|
 | Word → PDF | **LibreOffice** Writer, fonts embedded |
 | PDF → Word | **pdf2docx** (an editable document), else LibreOffice's PDF import (every line in a frame) |
+| scanned PDF → Word | **OCR**: the text of every page read with Tesseract and written as paragraphs, titles, lists and bold words, like a document typed in Word (chosen by Auto for a scan) |
 
 ```bash
 docfill convert contract.docx                              # contract.pdf, with its scores
@@ -230,7 +231,9 @@ docfill convert-engines                                     # what is installed
 ```
 
 Measured on the reference documents: the SRL act converts to PDF keeping every word and the 8
-pages Word counted (98.3), and back to Word with pdf2docx at 95.5. Official forms (Anexa 4)
+pages Word counted (98.3), and back to Word with pdf2docx at 95.5. A real act constitutiv of 8
+pages scanned with a phone becomes a Word document to edit in 13 s, scored 90.3 (92% OCR
+confidence, the uncertain words listed to check). Official forms (Anexa 4)
 convert poorly to Word with every engine (50-74): keep them as PDFs. The libraries explored,
 the measures and how to reach 100 (fonts) are in **[docs/CONVERSION.md](docs/CONVERSION.md)**.
 

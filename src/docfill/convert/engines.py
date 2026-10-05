@@ -9,12 +9,16 @@ libreoffice    Word → PDF   LibreOffice Writer lays the document out and expor
                             for Cambria) lines and pages break where Word breaks them.
 pdf2docx       PDF → Word   rebuilds paragraphs, tables, images and page margins from the PDF
                             (PyMuPDF): a Word document that can be edited as usual.
+ocr            PDF → Word   for scans: the text of every page read with Tesseract and written
+                            as paragraphs, titles, lists and bold words, like a document typed
+                            in Word (see :mod:`docfill.convert.ocr`). The other engines can only
+                            put the picture of a scanned page in the Word document.
 libreoffice    PDF → Word   LibreOffice's PDF import: every line in a frame of its own, where
                             the PDF prints it. The text is all there, hard to edit.
 =============  ===========  ===================================================================
 
-Every engine runs in a process of its own, with a time limit: a damaged file cannot hang or
-crash docfill, and pdf2docx's logging set-up stays out of docfill's.
+Every engine runs in a process of its own (Tesseract: one per page), with a time limit: a
+damaged file cannot hang or crash docfill, and pdf2docx's logging set-up stays out of docfill's.
 """
 
 from __future__ import annotations
@@ -27,9 +31,11 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
+from docfill.config import Settings, get_settings
 from docfill.errors import ConversionError, ConverterUnavailableError
 
 PDF, WORD = "pdf", "docx"  # the two targets
@@ -127,7 +133,18 @@ finally:
 """
 
 
-def _pdf2docx(data: bytes, suffix: str, timeout: int) -> tuple[bytes, list[str]]:
+@dataclass
+class Produced:
+    """What an engine made: the converted document, what to know about it and, read with OCR,
+    how sure the reading is."""
+
+    data: bytes
+    warnings: list[str] = field(default_factory=list)
+    ocr: dict[str, Any] | None = None
+
+
+def _pdf2docx(data: bytes, suffix: str, settings: Settings) -> Produced:
+    timeout = settings.convert_timeout
     with tempfile.TemporaryDirectory(prefix="docfill-convert-") as folder:
         source, target = Path(folder) / "document.pdf", Path(folder) / "document.docx"
         source.write_bytes(data)
@@ -148,21 +165,59 @@ def _pdf2docx(data: bytes, suffix: str, timeout: int) -> tuple[bytes, list[str]]
         warnings = [
             f"pdf2docx: {message}" for message in re.findall(r"\[ERROR\]\s*(.+)", completed.stderr)
         ]
-        return target.read_bytes(), warnings
+        return Produced(target.read_bytes(), warnings)
 
 
-def _word_to_pdf(data: bytes, suffix: str, timeout: int) -> tuple[bytes, list[str]]:
-    return run_libreoffice(data, suffix, "pdf", timeout), []
+def _word_to_pdf(data: bytes, suffix: str, settings: Settings) -> Produced:
+    return Produced(run_libreoffice(data, suffix, "pdf", settings.convert_timeout))
 
 
-def _pdf_import(data: bytes, suffix: str, timeout: int) -> tuple[bytes, list[str]]:
+def _pdf_import(data: bytes, suffix: str, settings: Settings) -> Produced:
     output = run_libreoffice(
-        data, suffix, "docx:MS Word 2007 XML", timeout, infilter="writer_pdf_import"
+        data,
+        suffix,
+        "docx:MS Word 2007 XML",
+        settings.convert_timeout,
+        infilter="writer_pdf_import",
     )
-    return output, [
-        "LibreOffice puts every line of the PDF in a frame of its own: the text is "
-        "where the PDF prints it, but it is hard to edit"
-    ]
+    return Produced(
+        output,
+        [
+            "LibreOffice puts every line of the PDF in a frame of its own: the text is "
+            "where the PDF prints it, but it is hard to edit"
+        ],
+    )
+
+
+def _ocr(data: bytes, suffix: str, settings: Settings) -> Produced:
+    from docfill.convert.ocr import scan_to_word
+
+    result = scan_to_word(data, settings)
+    warnings = []
+    if result.uncertain:
+        warnings.append(
+            f"{len(result.uncertain)} word{'s were' if len(result.uncertain) != 1 else ' was'} "
+            "read with little confidence: check them in the Word document (listed with the "
+            "text score)"
+        )
+    if result.dropped:
+        warnings.append(
+            f"{result.dropped} marks on the pages were left out as noise (stamps, signatures, "
+            "handwriting)"
+        )
+    stats = {
+        "words": result.words,
+        "confidence": round(result.confidence, 1),
+        "uncertain": result.uncertain,
+        "dropped": result.dropped,
+    }
+    return Produced(result.data, warnings, stats)
+
+
+def ocr_missing() -> str | None:
+    from docfill.convert.ocr import ocr_missing as missing
+
+    return missing(get_settings())
 
 
 @dataclass(frozen=True)
@@ -172,7 +227,7 @@ class Engine:
     title: str
     description: str
     missing: Callable[[], str | None]  # why it cannot run here, None when it can
-    run: Callable[[bytes, str, int], tuple[bytes, list[str]]]  # data, suffix, timeout
+    run: Callable[[bytes, str, Settings], Produced]  # data, suffix (.docx, .doc, .pdf)
 
     def as_dict(self) -> dict[str, object]:
         reason = self.missing()
@@ -206,6 +261,15 @@ ENGINES: dict[str, list[Engine]] = {
             "Rebuilds paragraphs, tables and images: a Word document you can edit.",
             pdf2docx_missing,
             _pdf2docx,
+        ),
+        Engine(
+            "ocr",
+            WORD,
+            "OCR (scans)",
+            "Reads the text of scanned pages and writes it as paragraphs, titles and lists: "
+            "a Word document you can edit. Chosen by Auto for a scan.",
+            ocr_missing,
+            _ocr,
         ),
         Engine(
             "libreoffice",

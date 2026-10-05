@@ -44,6 +44,7 @@ from pypdf.generic import IndirectObject
 from rapidfuzz.distance import Indel
 
 from docfill.convert.engines import run_libreoffice
+from docfill.convert.ocr import clean_page
 from docfill.errors import DocumentReadError
 
 WEIGHTS = {"layout": 50, "text": 30, "pages": 8, "fonts": 8, "images": 4}
@@ -68,6 +69,9 @@ DIFF_COLOURS = [(255, 255, 255), (110, 110, 110), (214, 40, 40), (37, 99, 235)]
 SCALE = 1.0  # pages are drawn at 72 dpi to be compared
 INK = 180  # a pixel darker than this grey is ink
 TOLERANCE = 2  # points: ink this close is at the same place
+# A scan typed again breaks its lines a little differently than the printer did: its lines and
+# paragraphs are compared, not its letters.
+SCAN_TOLERANCE = 6
 MAX_PAGES = 100  # pages compared at most
 METRIC_MATCH = 0.9  # a font of the same widths: same layout, the letters look a little different
 
@@ -108,6 +112,7 @@ class Rendition:
     pages: int | None = None
     pages_source: str = ""
     warnings: list[str] = field(default_factory=list)
+    scan: bool = False  # a scanned PDF: pictures of pages (compared once cleaned, see ocr.py)
 
 
 def words(text: str) -> list[str]:
@@ -237,6 +242,8 @@ def pdf_rendition(data: bytes) -> Rendition:
         "pdf", data, found, True, dict(fonts), _pdf_images(data), pages, "in the original PDF"
     )
     if pages and not found:
+        rendition.scan = True
+        rendition.images = 0  # the pictures are the pages themselves
         rendition.warnings.append(
             "The PDF has no text, only pictures of its pages (a scan): its text cannot be "
             "compared, and a Word document made from it shows the pages as pictures. Read it "
@@ -514,32 +521,41 @@ def _ink(image: Image.Image) -> np.ndarray:
     return np.asarray(image) < INK
 
 
-def _near(mask: np.ndarray) -> np.ndarray:
-    """Everything within ``TOLERANCE`` points of the ink."""
+def _near(mask: np.ndarray, tolerance: int) -> np.ndarray:
+    """Everything within ``tolerance`` points of the ink."""
     grown = Image.fromarray(mask.astype(np.uint8) * 255).filter(
-        ImageFilter.MaxFilter(2 * TOLERANCE + 1)
+        ImageFilter.MaxFilter(2 * tolerance + 1)
     )
     return np.asarray(grown) > 0
 
 
-def page_similarity(original: np.ndarray, converted: np.ndarray) -> float:
+def page_similarity(
+    original: np.ndarray, converted: np.ndarray, tolerance: int = TOLERANCE
+) -> float:
     """0-1: the ink of each page found near the ink of the other (both ways: what is missing
     and what was added count), as an F1 score. Both masks have the same size."""
     if not original.any() and not converted.any():
         return 1.0
     if not original.any() or not converted.any():
         return 0.0
-    kept = float((original & _near(converted)).sum() / original.sum())
-    exact = float((converted & _near(original)).sum() / converted.sum())
+    kept = float((original & _near(converted, tolerance)).sum() / original.sum())
+    exact = float((converted & _near(original, tolerance)).sum() / converted.sum())
     return 0.0 if kept + exact == 0 else 2 * kept * exact / (kept + exact)
 
 
-def _page(document: pdfium.PdfDocument, index: int) -> Image.Image | None:
+def _page(document: pdfium.PdfDocument, index: int, scan: bool = False) -> Image.Image | None:
+    """A page drawn to be compared; a scanned page cleaned the way OCR reads it (stamps off,
+    paper evened out, straightened)."""
     if index >= len(document):
         return None
     page = document[index]
     try:
-        return page.render(scale=SCALE).to_pil().convert("L")
+        if not scan:
+            return page.render(scale=SCALE).to_pil().convert("L")
+        image = page.render(scale=150 / 72).to_pil()
+        width, height = page.get_size()
+        size = (round(width * SCALE), round(height * SCALE))
+        return clean_page(image).resize(size, Image.Resampling.LANCZOS)
     finally:
         page.close()
 
@@ -577,17 +593,18 @@ def _layout(expected: Rendition, actual: Rendition, previews: int) -> tuple[Chec
             "Not measured: LibreOffice made this PDF, so it would be compared with its own "
             "layout. Add the real PDF (the one Word saves) to compare the pages.",
         ), []
+    tolerance = SCAN_TOLERANCE if expected.scan else TOLERANCE
     left, right = _open_pdf(expected.pdf), _open_pdf(actual.pdf)
     try:
         count = max(len(left), len(right))
         pages = []
         for index in range(min(count, MAX_PAGES)):
-            original, converted = _page(left, index), _page(right, index)
+            original, converted = _page(left, index, expected.scan), _page(right, index)
             present = [image for image in (original, converted) if image is not None]
             size = (max(i.width for i in present), max(i.height for i in present))
             a, b = _ink(_canvas(original, size)), _ink(_canvas(converted, size))
             both = original is not None and converted is not None
-            score = 100 * page_similarity(a, b) if both else 0.0
+            score = 100 * page_similarity(a, b, tolerance) if both else 0.0
             page = PageScore(index + 1, score)
             if index < previews:
                 page.diff = _png(_diff_image(a, b))
@@ -600,6 +617,8 @@ def _layout(expected: Rendition, actual: Rendition, previews: int) -> tuple[Chec
     mean = sum(page.score for page in pages) / len(pages)
     worst = min(pages, key=lambda page: page.score)
     detail = f"{len(pages)} page{'s' if len(pages) != 1 else ''} compared"
+    if expected.scan:
+        detail += " (a scan: its lines within 2 mm, as typed again; stamps left out)"
     if count > MAX_PAGES:
         detail += f" (the first {MAX_PAGES} of {count})"
     if len(pages) > 1:
@@ -713,6 +732,20 @@ def _images(expected: Rendition, actual: Rendition) -> Check:
         return Check("images", None, "No pictures.")
     score = 100 * min(expected.images, actual.images) / max(expected.images, actual.images)
     return Check("images", score, f"{actual.images} for {expected.images} in the original.")
+
+
+def ocr_text(expected: Rendition, ocr: dict[str, Any]) -> Check:
+    """The text of a scan read with OCR: nothing to compare it with, so how sure the reading
+    is, and the words to check."""
+    uncertain = ocr.get("uncertain", [])
+    detail = (
+        f"Read with OCR (the scan has no text): {ocr['words']} words, "
+        f"{ocr['confidence']:.0f}% confident on average"
+    )
+    if uncertain:
+        sample = ", ".join(dict.fromkeys(uncertain))
+        detail += f"; {len(uncertain)} to check: {sample[:300]}"
+    return Check("text", float(ocr["confidence"]), detail + ".", {"uncertain": uncertain[:100]})
 
 
 def compare(
