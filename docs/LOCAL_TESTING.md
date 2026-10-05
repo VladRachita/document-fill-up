@@ -24,7 +24,8 @@ docker compose up --build -d                 # first build takes a few minutes
 docker compose --profile tools up -d         # optional: Adminer on http://localhost:8080
 ```
 
-* Wizard: http://localhost:8000 · knowledge page: http://localhost:8000/knowledge · API docs:
+* Wizard: http://localhost:8000 · knowledge page: http://localhost:8000/knowledge · converting
+  Word ⇄ PDF: http://localhost:8000/convert ([docs/CONVERSION.md](CONVERSION.md)) · API docs:
   http://localhost:8000/docs
 * The command line runs inside the container: `docker compose exec app docfill learn stats`
 * Adminer login: system *PostgreSQL*, server `db`, user / password / database `docfill`

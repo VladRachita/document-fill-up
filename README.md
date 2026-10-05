@@ -30,6 +30,11 @@ constitutiv of an SRL as a Word document, to edit before it is signed):
 These are the **[reference documents](#reference-documents)**: kept exactly as they were given and
 checked by the tests after every change.
 
+Apart from creating companies and documents, docfill **converts documents: Word to PDF and PDF
+to Word**, with a **score of how faithful** the converted document is (0-100, page by page,
+word by word, fonts, pages) against the original or the real document. See
+[Converting documents](#converting-documents-word--pdf).
+
 ```
  CI photo / scan, birth certificate, filled forms, PDF / DOCX / PNG / JPG
           │
@@ -68,22 +73,25 @@ checked by the tests after every change.
 | Validation | CNP control digit, ICAO 9303 MRZ check digits, date/IBAN/e-mail checks |
 | Standard documents | `SQLAlchemy` 2 (SQLite by default, PostgreSQL via URL), `PyYAML`, `pydantic` |
 | PDF export | `pypdf` (AcroForm filling) + `ReportLab` (Unicode appearances, text documents) |
+| Conversion | LibreOffice (Word → PDF), `pdf2docx` (PDF → Word, optional extra), `pypdfium2` + `numpy` + `rapidfuzz` (fidelity scores) |
 | Interfaces | Web wizard (FastAPI + one self-contained HTML page), `Typer` CLI, REST API |
 
 ## Installation
 
 System packages: **Tesseract OCR with Romanian**, a TrueType font with full Unicode coverage
-(DejaVu is auto-detected) so names like *Ștefănescu* or *Țară* render, and **antiword** (or
-LibreOffice) to read legacy Word `.doc` files.
+(DejaVu is auto-detected) so names like *Ștefănescu* or *Țară* render, **antiword** (or
+LibreOffice) to read legacy Word `.doc` files and, to convert documents, **LibreOffice Writer**
+with the fonts of the same widths as Word's.
 
 ```bash
 # Debian / Ubuntu
-sudo apt install tesseract-ocr tesseract-ocr-ron tesseract-ocr-eng fonts-dejavu-core antiword
+sudo apt install tesseract-ocr tesseract-ocr-ron tesseract-ocr-eng fonts-dejavu-core antiword \
+    libreoffice-writer-nogui fonts-liberation fonts-crosextra-carlito fonts-crosextra-caladea
 # macOS
-brew install tesseract tesseract-lang
+brew install tesseract tesseract-lang && brew install --cask libreoffice
 
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,convert]"              # convert: pdf2docx, for PDF to Word
 python -m spacy download en_core_web_sm       # ML model for free text
 docfill templates seed                        # load the standard documents (ONRC forms...)
 docfill knowledge seed                        # load the legal knowledge (procedures, rules...)
@@ -184,6 +192,47 @@ docfill serve                 # open http://127.0.0.1:8000
 The same review runs in the terminal: `docfill wizard ci.jpg -t onrc-anexa-2a -t onrc-anexa-4`
 (procedures and legal checks are in the web wizard; in the terminal use
 `docfill knowledge check PROCEDURE -s FIELD=VALUE`).
+
+## Converting documents (Word ⇄ PDF)
+
+Open **http://127.0.0.1:8000/convert** (linked from the wizard and the knowledge page). Drop a
+Word document (.docx, .doc) to get a PDF, or a PDF to get a Word document (.docx). Optionally add
+the **real document**: the PDF Word saves of the same document, or the Word document the PDF was
+made from. Converted documents are saved in `output/converted` and downloaded.
+
+Every conversion is **scored from 0 to 100**: 97 and more is **1:1**, 90 very close, 75 close,
+under 75 different. Each check shows its score and what it found:
+
+| Check | Weight | |
+|---|---|---|
+| Layout, page by page | 50 | both drawn page by page, the ink found at the same place (within 0.7 mm) |
+| Text | 30 | every word in its order; the differences are listed (missing, added) |
+| Pages | 8 | the number of pages (of the PDF, of the real document, or as Word counted them) |
+| Fonts | 8 | kept (100), a font of the same widths such as Liberation Serif for Times New Roman (90), replaced (0) |
+| Pictures | 4 | the number of pictures |
+
+Each page is shown with its score: **Differences** (grey: in both, red: only in the original,
+blue: only in the converted document), **Original** or **Converted**. *Compare two documents*
+scores a document converted by any other program (Word, Adobe, an online converter) against the
+real one.
+
+| Direction | Engine (auto: the first installed) |
+|---|---|
+| Word → PDF | **LibreOffice** Writer, fonts embedded |
+| PDF → Word | **pdf2docx** (an editable document), else LibreOffice's PDF import (every line in a frame) |
+
+```bash
+docfill convert contract.docx                              # contract.pdf, with its scores
+docfill convert contract.docx -r contract-word.pdf          # and against the PDF Word saved
+docfill convert scan.pdf --engine libreoffice -o out.docx
+docfill compare contract-word.pdf contract.pdf --min-score 95   # exit 1 under 95
+docfill convert-engines                                     # what is installed
+```
+
+Measured on the reference documents: the SRL act converts to PDF keeping every word and the 8
+pages Word counted (98.3), and back to Word with pdf2docx at 95.5. Official forms (Anexa 4)
+convert poorly to Word with every engine (50-74): keep them as PDFs. The libraries explored,
+the measures and how to reach 100 (fonts) are in **[docs/CONVERSION.md](docs/CONVERSION.md)**.
 
 ## Romanian documents
 
@@ -562,6 +611,7 @@ docfill fill ci.jpg -t onrc-anexa-2a -o out/anexa2a.pdf --set company_name="Exem
 docfill wizard ci.jpg -t onrc-anexa-2a -t onrc-anexa-4
 docfill templates list | show NAME | add FILE.yaml | seed | remove NAME
 docfill knowledge seed | list | show | add | verify | retire | export | ingest | texts | search | teach | check | stats
+docfill convert FILE [-r REAL] [--min-score N] | compare REAL CONVERTED | convert-engines
 ```
 
 `fill` stops and lists required fields it could not find; provide them with `--set` or use
@@ -591,6 +641,11 @@ docfill knowledge seed | list | show | add | verify | retire | export | ingest |
 | GET | `/knowledge/search?q=` | Search the laws and the knowledge |
 | POST | `/knowledge/doctypes/{name}/examples` | Teach the classifier with example documents |
 | GET | `/knowledge/stats` | Status, rules to review, suggested documents |
+| GET | `/convert` | The conversion page (Word ⇄ PDF) |
+| GET | `/convert/engines` | The engines of each direction, installed or not |
+| POST | `/convert` | Convert a document (and a real one to compare with): the converted file's URL and its scores |
+| POST | `/convert/compare` | Score a converted document against the real one |
+| GET | `/convert/files/{name}` | Download a converted document |
 
 The wizard endpoints accept an optional `procedure` (e.g. `srl.infiintare`): its fields are
 asked for, its legal checks are returned by `/wizard/preview`, and `/wizard/export` refuses
@@ -610,7 +665,8 @@ Environment variables (or `.env`, see `.env.example`):
 | `DOCFILL_SPACY_MODEL` | `en_core_web_sm` | NER model (empty disables NER) |
 | `DOCFILL_MIN_CONFIDENCE` | `0.5` | Minimum (calibrated) confidence for a value to be filled in |
 | `DOCFILL_MAX_FILE_SIZE` | `26214400` | Upload limit in bytes |
-| `DOCFILL_OUTPUT_DIR` | `output` | Where the wizard saves the PDFs |
+| `DOCFILL_OUTPUT_DIR` | `output` | Where the wizard saves the PDFs (converted documents: in `converted`) |
+| `DOCFILL_CONVERT_TIMEOUT` | `300` | Time limit of one conversion, in seconds |
 | `DOCFILL_PDF_FONT_PATH` | auto | TrueType font for exported PDFs |
 
 ## Project layout
@@ -640,8 +696,9 @@ src/docfill/
                        beneficial owners, administrator statement, act constitutiv SA and
                        SRL (asociat unic)
   export/              PDF forms (fill, blank, inspect) and text rendering
+  convert/             Word ⇄ PDF: the engines (LibreOffice, pdf2docx) and the fidelity scores
   pipeline.py, app.py  read -> clean -> detect -> extract -> fill; wiring with learning
-  wizard.py, web/      review logic, the web wizard and the knowledge page
+  wizard.py, web/      review logic, the web wizard, the knowledge page and the conversion page
   samples.py           synthetic documents (fictitious Romanian identity card)
   cli.py, api.py       Typer CLI and FastAPI app
 tools/                 build_localities.py: the register of localities from SIRUTA

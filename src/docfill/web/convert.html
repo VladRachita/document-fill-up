@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>docfill convert</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f5f6f8; --surface: #ffffff; --surface-2: #f0f2f5; --text: #1b1f24; --muted: #5d6673;
+    --border: #d9dde3; --accent: #2f5bd3; --accent-text: #ffffff; --accent-weak: #e8eefc;
+    --ok: #16794a; --ok-bg: #e3f3ea; --warn: #8a5a00; --warn-bg: #fff3d4; --bad: #b8322a;
+    --bad-bg: #fcebea; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.05);
+    --radius: 10px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --missing: #d62828; --added: #2563eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171b; --surface: #1c2026; --surface-2: #232830; --text: #e7eaee; --muted: #9aa3ae;
+      --border: #333a44; --accent: #7c9cf5; --accent-text: #0f1320; --accent-weak: #253050;
+      --ok: #5fd39a; --ok-bg: #173627; --warn: #f0c060; --warn-bg: #3a2f14; --bad: #ff8a80;
+      --bad-bg: #3f1d1b; --shadow: 0 1px 2px rgba(0,0,0,.4); --missing: #ff6b6b; --added: #7aa2ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); }
+  header .wrap { display: flex; align-items: center; gap: 16px; padding-top: 12px; padding-bottom: 12px; flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 18px; }
+  .brand small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 14px; }
+  .navlink { color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .navlink:hover { text-decoration: underline; }
+  .pills { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 12.5px;
+          border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .pill.ok { color: var(--ok); background: var(--ok-bg); border-color: transparent; }
+  .pill.warn { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+  .pill.bad { color: var(--bad); background: var(--bad-bg); border-color: transparent; }
+  .pill.accent { color: var(--accent); background: var(--accent-weak); border-color: transparent; }
+  main { padding: 20px 0 40px; }
+  .banner { display: none; padding: 10px 14px; border-radius: var(--radius); margin-bottom: 14px; }
+  .banner.show { display: block; }
+  .banner.error { background: var(--bad-bg); color: var(--bad); }
+  .banner.info { background: var(--accent-weak); color: var(--accent); }
+  .grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; min-width: 0; margin-bottom: 16px; }
+  .grid-2 > .card { margin-bottom: 0; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .hint { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  label.f { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 4px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn { padding: 9px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 6px; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .btn.small { padding: 3px 9px; font-size: 13px; font-weight: 500; }
+  .btn.link { border: none; background: none; color: var(--accent); padding: 3px 6px; font-weight: 500; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin: 16px 0 20px; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tabs button { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; }
+  .tabs button[aria-selected="true"] { background: var(--accent-weak); color: var(--accent); border-color: var(--accent); }
+
+  .drop { display: block; border: 2px dashed var(--border); border-radius: var(--radius); padding: 22px; text-align: center; cursor: pointer; background: var(--surface-2); }
+  .drop.over { border-color: var(--accent); background: var(--accent-weak); }
+  .drop strong { display: block; }
+  .drop input { display: none; }
+  .drop.small { padding: 14px; }
+  .file { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .file .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file .size { color: var(--muted); font-size: 12.5px; }
+  .pick-label { color: var(--muted); font-size: 13px; margin: 14px 0 6px; }
+  .picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pick { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer;
+          display: flex; flex-direction: column; align-items: flex-start; text-align: left; max-width: 280px; }
+  .pick strong { font-size: 14px; }
+  .pick span { color: var(--muted); font-size: 12px; }
+  .pick[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-weak); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .pick:disabled { opacity: .45; cursor: not-allowed; }
+  .filename { display: flex; align-items: stretch; }
+  .filename input { border-radius: 8px 0 0 8px; }
+  .filename span { padding: 8px 10px; border: 1px solid var(--border); border-left: none; border-radius: 0 8px 8px 0; background: var(--surface-2); color: var(--muted); }
+  .busy { color: var(--muted); font-size: 13.5px; }
+
+  .result-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+  .result-head h2 { font-size: 17px; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 4px; word-break: break-word; }
+  .warnbox { background: var(--warn-bg); color: var(--warn); padding: 8px 12px; border-radius: 8px; margin: 12px 0 0; font-size: 13.5px; }
+  .warnbox div + div { margin-top: 4px; }
+  .summary { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .gauge { --p: 0; --c: var(--muted); width: 88px; height: 88px; flex: none; border-radius: 50%; display: grid; place-items: center;
+           background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--surface-2) 0); }
+  .gauge span { width: 70px; height: 70px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font-weight: 700; font-size: 19px; }
+  .summary .verdict { font-size: 16px; font-weight: 600; }
+  .summary .against { color: var(--muted); font-size: 13.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+  td.score { white-space: nowrap; width: 170px; }
+  @media (max-width: 640px) {
+    table.checks tr:first-child { display: none; }
+    table.checks tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-bottom: 1px solid var(--border); padding: 6px 0; }
+    table.checks td { border: none; padding: 2px 4px; }
+    table.checks td.score { width: auto; grid-column: 1; }
+    table.checks td.detail { grid-column: 1 / -1; }
+  }
+  .bar { display: inline-block; vertical-align: middle; width: 90px; height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; margin-right: 8px; }
+  .bar i { display: block; height: 100%; }
+  .w { color: var(--muted); font-size: 12px; }
+  details.more { margin-top: 10px; }
+  details.more > summary { cursor: pointer; color: var(--accent); font-size: 13.5px; font-weight: 500; }
+  .diff-item { font-size: 13.5px; padding: 6px 0; border-bottom: 1px solid var(--border); word-break: break-word; }
+  .diff-item del { color: var(--missing); text-decoration: line-through; }
+  .diff-item ins { color: var(--added); text-decoration: none; border-bottom: 1px dashed var(--added); }
+
+  .pages-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0 10px; }
+  .pages-head h3 { margin: 0; font-size: 15px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; background: var(--surface); padding: 5px 12px; cursor: pointer; font-size: 13px; }
+  .seg button[aria-pressed="true"] { background: var(--accent-weak); color: var(--accent); font-weight: 600; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .page { margin: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); cursor: zoom-in; }
+  .page.zoom { grid-column: 1 / -1; cursor: zoom-out; }
+  .page canvas { display: block; width: 100%; height: auto; background: #fff; }
+  .page.zoom canvas { max-width: 900px; margin: 0 auto; }
+  .page figcaption { display: flex; justify-content: space-between; gap: 6px; padding: 6px 8px; font-size: 13px; border-top: 1px solid var(--border); }
+  .page.noimg { cursor: default; }
+  .page.noimg .blank { height: 60px; display: grid; place-items: center; color: var(--muted); font-size: 12.5px; background: var(--surface-2); }
+  .explain { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; font-size: 13.5px; }
+  .explain b { display: block; margin-bottom: 2px; }
+  .empty { color: var(--muted); padding: 12px; text-align: center; font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">docfill<small>convert documents · Word ⇄ PDF</small></div>
+    <a class="navlink" href="/wizard">← Wizard</a>
+    <a class="navlink" href="/knowledge">Knowledge base</a>
+    <div class="pills" id="pills" aria-live="polite"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="banner" role="alert"></div>
+  <div class="tabs" id="mode-tabs" role="tablist"></div>
+
+  <section data-mode="convert">
+    <div class="grid-2">
+      <div class="card">
+        <h2>1. The document to convert</h2>
+        <p class="hint">A Word document (.docx, .doc) becomes a PDF; a PDF becomes a Word document (.docx). The result is scored against the original: how close to 1:1 it is, and where it differs.</p>
+        <label class="drop" id="source-drop">
+          <input type="file" id="source-input" accept=".docx,.doc,.pdf">
+          <strong>Drop a file here or click to choose</strong>
+          <span class="muted" style="font-size:13px">.docx · .doc · .pdf</span>
+        </label>
+        <div id="source-file"></div>
+        <p class="pick-label">Engine</p>
+        <div class="picker" id="engine-picker" role="group" aria-label="Engine"></div>
+        <label class="f" for="out-name">Name of the converted file (optional)</label>
+        <div class="filename"><input type="text" id="out-name" placeholder="same as the original" autocomplete="off"><span id="out-suffix">.pdf</span></div>
+      </div>
+      <div class="card">
+        <h2>2. The real document <span class="muted">(optional)</span></h2>
+        <p class="hint" id="reference-hint"></p>
+        <label class="drop small" id="reference-drop">
+          <input type="file" id="reference-input" accept=".pdf,.docx,.doc">
+          <strong>The real document</strong>
+          <span class="muted" style="font-size:13px" id="reference-kind">PDF or Word</span>
+        </label>
+        <div id="reference-file"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <span class="busy" id="convert-busy" aria-live="polite"></span>
+      <button class="btn primary" id="convert-btn" type="button" disabled>Convert</button>
+    </div>
+  </section>
+
+  <section data-mode="compare" hidden>
+    <div class="grid-2">
+      <div class="card">
+        <h2>The real document</h2>
+        <p class="hint">What the converted document should look like: the PDF Word saves, or the Word document a PDF was made from.</p>
+        <label class="drop" id="real-drop">
+          <input type="file" id="real-input" accept=".pdf,.docx,.doc">
+          <strong>Drop the real document here</strong>
+          <span class="muted" style="font-size:13px">.pdf · .docx · .doc</span>
+        </label>
+        <div id="real-file"></div>
+      </div>
+      <div class="card">
+        <h2>The converted document</h2>
+        <p class="hint">Made by any program (Word, Adobe, an online converter, docfill…). Word documents are laid out by LibreOffice to compare their pages.</p>
+        <label class="drop" id="converted-drop">
+          <input type="file" id="converted-input" accept=".pdf,.docx,.doc">
+          <strong>Drop the converted document here</strong>
+          <span class="muted" style="font-size:13px">.pdf · .docx · .doc</span>
+        </label>
+        <div id="converted-file"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <span class="busy" id="compare-busy" aria-live="polite"></span>
+      <button class="btn primary" id="compare-btn" type="button" disabled>Compare</button>
+    </div>
+  </section>
+
+  <div id="results"></div>
+
+  <div class="card">
+    <h2>How the scores work</h2>
+    <p class="hint">Each check gives 0–100; the score is their weighted mean, over the checks that could be made. 97 and more: 1:1, practically identical; 90: very close; 75: close; under 75: different.</p>
+    <div class="explain">
+      <div><b>Layout, page by page · 50</b>Both documents are drawn page by page; the share of the ink (text, lines, pictures) found at the same place in both, within 0.7 mm. A missing or extra page counts 0. A Word document is laid out by LibreOffice to be compared.</div>
+      <div><b>Text · 30</b>Every word, in its order. From Word to PDF: the words of the document found in the PDF (page headers and numbers printed on every page are not held against it).</div>
+      <div><b>Pages · 8</b>The number of pages: of the original PDF, of the real document, or the number Word saved with the document when it last saved it (used when it is up to date).</div>
+      <div><b>Fonts · 8</b>The fonts of the text: the same font (100), a font of the same widths such as Liberation Serif for Times New Roman (90: the lines break at the same place), or another font (0).</div>
+      <div><b>Pictures · 4</b>The number of pictures kept.</div>
+      <div><b>Against the real document</b>Without it, a Word document converted to PDF is not compared page by page (LibreOffice would be compared with itself): add the PDF Word saves for the true 1:1 score.</div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+const MODES = [["convert", "Convert"], ["compare", "Compare two documents"]];
+const VIEWS = [["diff", "Differences"], ["original", "Original"], ["converted", "Converted"]];
+const TARGETS = { pdf: "PDF", docx: "Word" };
+const state = { mode: "convert", engines: { pdf: [], docx: [] }, engine: "auto", source: null, reference: null, real: null, converted: null, view: "diff", busy: false };
+
+const $ = (id) => document.getElementById(id);
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === false || value == null) continue;
+    if (key === "class") node.className = value;
+    else if (key === "style") node.setAttribute("style", value);
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value === true ? "" : value);
+  }
+  for (const child of children.flat(Infinity)) {
+    if (child == null || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+const put = (node, ...children) => node.replaceChildren(...children.flat(Infinity).filter((c) => c != null && c !== false));
+const storage = {
+  get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch (_) { /* private mode */ } },
+};
+function showBanner(message, kind = "error") {
+  const banner = $("banner");
+  banner.className = `banner ${kind}` + (message ? " show" : "");
+  banner.textContent = message || "";
+  if (message) window.scrollTo({ top: 0, behavior: "smooth" });
+}
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
+  if (!response.ok) {
+    let message = `${response.status} ${response.statusText}`;
+    try {
+      const body = await response.json();
+      if (Array.isArray(body.detail)) message = body.detail.map((d) => d.msg || JSON.stringify(d)).join("; ");
+      else if (body.detail) message = body.detail;
+    } catch (_) { /* not JSON */ }
+    throw new Error(message);
+  }
+  return response.json();
+}
+const size = (bytes) => bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+const kindOf = (file) => /\.pdf$/i.test(file.name) ? "pdf" : /\.docx?$/i.test(file.name) ? "word" : null;
+const targetOf = (file) => kindOf(file) === "pdf" ? "docx" : "pdf";
+const level = (score) => score == null ? "" : score >= 95 ? "ok" : score >= 80 ? "warn" : "bad";
+const colour = (score) => ({ ok: "var(--ok)", warn: "var(--warn)", bad: "var(--bad)" })[level(score)] || "var(--muted)";
+
+// ------------------------------------------------------------------ choosing files
+
+function dropZone(zone, input, onFile) {
+  input.addEventListener("change", () => { if (input.files[0]) onFile(input.files[0]); input.value = ""; });
+  zone.addEventListener("dragover", (event) => { event.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    zone.classList.remove("over");
+    if (event.dataTransfer.files[0]) onFile(event.dataTransfer.files[0]);
+  });
+}
+
+function fileRow(file, onRemove, ...extra) {
+  return el("div", { class: "file" },
+    el("span", { class: "name", title: file.name }, file.name), ...extra,
+    el("span", { class: "size" }, size(file.size)),
+    el("button", { type: "button", class: "btn link small", onclick: onRemove, "aria-label": `Remove ${file.name}` }, "Remove"));
+}
+
+function setSource(file) {
+  if (file && !kindOf(file)) { showBanner(`${file.name}: choose a Word (.docx, .doc) or PDF document.`); return; }
+  showBanner("");
+  state.source = file;
+  if (file && state.reference && kindOf(state.reference) !== (targetOf(file) === "pdf" ? "pdf" : "word")) state.reference = null;
+  state.engine = "auto";
+  renderConvert();
+}
+
+function setReference(file) {
+  if (file && !kindOf(file)) { showBanner(`${file.name}: choose a Word (.docx, .doc) or PDF document.`); return; }
+  if (file && state.source && kindOf(file) !== (targetOf(state.source) === "pdf" ? "pdf" : "word")) {
+    showBanner(`The real document must be a ${TARGETS[targetOf(state.source)]} document, like the converted one.`);
+    return;
+  }
+  showBanner("");
+  state.reference = file;
+  renderConvert();
+}
+
+function renderConvert() {
+  const target = state.source ? targetOf(state.source) : null;
+  put($("source-file"), state.source ? fileRow(state.source, () => setSource(null),
+    el("span", { class: "pill accent" }, `${TARGETS[target === "pdf" ? "docx" : "pdf"]} → ${TARGETS[target]}`)) : null);
+  put($("reference-file"), state.reference ? fileRow(state.reference, () => setReference(null)) : null);
+  $("out-suffix").textContent = `.${target || "pdf"}`;
+  $("reference-kind").textContent = target === "pdf" ? "PDF (.pdf)" : target === "docx" ? "Word (.docx, .doc)" : "PDF or Word";
+  $("reference-input").accept = target === "pdf" ? ".pdf" : target === "docx" ? ".docx,.doc" : ".pdf,.docx,.doc";
+  $("reference-hint").textContent = target === "pdf"
+    ? "The PDF Word makes of this same document (File › Save As › PDF). The converted PDF is compared with it page by page: the true 1:1 score."
+    : target === "docx"
+      ? "The Word document this PDF was made from. Both Word documents are laid out the same way and compared page by page."
+      : "Choose the document to convert first. With the real document (the PDF Word saves, or the Word document a PDF was made from), the converted one is compared with it page by page.";
+  const engines = target ? state.engines[target] : [];
+  const ready = engines.filter((e) => e.available);
+  put($("engine-picker"), target ? [
+    el("button", { type: "button", class: "pick", "aria-pressed": String(state.engine === "auto"), disabled: !ready.length,
+      onclick: () => { state.engine = "auto"; renderConvert(); } },
+      el("strong", {}, "Auto"), el("span", {}, ready.length ? `the best installed: ${ready[0].title}` : "no engine installed")),
+    engines.map((e) => el("button", { type: "button", class: "pick", "aria-pressed": String(state.engine === e.name), disabled: !e.available,
+      title: e.missing || e.description, onclick: () => { state.engine = e.name; renderConvert(); } },
+      el("strong", {}, e.title), el("span", {}, e.available ? e.description : e.missing))),
+  ] : el("span", { class: "muted", style: "font-size:13.5px" }, "Choose a document first."));
+  $("convert-btn").disabled = state.busy || !state.source || !ready.length;
+  $("convert-btn").textContent = target ? `Convert to ${TARGETS[target]}` : "Convert";
+}
+
+function renderCompare() {
+  put($("real-file"), state.real ? fileRow(state.real, () => { state.real = null; renderCompare(); }) : null);
+  put($("converted-file"), state.converted ? fileRow(state.converted, () => { state.converted = null; renderCompare(); }) : null);
+  $("compare-btn").disabled = state.busy || !state.real || !state.converted;
+}
+
+function renderModes() {
+  put($("mode-tabs"), MODES.map(([key, title]) => el("button", { type: "button", role: "tab", "aria-selected": String(state.mode === key),
+    onclick: () => { state.mode = key; storage.set("docfill.convert.mode", key); renderModes(); } }, title)));
+  document.querySelectorAll("section[data-mode]").forEach((section) => { section.hidden = section.dataset.mode !== state.mode; });
+}
+
+// ------------------------------------------------------------------ running
+
+function busy(on, label, message = "") {
+  state.busy = on;
+  $(`${label}-busy`).textContent = message;
+  renderConvert();
+  renderCompare();
+}
+
+async function convert() {
+  const form = new FormData();
+  form.append("file", state.source, state.source.name);
+  form.append("engine", state.engine);
+  if (state.reference) form.append("reference", state.reference, state.reference.name);
+  if ($("out-name").value.trim()) form.append("filename", $("out-name").value.trim());
+  showBanner("");
+  busy(true, "convert", `Converting ${state.source.name} and comparing it… (a few seconds per page)`);
+  try {
+    const result = await api("/convert", { method: "POST", body: form });
+    renderResults(result);
+  } catch (error) { showBanner(error.message); }
+  finally { busy(false, "convert"); }
+}
+
+async function compare() {
+  const form = new FormData();
+  form.append("real", state.real, state.real.name);
+  form.append("converted", state.converted, state.converted.name);
+  showBanner("");
+  busy(true, "compare", "Comparing…");
+  try {
+    const report = await api("/convert/compare", { method: "POST", body: form });
+    renderResults(null, report);
+  } catch (error) { showBanner(error.message); }
+  finally { busy(false, "compare"); }
+}
+
+// ------------------------------------------------------------------ results
+
+function gauge(score) {
+  return el("div", { class: "gauge", style: `--p:${score ?? 0};--c:${colour(score)}`, role: "img", "aria-label": score == null ? "no score" : `score ${score} of 100` },
+    el("span", {}, score == null ? "–" : score >= 99.95 ? "100" : score.toFixed(1)));
+}
+
+function statusPill(check) {
+  if (check.status === "na") return el("span", { class: "pill" }, "not measured");
+  return el("span", { class: `pill ${check.status}` }, { ok: "1:1", warn: "small differences", bad: "different" }[check.status]);
+}
+
+function checksTable(report) {
+  return el("table", { class: "checks" },
+    el("tr", {}, el("th", {}, "Check"), el("th", {}, "Score"), el("th", {}, ""), el("th", {}, "What was found")),
+    report.checks.map((check) => el("tr", {},
+      el("td", {}, el("strong", {}, check.title), el("div", { class: "w" }, `weight ${check.weight}`)),
+      el("td", { class: "score" }, check.score == null ? el("span", { class: "muted" }, "–") : [
+        el("span", { class: "bar" }, el("i", { style: `width:${check.score}%;background:${colour(check.score)}` })),
+        `${check.score}`]),
+      el("td", {}, statusPill(check)),
+      el("td", { class: "detail" }, check.detail))));
+}
+
+function textDifferences(report) {
+  const text = report.checks.find((c) => c.key === "text");
+  if (!text || !text.differences || !text.differences.length) return null;
+  const more = text.differences_total - text.differences.length;
+  return el("details", { class: "more" },
+    el("summary", {}, `Text differences (${text.differences_total})`),
+    text.differences.map((d) => el("div", { class: "diff-item" },
+      d.before ? el("span", { class: "muted" }, `…${d.before} `) : null,
+      d.missing ? el("del", { title: "missing in the converted document" }, d.missing) : null,
+      d.missing && d.added ? " " : null,
+      d.added ? el("ins", { title: "added in the converted document" }, d.added) : null)),
+    more > 0 ? el("div", { class: "muted", style: "font-size:13px;padding-top:6px" }, `and ${more} more`) : null);
+}
+
+function fontsTable(report) {
+  const fonts = report.checks.find((c) => c.key === "fonts");
+  if (!fonts || !fonts.fonts || !fonts.fonts.length) return null;
+  const how = { same: ["ok", "same font"], metric: ["warn", "same widths"], replaced: ["bad", "replaced"] };
+  return el("details", { class: "more" },
+    el("summary", {}, `Fonts (${fonts.fonts.length})`),
+    el("table", {},
+      el("tr", {}, el("th", {}, "Font of the original"), el("th", {}, "Share of the text"), el("th", {}, "In the converted document"), el("th", {}, "")),
+      fonts.fonts.map((f) => el("tr", {},
+        el("td", {}, f.font), el("td", {}, `${Math.round(f.share * 100)}%`), el("td", {}, f.used || "—"),
+        el("td", {}, el("span", { class: `pill ${how[f.match][0]}` }, how[f.match][1]))))));
+}
+
+// The picture of a page has 4 colours: white, grey (ink in both), red (only in the original),
+// blue (only in the converted document). The original and the converted page are drawn from it.
+function paint(canvas, image, view) {
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0);
+  if (view === "diff") return;
+  const picture = context.getImageData(0, 0, canvas.width, canvas.height);
+  const px = picture.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i], g = px[i + 1], b = px[i + 2];
+    const white = r > 200 && g > 200 && b > 200;
+    const red = r > 170 && g < 100 && b < 100;
+    const blue = b > 170 && r < 100;
+    const ink = !white && (view === "original" ? !blue : !red);
+    px[i] = px[i + 1] = px[i + 2] = ink ? 25 : 255;
+  }
+  context.putImageData(picture, 0, 0);
+}
+
+function pagesGrid(report) {
+  if (!report.pages.length) return null;
+  const tiles = report.pages.map((page) => {
+    const caption = el("figcaption", {}, el("span", {}, `Page ${page.number}`),
+      el("strong", { style: `color:${colour(page.score)}` }, `${Math.round(page.score)}%`));
+    if (!page.diff) return el("figure", { class: "page noimg" }, el("div", { class: "blank" }, "no preview"), caption);
+    const canvas = el("canvas", { role: "img", "aria-label": `Page ${page.number}, ${page.score}% alike` });
+    const image = new Image();
+    image.onload = () => paint(canvas, image, state.view);
+    image.src = page.diff;
+    const figure = el("figure", { class: "page", title: "Click to enlarge", onclick: () => figure.classList.toggle("zoom") }, canvas, caption);
+    figure.redraw = () => { if (image.complete) paint(canvas, image, state.view); };
+    return figure;
+  });
+  const shown = report.pages.filter((p) => p.diff).length;
+  const views = el("div", { class: "seg", role: "group", "aria-label": "Show" },
+    VIEWS.map(([key, title]) => el("button", { type: "button", "aria-pressed": String(state.view === key), "data-view": key,
+      onclick: () => setView(key) }, title)));
+  return el("div", {},
+    el("div", { class: "pages-head" },
+      el("h3", {}, "Pages"), views,
+      el("div", { class: "legend" },
+        el("span", {}, el("i", { style: "background:#6e6e6e" }), "in both"),
+        el("span", {}, el("i", { style: "background:#d62828" }), "only in the original (missing or moved)"),
+        el("span", {}, el("i", { style: "background:#2563eb" }), "only in the converted (added or moved)"))),
+    shown < report.pages.length ? el("p", { class: "hint" }, `Pictures of the first ${shown} pages; every page is scored.`) : null,
+    el("div", { class: "pages" }, tiles));
+}
+
+function setView(view) {
+  state.view = view;
+  storage.set("docfill.convert.view", view);
+  document.querySelectorAll(".seg button[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  document.querySelectorAll("figure.page").forEach((f) => f.redraw && f.redraw());
+}
+
+function reportCard(report, title) {
+  return el("div", { class: "card" },
+    el("div", { class: "summary" }, gauge(report.score),
+      el("div", {}, el("div", { class: "against" }, title), el("div", { class: "verdict" }, report.label))),
+    report.warnings.length ? el("div", { class: "warnbox" }, report.warnings.map((w) => el("div", {}, w))) : null,
+    checksTable(report), textDifferences(report), fontsTable(report), pagesGrid(report));
+}
+
+function renderResults(result, comparison = null) {
+  const cards = [];
+  if (result) {
+    const direction = `${TARGETS[result.target === "pdf" ? "docx" : "pdf"]} → ${TARGETS[result.target]}`;
+    cards.push(el("div", { class: "card" },
+      el("div", { class: "result-head" },
+        el("div", {}, el("h2", {}, `${direction}: ${result.filename}`),
+          el("div", { class: "meta" }, `${result.source} · engine ${result.engine} · ${result.seconds} s · ${size(result.size)} · saved as ${result.saved_to}`)),
+        el("a", { class: "btn primary", href: result.url, download: result.filename }, `Download ${result.filename}`)),
+      result.warnings.length ? el("div", { class: "warnbox" }, result.warnings.map((w) => el("div", {}, w))) : null));
+    if (result.reference) cards.push(reportCard(result.reference, "Against the real document"));
+    cards.push(reportCard(result.fidelity, `Against the original (${result.source})`));
+  } else {
+    cards.push(reportCard(comparison, `${state.converted.name} against ${state.real.name}`));
+  }
+  put($("results"), cards);
+  $("results").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ------------------------------------------------------------------ wiring
+
+async function loadEngines() {
+  state.engines = await api("/convert/engines");
+  const pill = (target, title) => {
+    const ready = state.engines[target].filter((e) => e.available);
+    return el("span", { class: `pill ${ready.length ? "ok" : "warn"}`, title: ready.length ? ready.map((e) => e.title).join(", ") : state.engines[target].map((e) => e.missing).join("\n") },
+      `${title}: ${ready.length ? "ready" : "not installed"}`);
+  };
+  put($("pills"), pill("pdf", "Word → PDF"), pill("docx", "PDF → Word"));
+  renderConvert();
+}
+
+function init() {
+  const mode = storage.get("docfill.convert.mode");
+  if (MODES.some(([key]) => key === mode)) state.mode = mode;
+  const view = storage.get("docfill.convert.view");
+  if (VIEWS.some(([key]) => key === view)) state.view = view;
+  dropZone($("source-drop"), $("source-input"), setSource);
+  dropZone($("reference-drop"), $("reference-input"), setReference);
+  dropZone($("real-drop"), $("real-input"), (file) => { state.real = file; renderCompare(); });
+  dropZone($("converted-drop"), $("converted-input"), (file) => { state.converted = file; renderCompare(); });
+  $("convert-btn").addEventListener("click", convert);
+  $("compare-btn").addEventListener("click", compare);
+  renderModes();
+  renderConvert();
+  renderCompare();
+  loadEngines().catch((error) => showBanner(error.message));
+}
+
+init();
+</script>
+</body>
+</html>

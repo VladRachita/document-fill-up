@@ -11,6 +11,7 @@ import re
 from collections.abc import Callable, Iterator
 from functools import cache
 from importlib import resources
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
@@ -124,6 +125,17 @@ def read_upload(upload: UploadFile, limit: int) -> tuple[str, bytes]:
     if len(data) > limit:
         raise HTTPException(413, f"{name} is too large")
     return name, data
+
+
+def saved_file(directory: Path, filename: str) -> FileResponse:
+    """A document docfill saved in ``directory`` (PDF or Word), asked for by its bare name."""
+    match = re.fullmatch(r"[\w.-]+\.(pdf|docx)", filename)
+    if not match or filename != safe_filename(filename, f".{match[1]}"):
+        raise HTTPException(404, "not found")
+    path = directory / filename
+    if not path.is_file():
+        raise HTTPException(404, "not found")
+    return FileResponse(path, media_type=MEDIA_TYPES[match[1]], filename=filename)
 
 
 @cache
@@ -445,13 +457,7 @@ def register_wizard(
     @app.get("/wizard/files/{filename}", tags=["wizard"])
     def download(filename: str) -> FileResponse:
         """Download a document saved by the wizard (PDF or Word)."""
-        match = re.fullmatch(r"[\w.-]+\.(pdf|docx)", filename)
-        if not match or filename != safe_filename(filename, f".{match[1]}"):
-            raise HTTPException(404, "not found")
-        path = settings.output_dir / filename
-        if not path.is_file():
-            raise HTTPException(404, "not found")
-        return FileResponse(path, media_type=MEDIA_TYPES[match[1]], filename=filename)
+        return saved_file(settings.output_dir, filename)
 
 
 _ = MissingFieldsError  # raised by docfill.fill, turned into 422 by the app's handler

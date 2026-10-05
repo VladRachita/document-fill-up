@@ -31,6 +31,14 @@ class TemplateIntegrityError(TemplateError):
     """The stored standard document no longer matches its checksum."""
 
 
+class ConversionError(DocFillError):
+    """A document could not be converted (Word to PDF, PDF to Word)."""
+
+
+class ConverterUnavailableError(ConversionError):
+    """The conversion engine needed is not installed (LibreOffice, pdf2docx)."""
+
+
 class MissingFieldsError(DocFillError):
     """Required fields of a standard document could not be filled."""
 
