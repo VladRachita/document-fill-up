@@ -609,34 +609,58 @@ def _capital_i(text: str) -> str:
 # The premises lent or let as the registered office, as OCR may read the words of a scan
 # ("imobllul", "sltuat", "Tn" for "în").
 _LENT = r"imob[il1]l\w*|spat[il1]\w*|apartament\w*|cladir\w*|incaper\w*"
-_SITUATED = (
-    rf"\b(?:{_LENT}|sediu\w*)\s+(?:\w+\s+){{0,3}}?s[il1|]tuat\w*\s*,?\s+"
-    r"(?:[itfl1|]n|la(?:\s+adresa)?)\s*:?\s*"
-)
+_PREMISES_WORD = re.compile(rf"\b(?:{_LENT}|sediu\w*)")
+_SITUATED_AT = r"\bs[il1|]tuat\w*\s*,?\s+(?:[itfl1|]n|la(?:\s+adresa)?)\s*:?\s*"
 _ADDRESS_START = (
     r"(?:jud(?:etul)?|mun(?:icipiul)?|oras(?:ul)?|com(?:una)?|sat(?:ul)?|loc(?:alitatea)?|"
     r"str(?:ada)?|bd|b-dul|bulevardul|aleea|ale|calea|sos(?:eaua)?|sector(?:ul)?)\b\.?"
 )
-_PREMISES_ADDRESS = rf"\b(?:{_LENT})[^.;]{{0,80}}?\b(?={_ADDRESS_START})"
+# "imobilul situat în Timișoara, ...": a locality without its prefix (not "situat la etajul 1")
+_SITUATED = rf"\b(?:{_LENT}|sediu\w*)\s+(?:\w+\s+){{0,3}}?{_SITUATED_AT[2:]}(?!eta[jl])"
+# Text that does not end the description of the premises: no new article, clause or paragraph.
+_SAME_CLAUSE = r"(?:(?!\bart\.\s*\d|\n[ \t]*\n)[^;])"
+_PREMISES_ADDRESS = rf"\b(?:{_LENT}){_SAME_CLAUSE}{{0,300}}?\b(?={_ADDRESS_START})"
+_DESCRIBED = re.compile(r",?\s*persoan\w*\s+juridic\w*(?:\s+roman\w*)?\s*,?\s*$")
+
+
+def _premises_address(text: str) -> tuple[re.Match[str], float] | None:
+    """Where the address of the premises starts, and how sure that is. The premises are
+    described before their address ("imobilul — apartament cu două camere, situat la etajul 1,
+    cu suprafața utilă de 48 mp — situat în Mun. X, Str. Y nr. 1"): the "situat în / la" that an
+    address follows, in the clause that names the premises."""
+    folded = fold(text)
+    for match in re.finditer(rf"{_SITUATED_AT}(?={_ADDRESS_START})", folded):
+        clause = re.split(
+            r";|\bart\.\s*\d|\n[ \t]*\n", folded[max(0, match.start() - 300) : match.start()]
+        )
+        if _PREMISES_WORD.search(clause[-1]):
+            return match, PREMISES_CONFIDENCE
+    if match := re.search(_SITUATED, folded):
+        return match, PREMISES_CONFIDENCE
+    if match := re.search(_PREMISES_ADDRESS, folded):  # "situat în" misread
+        return match, PREMISES_GUESS_CONFIDENCE
+    return None
 
 
 def extract_premises(text: str, document: str | None = None) -> list[ExtractedField]:
     """The proof of the registered office (comodat, lease, owner's statement): the address of
     the premises and the company it is lent to. The owner is not a person of the request."""
     found: list[ExtractedField] = []
-    match = _search_folded(_SITUATED, text)
-    confidence = PREMISES_CONFIDENCE
-    if not match:  # "situat în" misread: the first address that follows the premises
-        match = _search_folded(_PREMISES_ADDRESS, text)
-        confidence = PREMISES_GUESS_CONFIDENCE
-    if match:
-        address = _capital_i(_sentence_from(text, match.end()))
+    if located := _premises_address(text):
+        match, confidence = located
+        # "Bra~ov": the ș as the text layer of some scanner apps writes it
+        address = re.sub(r"(?<=\w)~(?=\w)", "ș", _sentence_from(text, match.end()))
+        address = _capital_i(address)
         if len(address) > 8:
             evidence = _line_at(text, match.start())
             found.append(_field("company_address", address, confidence, evidence, document))
     if pending := _search_folded(r"\bin\s+curs\s+de\s+(?:infiintare|constituire)", text):
         line_start = text.rfind("\n", 0, pending.start()) + 1
-        if firm := _FIRM_BEFORE.search(text[line_start : pending.start()]):
+        before = text[line_start : pending.start()]
+        # "EXEMPLU S.R.L., persoană juridică română în curs de constituire"
+        if described := _DESCRIBED.search(fold(before)):
+            before = before[: described.start()]
+        if firm := _FIRM_BEFORE.search(before):
             evidence = text[line_start : pending.end()]
             name = _firm_name(firm["name"])
             found.append(_field("company_name", name, PREMISES_CONFIDENCE, evidence, document))

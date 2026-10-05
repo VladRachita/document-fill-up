@@ -34,7 +34,8 @@ checked by the tests after every change.
  CI photo / scan, birth certificate, filled forms, PDF / DOCX / PNG / JPG
           │
    ┌──────▼──────┐   text layer, Word body + tables, values of filled PDF forms,
-   │ 1. Read     │   OCR (Tesseract, several preprocessing variants, Romanian + English)
+   │ 1. Read     │   OCR (Tesseract, several preprocessing variants, Romanian + English),
+   │             │   also of scans a phone app laid its own (poorer) text over
    └──────┬──────┘
    ┌──────▼──────┐   fix unicode, drop page numbers / repeated headers / form blanks /
    │ 2. Clean    │   OCR noise, redact card numbers and IBANs
@@ -302,7 +303,7 @@ paragraph without blanks copied verbatim:
 | In the act | Comes from |
 |---|---|
 | the firm, `conform dovezii privind disponibilitatea firmei nr. … din …` | the proof of the firm name (ONRC, Formular nr. 17) |
-| `Art. 1.4. — Sediul societății este în …` | the proof of the registered office (contract de comodat / închiriere): the premises `situat în …`; `Ale. lancu`, `BI. 12`, `Et. Vil`, `Timisoara` as OCR reads a scan are written `Ale. Iancu`, `bl. 12`, `et. VII`, `Timișoara`. OCR may also misread the words around the address (`imobllul sltuat Tn`), or the title (the contract is then recognised by its parties, *comodant* and *comodatar*): the first address after the premises is taken, at a lower confidence |
+| `Art. 1.4. — Sediul societății este în …` | the proof of the registered office (contract de comodat / închiriere): the premises `situat în …`, the one an address follows when the premises are described first (`imobilul — apartament cu două camere, situat la etajul 1, cu suprafața … — situat în Mun. …`), not an owner's domicile; the firm also when it is described (`… S.R.L., persoană juridică română în curs de constituire`); `Ale. lancu`, `BI. 12`, `Et. Vil`, `Timisoara` as OCR reads a scan are written `Ale. Iancu`, `bl. 12`, `et. VII`, `Timișoara`. OCR may also misread the words around the address (`imobllul sltuat Tn`), or the title (the contract is then recognised by its parties, *comodant* and *comodatar*): the first address after the premises is taken, at a lower confidence |
 | `Art. 2.1.` the object of activity, the main domain (group and class), the main and the secondary activities | the CAEN activities typed in the review, the main one first; the object is proposed from the main activity and can be written otherwise |
 | `Art. 3.1.` the share capital, the number of părți sociale (`50 de părți sociale`) and their nominal value (computed) | typed in the review |
 | `Asociat unic:`, `Art. 3.2.` and `Art. 10.` (the beneficial owner, 100%) | the sole associate's identity card |
@@ -590,6 +591,7 @@ Environment variables (or `.env`, see `.env.example`):
 | `DOCFILL_DATABASE_URL` | `sqlite:///./docfill.db` | Any SQLAlchemy URL (standard documents and learning data); PostgreSQL needs `pip install -e ".[postgres]"` |
 | `DOCFILL_OCR_LANGUAGES` | `auto` | Tesseract languages; `auto` = Romanian + English when installed |
 | `DOCFILL_OCR_DPI` | `300` | Resolution for rasterising scanned PDF pages |
+| `DOCFILL_PDF_OCR_TEXT_LAYERS` | `true` | Read again with Tesseract the scanned pages that carry a scanner app's own invisible text (Adobe Scan and the like often lose the Romanian letters: `Bra~ov`, `judeftil`); `false` trusts that text |
 | `DOCFILL_TESSERACT_CMD` | – | Path to `tesseract` if it is not on `PATH` |
 | `DOCFILL_SPACY_MODEL` | `en_core_web_sm` | NER model (empty disables NER) |
 | `DOCFILL_MIN_CONFIDENCE` | `0.5` | Minimum (calibrated) confidence for a value to be filled in |
