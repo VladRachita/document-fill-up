@@ -8,6 +8,7 @@ from tests.conftest import (
     make_docx,
     make_image,
     make_scanned_pdf,
+    make_scanner_app_pdf,
     make_text_pdf,
     requires_tesseract,
 )
@@ -106,3 +107,45 @@ def test_read_scanned_pdf_with_ocr(settings):
     document = read_bytes(make_scanned_pdf(ID_CARD_LINES), "scan.pdf", settings)
     assert document.used_ocr
     assert "Given names: John Michael" in document.text
+
+
+# A comodat scanned with a phone app: the app's own text lost the Romanian letters.
+SCANNED_COMODAT = [
+    "CONTRACT DE COMODAT",
+    "imobilul situat în Mun. Brașov, Str. Exemplului nr. 7,",
+    "județul Brașov.",
+]
+SCANNER_APP_TEXT = [
+    "CONTRACTDECOMODAT",
+    "imobilul situat in Mun. Bra~ov, Str. Exemplului nr. 7,",
+    "judeftil Bra~ov.",
+]
+
+
+@requires_tesseract
+def test_a_scan_is_read_again_instead_of_the_scanner_apps_text(settings):
+    data = make_scanner_app_pdf(SCANNED_COMODAT, SCANNER_APP_TEXT)
+    document = read_bytes(data, "comodat.pdf", settings)
+    assert document.used_ocr
+    assert "Exemplului" in document.text
+    assert "Bra~ov" not in document.text and "judeftil" not in document.text
+    # the scanner's text, when asked for
+    trusting = settings.model_copy(update={"pdf_ocr_text_layers": False})
+    kept = read_bytes(data, "comodat.pdf", trusting)
+    assert not kept.used_ocr and "judeftil Bra~ov." in kept.text
+
+
+def test_the_scanner_apps_text_is_used_without_ocr(settings, monkeypatch):
+    monkeypatch.setattr("docfill.readers.ocr.tesseract_available", lambda *_: False)
+    data = make_scanner_app_pdf(SCANNED_COMODAT, SCANNER_APP_TEXT)
+    document = read_bytes(data, "comodat.pdf", settings)
+    assert "judeftil Bra~ov." in document.text
+    assert "own text layer is used" in document.warnings[0]
+
+
+def test_a_pdf_with_its_own_text_is_not_ocr_read(settings, monkeypatch):
+    read = []
+    monkeypatch.setattr("docfill.readers.pdf.ocr_image", lambda *args: read.append(args) or "")
+    data = make_text_pdf([["Contract de comodat", "imobilul situat in Mun. Brasov"]])
+    assert "Contract de comodat" in read_bytes(data, "comodat.pdf", settings).text
+    assert read == []

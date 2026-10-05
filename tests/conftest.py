@@ -103,6 +103,33 @@ def make_scanned_pdf(lines: list[str]) -> bytes:
     return buffer.getvalue()
 
 
+def make_scanner_app_pdf(lines: list[str], layer: list[str]) -> bytes:
+    """A page as a phone scanner app saves it: the picture of the page, with the app's own OCR
+    text (``layer``, as it misread the page) drawn invisible over it."""
+    try:
+        font = ImageFont.truetype(FONT_PATH, 34)
+    except OSError:
+        font = ImageFont.load_default(size=34)
+    image = Image.new("RGB", (1240, 1754), "white")
+    draw = ImageDraw.Draw(image)
+    for index, line in enumerate(lines):
+        draw.text((100, 140 + 64 * index), line, fill="black", font=font)
+    picture = io.BytesIO()
+    image.save(picture, format="JPEG", quality=90)
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    pdf.drawImage(ImageReader(picture), 0, 0, width=A4[0], height=A4[1])
+    text = pdf.beginText()
+    text.setTextRenderMode(3)  # invisible
+    text.setFont("Helvetica", 11)
+    for index, line in enumerate(layer):
+        text.setTextOrigin(48, A4[1] - 74 - 26 * index)
+        text.textOut(line)
+    pdf.drawText(text)
+    pdf.save()
+    return buffer.getvalue()
+
+
 def make_pdf_form(fields: list[str]) -> bytes:
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)

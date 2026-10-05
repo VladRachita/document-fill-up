@@ -159,6 +159,29 @@ COMODAT = [
     "de activitate.",
 ]
 
+# The premises described before their address, the firm described before "în curs de
+# constituire", two owners: the wording of another comodat filed with the act.
+COMODAT_APARTMENT = [
+    "CONTRACT DE COMODAT",
+    "ÎNTRE PĂRȚILE:",
+    "COMODANȚI:",
+    "VASILE ION, domiciliat în Jud. Brașov, Mun. Brașov, Str. Exemplului nr. 7, bl. B3, sc. 2,",
+    "et. 4, ap. 18, posesor al C.I. seria BV nr. 112233.",
+    "VASILE ANA, domiciliată în Jud. Brașov, Mun. Brașov, Str. Exemplului nr. 7, bl. B3, sc. 2,",
+    "et. 4, ap. 18, posesoare a C.I. seria BV nr. 445566.",
+    "și",
+    "COMODATAR:",
+    "EXEMPLU VERDE S.R.L., persoană juridică română în curs de constituire, reprezentată de dl.",
+    "POPESCU ION-ANDREI, în calitate de Administrator și Asociat Unic, domiciliat în Jud. Cluj,",
+    "Mun. Cluj-Napoca, Str. Florilor nr. 5, bl. A2, sc. 1, et. 3, ap. 10.",
+    "A intervenit prezentul contract de comodat în următoarele condiții:",
+    "Art. 1. OBIECTUL CONTRACTULUI Comodanții dau cu titlu de folosință gratuită comodatarului",
+    "imobilul — apartament cu două camere, situat la etajul 4, cu suprafața utilă de 45,10 mp și",
+    "suprafața totală de 50,20 mp — situat în Mun. Brașov, Str. Exemplului nr. 7, bl. B3, sc. 2,",
+    "et. 4, ap. 18, judeţul Brașov.",
+    "Art. 2. DURATA CONTRACTULUI Împrumutul de folosință se face pe o perioadă de 10 ani.",
+]
+
 
 def text_of(paragraphs: list[str]) -> str:
     return "\n".join(paragraphs)
@@ -330,6 +353,34 @@ def test_proof_of_registered_office_as_ocr_reads_it(premises, confidence):
     )
 
 
+@pytest.mark.parametrize(
+    "scanned",
+    [
+        False,
+        # the text a phone scanner app lays over its scan: "~" for ș, "judeftil" for județul
+        True,
+    ],
+)
+def test_the_premises_described_before_their_address(scanned):
+    text = text_of(COMODAT_APARTMENT)
+    if scanned:
+        article = text.index("Art. 1.")
+        text = text[:article] + (
+            text[article:]
+            .replace("Brașov", "Bra~ov")
+            .replace("situat în", "situat in")
+            .replace("judeţul", "judeftil")
+        )
+    found = values_of(extract_premises(text))
+    # not the floor ("situat la etajul 4"), nor an owner's or the representative's domicile
+    assert found["company_name"] == "EXEMPLU VERDE S.R.L."
+    derived = complete_values({"company_address": found["company_address"]})
+    office = {name: value for name, (value, _) in derived.items()}
+    assert address_line(office, "company_", county="county") == (
+        "Mun. Brașov, Str. Exemplului nr. 7, bl. B3, sc. 2, et. 4, ap. 18, jud. Brașov"
+    )
+
+
 def test_no_premises_no_office():
     assert extract_premises("Spațiul va fi utilizat în vederea stabilirii sediului.") == []
 
@@ -406,6 +457,9 @@ def test_document_types_by_their_title():
     assert classifier.by_title("| " + text_of(COMODAT)) == "dovada_sediu"
     untitled = text_of(COMODAT[1:]).replace("CONTRACT DE COMODAT", "")
     assert classifier.by_title("C0NTRAGT DE C0MQDAT\n" + untitled) == "dovada_sediu"
+    # the title as a scanner app reads it, the parties as they are named in the plural
+    glued = text_of(COMODAT_APARTMENT).replace("CONTRACT DE COMODAT", "CONTRACTDECOMODAT", 1)
+    assert classifier.by_title(glued) == "dovada_sediu"
     # not a list of documents that names a contract
     assert classifier.by_title("Opis\n3. Contract de comodat nr. 1\n4. Dovada") is None
     # a type the classifier was not taught is never named by its title

@@ -330,8 +330,8 @@ _LOCALITY_PREFIX = re.compile(
     rf"(?P<name>{_NAME_WORD}(?:\s+{_NAME_WORD})*)"
 )
 _OCR_CODE = r"[A-Za-z|!1)}\]]"
-_COUNTY = re.compile(
-    r"\b(?i:jud(?:e[tț]ul?)?)(?:\.\s*|\s+)"
+_COUNTY = re.compile(  # "jud.", "județul", "judeţul" (cedilla), "judeftil" (a scanner's OCR)
+    r"\b(?i:jud(?:e[\wțţ!|]{0,3}l?)?)(?:\.\s*|\s+)"
     rf"(?P<county>{_OCR_CODE}{_OCR_CODE}(?=[\s,.;]|$)"  # the code, possibly misread: "C}"
     r"|[A-Z]{1,2}\b"
     r"|[A-ZĂÂÎȘȚ][\wăâîșț\-]+(?:\s[A-ZĂÂÎȘȚ][\wăâîșț]+)?)",

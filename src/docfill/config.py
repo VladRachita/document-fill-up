@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     ocr_dpi: int = 300
     # A PDF page with fewer extractable characters than this is treated as scanned and OCR'd.
     pdf_min_text_chars: int = 20
+    # A scanned page that carries the scanner app's own (invisible) OCR text is read again with
+    # Tesseract, which knows the Romanian letters; False trusts the scanner's text.
+    pdf_ocr_text_layers: bool = True
 
     # Machine learning (spaCy NER). Set to "" to disable the NER extractor.
     spacy_model: str = "en_core_web_sm"
