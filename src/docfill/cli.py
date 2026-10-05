@@ -21,6 +21,8 @@ from rich.text import Text
 
 from docfill.app import build_app
 from docfill.config import Settings, get_settings
+from docfill.convert import Fidelity, compare_files, convert_and_score, engines_for
+from docfill.convert import convert as convert_document
 from docfill.errors import DocFillError, MissingFieldsError
 from docfill.export.pdf_form import blank_form, inspect_form, read_form_values
 from docfill.extraction import field_labels
@@ -569,6 +571,163 @@ def wizard(
         + (f"; new labels: {', '.join(learned.new_labels)}" if learned.new_labels else "")
         + "[/]"
     )
+
+
+# ----------------------------------------------------------------------------- convert
+
+_CHECK_STYLE = {"ok": "green", "warn": "yellow", "bad": "red", "na": "dim"}
+
+
+def _print_fidelity(report: Fidelity, title: str) -> None:
+    score = report.score
+    verdict = report.as_dict()["label"]
+    table = Table(title=f"{title}: {'-' if score is None else f'{score:.1f}'} · {verdict}")
+    for column in ("Check", "Score", "What was found"):
+        table.add_column(column)
+    for check in report.checks:
+        style = _CHECK_STYLE[check.status]
+        value = "-" if check.score is None else f"{check.score:.1f}"
+        table.add_row(check.as_dict()["title"], f"[{style}]{value}[/]", escape(check.detail))
+    console.print(table)
+    if report.pages:
+        pages = "  ".join(f"{page.number}: {page.score:.0f}%" for page in report.pages)
+        console.print(f"[dim]Pages:[/] {pages}")
+    for difference in report.check("text").extra.get("differences", [])[:5]:
+        missing = f"[red]-{escape(difference['missing'])}[/] " if difference["missing"] else ""
+        added = f"[blue]+{escape(difference['added'])}[/]" if difference["added"] else ""
+        console.print(f"  [dim]…{escape(difference['before'])}[/] {missing}{added}")
+    for warning in report.warnings:
+        console.print(f"[yellow]warning:[/] {escape(warning)}")
+
+
+def _check_score(report: Fidelity | None, minimum: float | None) -> None:
+    if minimum is None or report is None:
+        return
+    if report.score is None or report.score < minimum:
+        _fail(f"the score is under {minimum:g}")
+
+
+@app.command("convert")
+def convert_command(
+    ctx: typer.Context,
+    source: Annotated[Path, typer.Argument(help="A Word (.docx, .doc) or PDF document.")],
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output", "-o", help="Where to write it (default: next to SOURCE, never over a file)."
+        ),
+    ] = None,
+    to: Annotated[
+        str | None, typer.Option("--to", help="pdf or docx (default: Word → PDF, PDF → Word).")
+    ] = None,
+    engine: Annotated[
+        str,
+        typer.Option(help="auto, libreoffice or pdf2docx (see docfill convert-engines)."),
+    ] = "auto",
+    reference: Annotated[
+        Path | None,
+        typer.Option(
+            "--reference",
+            "-r",
+            help="The real document to compare with: the PDF Word saves, or the Word document "
+            "the PDF was made from.",
+        ),
+    ] = None,
+    score: Annotated[bool, typer.Option(help="Score the converted document.")] = True,
+    min_score: Annotated[
+        float | None,
+        typer.Option(
+            help="Exit with an error under this score (against the real document if "
+            "given, else the original)."
+        ),
+    ] = None,
+    as_json: Annotated[bool, typer.Option("--json", help="Print the scores as JSON.")] = False,
+) -> None:
+    """Convert a Word document to PDF or a PDF to Word, and score how faithful the converted
+    document is (0-100) against the original and the real document."""
+    settings = _settings(ctx)
+    if not source.is_file():
+        _fail(f"{source}: file not found")
+    real = (reference.name, reference.read_bytes()) if reference and reference.is_file() else None
+    if reference and real is None:
+        _fail(f"{reference}: file not found")
+    try:
+        if score:
+            conversion = convert_and_score(
+                source.read_bytes(), source.name, to, engine, real, previews=0, settings=settings
+            )
+        else:
+            conversion = convert_document(source.read_bytes(), source.name, to, engine, settings)
+    except DocFillError as exc:
+        _fail(str(exc))
+    if output is None:
+        path = save_output(source.parent, source.stem, conversion.data, conversion.suffix)
+    else:
+        path = (
+            output
+            if output.suffix.lower() == conversion.suffix
+            else Path(str(output) + conversion.suffix)
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(conversion.data)
+    if as_json:
+        typer.echo(json.dumps({**conversion.as_dict(), "output": str(path)}, indent=2))
+    else:
+        console.print(f"[green]Written[/] {path} ({conversion.engine}, {conversion.seconds:.1f} s)")
+        for warning in conversion.warnings:
+            console.print(f"[yellow]warning:[/] {escape(warning)}")
+        if conversion.reference:
+            _print_fidelity(conversion.reference, f"Against {reference.name}")
+        if conversion.fidelity:
+            _print_fidelity(conversion.fidelity, f"Against the original ({source.name})")
+    _check_score(conversion.reference or conversion.fidelity, min_score)
+
+
+@app.command("compare")
+def compare_command(
+    ctx: typer.Context,
+    real: Annotated[Path, typer.Argument(help="The real document (Word or PDF).")],
+    converted: Annotated[Path, typer.Argument(help="The converted document (Word or PDF).")],
+    min_score: Annotated[
+        float | None, typer.Option(help="Exit with an error under this score.")
+    ] = None,
+    as_json: Annotated[bool, typer.Option("--json", help="Print the scores as JSON.")] = False,
+) -> None:
+    """Score a converted document against the real one, whatever program converted it."""
+    for path in (real, converted):
+        if not path.is_file():
+            _fail(f"{path}: file not found")
+    try:
+        report = compare_files(
+            (real.name, real.read_bytes()),
+            (converted.name, converted.read_bytes()),
+            previews=0,
+            settings=_settings(ctx),
+        )
+    except DocFillError as exc:
+        _fail(str(exc))
+    if as_json:
+        typer.echo(json.dumps(report.as_dict(), indent=2))
+    else:
+        _print_fidelity(report, f"{converted.name} against {real.name}")
+    _check_score(report, min_score)
+
+
+@app.command("convert-engines")
+def convert_engines() -> None:
+    """The engines that convert Word to PDF and PDF to Word, and what is missing to use one."""
+    table = Table(title="Conversion engines (auto: the first one installed)")
+    for column in ("Direction", "Engine", "Installed", "What it does"):
+        table.add_column(column)
+    for engine in engines_for():
+        missing = engine.missing()
+        table.add_row(
+            "Word → PDF" if engine.target == "pdf" else "PDF → Word",
+            engine.name,
+            "[green]yes[/]" if missing is None else f"[red]no[/]: {escape(missing)}",
+            engine.description,
+        )
+    console.print(table)
 
 
 # ----------------------------------------------------------------------------- forms

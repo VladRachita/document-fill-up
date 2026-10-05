@@ -42,8 +42,11 @@ class Settings(BaseSettings):
     # Uploads larger than this are rejected (bytes).
     max_file_size: int = 25 * 1024 * 1024
 
-    # Folder where the wizard saves the PDFs it creates.
+    # Folder where the wizard saves the PDFs it creates (converted documents: its "converted").
     output_dir: Path = Path("output")
+
+    # Time limit of one conversion (Word to PDF, PDF to Word, laying out a page to compare it).
+    convert_timeout: int = 300
 
     # TrueType font used for exported PDFs. Needed for non Latin-1 characters (e.g. ă, ș, ț).
     # When unset, a few common system locations are probed and Helvetica is the fallback.

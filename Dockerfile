@@ -1,16 +1,19 @@
 FROM python:3.11-slim
 
-# Tesseract OCR (English + Romanian), a unicode TrueType font for the exported PDFs and antiword
-# to read legacy Word (.doc) files.
+# Tesseract OCR (English + Romanian), a unicode TrueType font for the exported PDFs, antiword
+# to read legacy Word (.doc) files, LibreOffice Writer to convert Word to PDF, and the fonts of
+# the same widths as the Microsoft ones (Times New Roman, Arial, Courier New: Liberation; Calibri:
+# Carlito; Cambria: Caladea) so converted documents break their lines where Word does.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         tesseract-ocr tesseract-ocr-eng tesseract-ocr-ron fonts-dejavu-core antiword \
+        libreoffice-writer-nogui fonts-liberation fonts-crosextra-carlito fonts-crosextra-caladea \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --no-cache-dir ".[postgres]" \
+RUN pip install --no-cache-dir ".[postgres,convert]" \
     && python -m spacy download en_core_web_sm
 
 RUN useradd --create-home docfill && mkdir /data && chown docfill /data

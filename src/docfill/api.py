@@ -19,7 +19,10 @@ from pydantic import BaseModel, Field, ValidationError
 from docfill import __version__
 from docfill.app import build_app
 from docfill.config import Settings, get_settings
+from docfill.convert import engines_for
 from docfill.errors import (
+    ConversionError,
+    ConverterUnavailableError,
     DocFillError,
     DocumentReadError,
     KnowledgeError,
@@ -35,6 +38,7 @@ from docfill.pipeline import DocumentAnalysis
 from docfill.readers.ocr import tesseract_available
 from docfill.templates import StandardDocumentSpec, TemplateRepository
 from docfill.web import read_upload, register_wizard
+from docfill.web.convert import register_convert
 from docfill.web.knowledge import register_knowledge
 
 _ERROR_STATUS: list[tuple[type[DocFillError], int]] = [
@@ -45,6 +49,8 @@ _ERROR_STATUS: list[tuple[type[DocFillError], int]] = [
     (UnsupportedDocumentError, 415),
     (TemplateIntegrityError, 409),
     (OCRUnavailableError, 503),
+    (ConverterUnavailableError, 503),
+    (ConversionError, 422),
     (DocumentReadError, 400),
 ]
 
@@ -83,7 +89,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         description=(
             "Scan documents, extract personal data and fill standard documents as PDF, with "
             "a knowledge base of Romanian trade register procedures (SRL, SRL-D, SA, PFA, II, "
-            "IF)."
+            "IF); convert Word documents to PDF and PDFs to Word, with a score of how faithful "
+            "the converted document is."
         ),
     )
 
@@ -114,6 +121,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "version": __version__,
             "ocr": tesseract_available(settings.tesseract_cmd),
             "ner": docfill.extractor.ner_available,
+            # the conversions that can be made here: pdf (Word to PDF), docx (PDF to Word)
+            "convert": {
+                target: any(engine.missing() is None for engine in engines_for(target))
+                for target in ("pdf", "docx")
+            },
         }
 
     @app.get("/fields")
@@ -204,4 +216,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_wizard(app, context, repository)
     register_knowledge(app, context)
+    register_convert(app, context)
     return app
