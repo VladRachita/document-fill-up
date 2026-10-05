@@ -30,6 +30,8 @@ dependencies = [
     # Conversion fidelity scores (pages compared as images, texts aligned word by word)
     "numpy>=1.24",
     "rapidfuzz>=3.0",
+    # Scans: the stamps, signatures and handwriting found on a page (groups of ink)
+    "scipy>=1.10",
     # App plumbing
     "pydantic>=2.5",
     "pydantic-settings>=2.1",

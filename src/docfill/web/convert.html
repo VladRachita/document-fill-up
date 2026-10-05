@@ -54,6 +54,8 @@
   .muted { color: var(--muted); }
   input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
   label.f { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 4px; }
+  label.check { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; margin: 12px 0 0; cursor: pointer; }
+  label.check[hidden] { display: none; }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .btn { padding: 9px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 6px; }
   .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
@@ -167,6 +169,7 @@
         <div id="source-file"></div>
         <p class="pick-label">Engine</p>
         <div class="picker" id="engine-picker" role="group" aria-label="Engine"></div>
+        <label class="check" id="marks-row" hidden><input type="checkbox" id="marks-input" checked><span>Keep stamps, signatures and handwriting <span class="muted">(a scan: as pictures where they are on the page; unticked, a clean copy)</span></span></label>
         <label class="f" for="out-name">Name of the converted file (optional)</label>
         <div class="filename"><input type="text" id="out-name" placeholder="same as the original" autocomplete="off"><span id="out-suffix">.pdf</span></div>
       </div>
@@ -351,6 +354,7 @@ function renderConvert() {
       title: e.missing || e.description, onclick: () => { state.engine = e.name; renderConvert(); } },
       el("strong", {}, e.title), el("span", {}, e.available ? e.description : e.missing))),
   ] : el("span", { class: "muted", style: "font-size:13.5px" }, "Choose a document first."));
+  $("marks-row").hidden = !(target === "docx" && ["auto", "ocr"].includes(state.engine) && ready.some((e) => e.name === "ocr"));
   $("convert-btn").disabled = state.busy || !state.source || !ready.length;
   $("convert-btn").textContent = target ? `Convert to ${TARGETS[target]}` : "Convert";
 }
@@ -382,6 +386,7 @@ async function convert() {
   form.append("engine", state.engine);
   if (state.reference) form.append("reference", state.reference, state.reference.name);
   if ($("out-name").value.trim()) form.append("filename", $("out-name").value.trim());
+  if (!$("marks-row").hidden) form.append("marks", String($("marks-input").checked));
   showBanner("");
   busy(true, "convert", `Converting ${state.source.name} and comparing it… (a few seconds per page)`);
   try {

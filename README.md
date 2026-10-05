@@ -220,20 +220,21 @@ real one.
 |---|---|
 | Word → PDF | **LibreOffice** Writer, fonts embedded |
 | PDF → Word | **pdf2docx** (an editable document), else LibreOffice's PDF import (every line in a frame) |
-| scanned PDF → Word | **OCR**: the text of every page read with Tesseract and written as paragraphs, titles, lists and bold words, like a document typed in Word (chosen by Auto for a scan) |
+| scanned PDF → Word | **OCR**: the text of every page read with Tesseract and written as paragraphs, titles, lists and bold words, like a document typed in Word; its stamps, signatures and handwriting kept as pictures where they are on the page (chosen by Auto for a scan) |
 
 ```bash
 docfill convert contract.docx                              # contract.pdf, with its scores
 docfill convert contract.docx -r contract-word.pdf          # and against the PDF Word saved
 docfill convert scan.pdf --engine libreoffice -o out.docx
+docfill convert scan.pdf --no-marks                         # OCR, a clean copy: no stamps, no signatures
 docfill compare contract-word.pdf contract.pdf --min-score 95   # exit 1 under 95
 docfill convert-engines                                     # what is installed
 ```
 
 Measured on the reference documents: the SRL act converts to PDF keeping every word and the 8
 pages Word counted (98.3), and back to Word with pdf2docx at 95.5. A real act constitutiv of 8
-pages scanned with a phone becomes a Word document to edit in 13 s, scored 90.3 (92% OCR
-confidence, the uncertain words listed to check). Official forms (Anexa 4)
+pages scanned with a phone becomes a Word document to edit in 20 s, scored 90.8 (92% OCR
+confidence, the uncertain words listed to check), its stamps and signatures where they were. Official forms (Anexa 4)
 convert poorly to Word with every engine (50-74): keep them as PDFs. The libraries explored,
 the measures and how to reach 100 (fonts) are in **[docs/CONVERSION.md](docs/CONVERSION.md)**.
 
@@ -663,6 +664,7 @@ Environment variables (or `.env`, see `.env.example`):
 | `DOCFILL_DATABASE_URL` | `sqlite:///./docfill.db` | Any SQLAlchemy URL (standard documents and learning data); PostgreSQL needs `pip install -e ".[postgres]"` |
 | `DOCFILL_OCR_LANGUAGES` | `auto` | Tesseract languages; `auto` = Romanian + English when installed |
 | `DOCFILL_OCR_DPI` | `300` | Resolution for rasterising scanned PDF pages |
+| `DOCFILL_OCR_KEEP_MARKS` | `true` | A scan converted to Word keeps its stamps, signatures and handwriting, as pictures where they are on the page; `false` makes a clean copy |
 | `DOCFILL_PDF_OCR_TEXT_LAYERS` | `true` | Read again with Tesseract the scanned pages that carry a scanner app's own invisible text (Adobe Scan and the like often lose the Romanian letters: `Bra~ov`, `judeftil`); `false` trusts that text |
 | `DOCFILL_TESSERACT_CMD` | – | Path to `tesseract` if it is not on `PATH` |
 | `DOCFILL_SPACY_MODEL` | `en_core_web_sm` | NER model (empty disables NER) |

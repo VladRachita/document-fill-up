@@ -70,12 +70,24 @@ def register_convert(app: FastAPI, context: App) -> None:
         previews: Annotated[
             int, Form(ge=0, le=MAX_PREVIEWS, description="Pages given as pictures.")
         ] = 12,
+        marks: Annotated[
+            bool | None,
+            Form(
+                description="A scan read with OCR: keep its stamps, signatures and handwriting "
+                "as pictures where they are on the page (false: a clean copy). By default, "
+                "the server's setting (DOCFILL_OCR_KEEP_MARKS)."
+            ),
+        ] = None,
     ) -> dict[str, Any]:
         """Convert a document, save it in the output folder and score how faithful it is:
         ``fidelity`` against the original, ``reference`` against the real document."""
         name, data = read_upload(file, settings.max_file_size)
         real = read_upload(reference, settings.max_file_size) if _given(reference) else None
-        conversion = convert_and_score(data, name, to or None, engine, real, previews, settings)
+        if marks is not None:  # this time only
+            chosen = settings.model_copy(update={"ocr_keep_marks": marks})
+        else:
+            chosen = settings
+        conversion = convert_and_score(data, name, to or None, engine, real, previews, chosen)
         stem = filename or PurePosixPath(name.replace("\\", "/")).stem
         path = save_output(folder, stem, conversion.data, conversion.suffix)
         return {

@@ -47,6 +47,9 @@ class Settings(BaseSettings):
 
     # Time limit of one conversion (Word to PDF, PDF to Word, laying out a page to compare it).
     convert_timeout: int = 300
+    # A scan read with OCR keeps its stamps, signatures and handwriting, as pictures where they
+    # are on the page (False: a clean copy, to be signed again).
+    ocr_keep_marks: bool = True
 
     # TrueType font used for exported PDFs. Needed for non Latin-1 characters (e.g. ă, ș, ț).
     # When unset, a few common system locations are probed and Helvetica is the fallback.

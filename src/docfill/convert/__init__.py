@@ -175,6 +175,7 @@ def convert_and_score(
     # A Word document is not laid out to be compared with the PDF LibreOffice made of it: it
     # would be compared with itself.
     original = rendition(data, conversion.source_kind, settings, layout=False)
+    original.stamps = bool(conversion.ocr and conversion.ocr.get("marks"))
     converted = rendition(conversion.data, conversion.target, settings)
     conversion.fidelity = compare(original, converted, "original", previews)
     if original.scan and conversion.ocr:  # its text is the reading itself

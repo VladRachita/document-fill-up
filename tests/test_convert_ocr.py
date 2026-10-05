@@ -10,23 +10,28 @@ from docx.shared import Cm, Pt
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
 from rapidfuzz.distance import Indel
+from typer.testing import CliRunner
 
 from docfill.api import create_app
+from docfill.cli import app as cli
 from docfill.config import Settings
 from docfill.convert import _for_scans, convert, convert_and_score
 from docfill.convert.engines import libreoffice_missing
 from docfill.convert.fidelity import words
 from docfill.convert.ocr import (
     Line,
+    Mark,
     Page,
     Word,
     _apart,
     _colour,
     _even_out,
+    _missed,
     _rows,
     _skew,
     _underline,
     layout,
+    marks,
     ocr_missing,
     prepare,
     write_docx,
@@ -185,6 +190,83 @@ def test_the_word_document_is_written_like_a_typed_one():
     assert not document.inline_shapes  # text, no pictures
 
 
+def test_a_word_cut_on_a_bent_line_is_one_word():
+    text = line("sunt de competenta instante", 360)
+    end = text.words[-1]
+    # Tesseract read the end of the word apart, a little higher: the line bends up
+    rest = Line([Word("lor", end.right + 5, end.top - 9, end.right + 59, end.bottom - 9, 86.0)])
+    rows = _rows([text, rest])
+    assert len(rows) == 1 and rows[0].text == "sunt de competenta instantelor"
+    assert not rows[0].breaks  # one line, no column
+
+
+def test_print_no_word_was_read_from_is_read_again():
+    gray = np.full((800, 2480), 255, np.uint8)
+    gray[100:140, 300:1000] = 20  # a line read
+    gray[100:140, 1030:1060] = 20  # the end of its last word, cut short: no line of its own
+    gray[400:440, 300:1500] = 20  # a heading Tesseract took for a picture
+    rows = [{"left": "300", "top": "100", "width": "700", "height": "40"}]
+    no_stamps = np.zeros(gray.shape, bool)
+    again = np.asarray(_missed(gray, no_stamps, rows))
+    assert again[420, 800] == 20  # the heading, alone on the page
+    assert again[120, 600] == 255 and again[120, 1045] == 255
+    rows.append({"left": "300", "top": "400", "width": "1200", "height": "40"})
+    assert _missed(gray, no_stamps, rows) is None  # all of it read
+
+
+def _stamped(lines: list[Line]) -> Image.Image:
+    """A page with ``lines`` printed, a blue stamp over the end of the first two, a signature
+    in black ink under them, and the red fringe a camera leaves along printed letters."""
+    image = Image.new("RGB", (2480, 1400), "white")
+    draw = ImageDraw.Draw(image)
+    for found in lines:
+        for word in found.words:
+            box = (word.left, word.top + 8, word.right, word.bottom - 4)
+            fringe = (box[0] - 5, box[1] - 5, box[2] + 5, box[3] + 5)
+            draw.rectangle(fringe, outline=(210, 120, 120), width=2)
+            draw.rectangle(box, fill=(25, 25, 25))
+    draw.ellipse((1750, 200, 2150, 600), outline=(40, 70, 200), width=10)
+    draw.ellipse((1800, 250, 2100, 550), outline=(40, 70, 200), width=5)
+    draw.text((1880, 380), "AVOCAT", fill=(40, 70, 200))
+    curve = [(500 + x, 900 + round(60 * np.sin(x / 40))) for x in range(0, 600, 4)]
+    draw.line(curve, fill=(60, 60, 70), width=5)
+    return image
+
+
+def test_stamps_and_signatures_are_found_and_print_is_not():
+    lines = [line(PARAGRAPH, 300 + PITCH * row, LEFT, RIGHT) for row in range(4)]
+    image = _stamped(lines)
+    found = marks(np.asarray(image.convert("L")), np.asarray(image), lines)
+    assert len(found) == 2  # the stamp, the signature: no print, no fringe
+    stamp, signature = sorted(found, key=lambda mark: mark.top)
+    assert abs(stamp.left - 1750) < 15 and abs(stamp.top - 200) < 15
+    assert abs(stamp.picture.width - 400) < 30 and abs(signature.left - 500) < 15
+    pixels = np.asarray(stamp.picture)
+    ink = pixels[pixels[..., 3] > 128][:, :3].astype(int)
+    assert (ink[:, 2] - ink[:, 0] > 100).mean() > 0.9  # in its blue, the paper transparent
+    assert pixels[0, 0, 3] == 0 and pixels[200, 200, 3] == 0
+    pixels = np.asarray(signature.picture)
+    assert pixels[..., 3].max() > 200 and (pixels[pixels[..., 3] > 128][:, :3] < 90).all()
+
+
+def test_marks_float_where_they_are_on_the_page():
+    first = first_page()
+    first.marks = [Mark(1800, 200, Image.new("RGBA", (300, 300), (40, 70, 200, 255)))]
+    blank = page([], 2)  # a page with a signature only
+    blank.marks = [Mark(600, 900, Image.new("RGBA", (500, 120), (30, 30, 30, 255)))]
+    paragraphs, sheet = layout([first, blank])
+    assert paragraphs[-1].page is blank and paragraphs[-1].page_break
+    document = Document(io.BytesIO(write_docx(paragraphs, sheet, "", [first, blank])))
+    assert not document.inline_shapes  # pictures over the text, not in its lines
+    xml = document.element.body.xml
+    assert xml.count("<wp:anchor ") == 2 and xml.count("<wp:wrapNone/>") == 2
+    assert xml.count('relativeFrom="page"') == 4
+    assert f"<wp:posOffset>{round(1800 / 300 * 914400)}</wp:posOffset>" in xml
+    assert f"<wp:posOffset>{round(900 / 300 * 914400)}</wp:posOffset>" in xml
+    held = [p for p in document.paragraphs if "<wp:anchor " in p._p.xml]
+    assert held[0].text == "ACT CONSTITUTIV" and held[1].paragraph_format.page_break_before
+
+
 def test_a_word_cut_at_the_end_of_a_line_is_joined():
     lines = [line(f"{PARAGRAPH} adminis-", 400, LEFT, RIGHT), line("tratorul semneaza.", 459)]
     paragraphs, sheet = layout([page(lines * 1)])
@@ -231,8 +313,9 @@ def test_a_scan_is_evened_out_and_straightened():
     assert colour[200, 906] and not colour[160, 400]
     tilted = image.rotate(1.5, Image.Resampling.BICUBIC, fillcolor=(205, 205, 200))
     assert abs(_skew(_even_out(tilted.convert("L"))) + 1.5) <= 0.2
-    straightened, _ = prepare(tilted)
+    straightened, _, colours = prepare(tilted)
     assert abs(_skew(straightened)) <= 0.2
+    assert colours.size == straightened.size and colours.mode == "RGB"  # straightened alike
 
 
 TEXT = ["Asociatul unic hotaraste constituirea societatii", "cu sediul in Cluj-Napoca"]
@@ -369,6 +452,57 @@ def test_the_page_converts_a_scan_with_ocr(scanned_act, settings):
     assert result["ocr"]["words"] > 50 and result["ocr"]["confidence"] > 85
     text = next(c for c in result["fidelity"]["checks"] if c["key"] == "text")
     assert text["detail"].startswith("Read with OCR")
+
+
+@pytest.fixture(scope="module")
+def stamped_act(scanned_act) -> bytes:
+    """The scanned act, stamped and signed: a blue stamp beside the title, a signature in black
+    ink under the text."""
+    import pypdfium2 as pdfium
+
+    pages = [
+        p.render(scale=150 / 72).to_pil().convert("RGB") for p in pdfium.PdfDocument(scanned_act[0])
+    ]
+    draw = ImageDraw.Draw(pages[0])
+    draw.ellipse((930, 40, 1130, 240), outline=(40, 70, 200), width=6)
+    draw.ellipse((960, 70, 1100, 210), outline=(40, 70, 200), width=3)
+    curve = [(260 + x, 1350 + round(30 * np.sin(x / 20))) for x in range(0, 300, 2)]
+    draw.line(curve, fill=(50, 50, 60), width=3)
+    scan = io.BytesIO()
+    pages[0].save(scan, "PDF", save_all=True, append_images=pages[1:], resolution=150)
+    return scan.getvalue()
+
+
+@requires_scan_tools
+def test_stamps_and_signatures_are_kept_as_pictures(stamped_act, settings):
+    client = TestClient(create_app(settings))
+    files = {"file": ("act.pdf", stamped_act)}
+    kept = client.post("/convert", files=files, data={"previews": "0"}).json()
+    assert kept["ocr"]["marks"] == 2
+    assert any("2 stamps, signatures or handwritten notes kept" in w for w in kept["warnings"])
+    document = Document(io.BytesIO(client.get(kept["url"]).content))
+    xml = document.element.body.xml
+    assert xml.count("<wp:anchor ") == 2 and not document.inline_shapes
+    assert document.paragraphs[0].text == "ACT CONSTITUTIV"  # the text stays text
+    layout_check = next(c for c in kept["fidelity"]["checks"] if c["key"] == "layout")
+    assert "stamps and signatures as pictures" in layout_check["detail"]
+    clean = client.post("/convert", files=files, data={"previews": "0", "marks": "false"}).json()
+    assert clean["ocr"]["marks"] == 0
+    assert any("left out (a clean copy)" in w for w in clean["warnings"])
+    document = Document(io.BytesIO(client.get(clean["url"]).content))
+    assert "<wp:anchor " not in document.element.body.xml
+
+
+@requires_scan_tools
+def test_the_cli_makes_a_clean_copy(stamped_act, tmp_path):
+    source = tmp_path / "act.pdf"
+    source.write_bytes(stamped_act)
+    db = ["--db", f"sqlite:///{tmp_path / 'cli.db'}"]
+    result = CliRunner().invoke(cli, [*db, "convert", str(source), "--no-marks", "--no-score"])
+    assert result.exit_code == 0, result.output
+    document = Document(str(tmp_path / "act.docx"))
+    assert "<wp:anchor " not in document.element.body.xml
+    assert document.paragraphs[0].text == "ACT CONSTITUTIV"
 
 
 def test_a_line_of_one_word_across_the_page():
