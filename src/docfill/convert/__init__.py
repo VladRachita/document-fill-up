@@ -9,17 +9,19 @@ from time import perf_counter
 from typing import Any
 
 from docfill.config import Settings, get_settings
-from docfill.convert.engines import PDF, WORD, Engine, choose_engine, engines_for
+from docfill.convert.engines import PDF, WORD, Engine, choose_engine, engines_for, ocr_missing
 from docfill.convert.fidelity import (
     Fidelity,
     Rendition,
     compare,
+    ocr_text,
     pdf_rendition,
     word_rendition,
 )
 from docfill.errors import ConversionError, DocumentReadError, UnsupportedDocumentError
 from docfill.models import DocumentType
 from docfill.readers import detect_type
+from docfill.readers.pdf import scanned_pages
 
 MEDIA_TYPES = {
     PDF: "application/pdf",
@@ -37,6 +39,7 @@ class Conversion:
     data: bytes
     seconds: float
     warnings: list[str] = field(default_factory=list)
+    ocr: dict[str, Any] | None = None  # read with OCR: words, confidence, uncertain words
     fidelity: Fidelity | None = None  # against the original
     reference: Fidelity | None = None  # against the real document
 
@@ -57,6 +60,7 @@ class Conversion:
             "size": len(self.data),
             "seconds": round(self.seconds, 2),
             "warnings": self.warnings,
+            "ocr": self.ocr,
             "fidelity": self.fidelity.as_dict() if self.fidelity else None,
             "reference": self.reference.as_dict() if self.reference else None,
         }
@@ -106,10 +110,46 @@ def convert(
         raise ConversionError(f"cannot convert to '{target}': choose pdf or docx")
     if target != target_of(kind):
         raise ConversionError(f"{filename} is already a {NAMES[kind]} document")
+    notes: list[str] = []
+    if kind == PDF:
+        engine, notes = _for_scans(data, engine, settings)
     chosen: Engine = choose_engine(target, engine)
     start = perf_counter()
-    output, warnings = chosen.run(data, f".{kind}", settings.convert_timeout)
-    return Conversion(filename, kind, target, chosen.name, output, perf_counter() - start, warnings)
+    made = chosen.run(data, f".{kind}", settings)
+    return Conversion(
+        filename,
+        kind,
+        target,
+        chosen.name,
+        made.data,
+        perf_counter() - start,
+        notes + made.warnings,
+        made.ocr,
+    )
+
+
+def _for_scans(data: bytes, engine: str, settings: Settings) -> tuple[str, list[str]]:
+    """A scanned PDF has no text, only pictures of its pages: Auto reads it with OCR (when most
+    of its pages are scans); another engine would make a Word document of pictures."""
+    scanned = scanned_pages(data, settings)
+    pages = [str(number) for number, scan in enumerate(scanned, 1) if scan]
+    if not pages or engine == "ocr":
+        return engine, []
+    mostly = len(pages) * 2 >= len(scanned)
+    ocr_ready = ocr_missing() is None
+    if engine == "auto" and mostly and ocr_ready:
+        return "ocr", []
+    if mostly:
+        how = "the OCR engine reads their text" if ocr_ready else f"OCR needs: {ocr_missing()}"
+        return engine, [
+            f"This PDF is a scan: without OCR the Word document shows its pages as pictures, "
+            f"the words cannot be edited ({how})"
+        ]
+    return engine, [
+        f"Page{'s' if len(pages) > 1 else ''} {', '.join(pages)} "
+        f"{'are scans' if len(pages) > 1 else 'is a scan'}: kept as pictures (the OCR engine "
+        "reads the text of every page)"
+    ]
 
 
 def convert_and_score(
@@ -137,6 +177,13 @@ def convert_and_score(
     original = rendition(data, conversion.source_kind, settings, layout=False)
     converted = rendition(conversion.data, conversion.target, settings)
     conversion.fidelity = compare(original, converted, "original", previews)
+    if original.scan and conversion.ocr:  # its text is the reading itself
+        report = conversion.fidelity
+        report.checks = [
+            ocr_text(original, conversion.ocr) if check.key == "text" else check
+            for check in report.checks
+        ]
+        report.warnings = [w for w in report.warnings if w not in original.warnings]
     if reference and reference_kind:
         expected = rendition(reference[1], reference_kind, settings)
         expected.pages_source = "in the real document"

@@ -213,11 +213,12 @@ def test_without_pages_the_score_says_so():
 
 def test_a_scan_has_no_text_to_compare():
     rendition = pdf_rendition(make_scanned_pdf(["IDENTITY CARD"]))
-    assert rendition.words == [] and rendition.images == 1
+    assert rendition.words == [] and rendition.scan
+    assert rendition.images == 0  # its pictures are its pages: not counted as pictures
     assert "no text" in rendition.warnings[0]
     report = compare(rendition, rendition)
     assert report.check("text").score is None
-    assert report.check("images").score == 100
+    assert report.check("images").score is None
     assert report.warnings == rendition.warnings
 
 
@@ -239,7 +240,7 @@ def test_only_word_and_pdf_documents_are_converted(settings):
 
 def test_engines_and_what_they_need(monkeypatch, tmp_path):
     assert [e.name for e in engines_for("pdf")] == ["libreoffice"]
-    assert [e.name for e in engines_for("docx")] == ["pdf2docx", "libreoffice"]
+    assert [e.name for e in engines_for("docx")] == ["pdf2docx", "ocr", "libreoffice"]
     with pytest.raises(ConversionError, match="choose auto, libreoffice"):
         choose_engine("pdf", "pdf2docx")
     # LibreOffice without Writer (a distribution's core package alone)

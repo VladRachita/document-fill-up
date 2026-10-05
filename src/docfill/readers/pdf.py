@@ -61,7 +61,7 @@ def _open(data: bytes) -> pdfium.PdfDocument | None:
         return None
 
 
-def _hidden_text_layer(page: pdfium.PdfPage) -> bool:
+def hidden_text_layer(page: pdfium.PdfPage) -> bool:
     """A page that is a picture with invisible text over it: the OCR of a scanner app."""
     width, height = page.get_size()
     covered, texts, invisible = False, 0, 0
@@ -75,6 +75,43 @@ def _hidden_text_layer(page: pdfium.PdfPage) -> bool:
             mode = pdfium_c.FPDFTextObj_GetTextRenderMode(item.raw)
             invisible += mode == pdfium_c.FPDF_TEXTRENDERMODE_INVISIBLE
     return covered and texts > 0 and invisible >= _INVISIBLE_SHARE * texts
+
+
+def _picture_share(page: pdfium.PdfPage) -> float:
+    """The share of the page its largest picture covers."""
+    width, height = page.get_size()
+    largest = 0.0
+    for item in page.get_objects(max_depth=3):
+        if item.type == pdfium_c.FPDF_PAGEOBJ_IMAGE:
+            bounds = item.get_bounds() if hasattr(item, "get_bounds") else item.get_pos()
+            left, bottom, right, top = bounds
+            largest = max(largest, (right - left) * (top - bottom))
+    return largest / (width * height) if width and height else 0.0
+
+
+def scanned_pages(data: bytes, settings: Settings) -> list[bool]:
+    """Which pages of a PDF are scans: pictures of pages with too little text of their own
+    (``pdf_min_text_chars``; a blank page is no scan), or with only the invisible text a scanner
+    app laid over them."""
+    document = _open(data)
+    if document is None:
+        raise DocumentReadError("the PDF cannot be opened: damaged, or protected by a password")
+    try:
+        scanned = []
+        for index in range(len(document)):
+            page = document[index]
+            textpage = page.get_textpage()
+            characters = len("".join(textpage.get_text_range().split()))
+            textpage.close()
+            picture = _picture_share(page) >= 0.1  # a card scanned on an A4 page too
+            scanned.append(
+                (characters < settings.pdf_min_text_chars and picture)
+                or (settings.pdf_ocr_text_layers and hidden_text_layer(page))
+            )
+            page.close()
+        return scanned
+    finally:
+        document.close()
 
 
 def _letters(text: str) -> int:
@@ -101,7 +138,7 @@ def read_pdf(data: bytes, source: str, settings: Settings) -> RawDocument:
                 if settings.pdf_ocr_text_layers:
                     if rasterized is None:
                         rasterized = _open(data)
-                    scanner_text = rasterized is not None and _hidden_text_layer(rasterized[index])
+                    scanner_text = rasterized is not None and hidden_text_layer(rasterized[index])
                 if not scanner_text:
                     pages.append(Page(number=index + 1, text=text))
                     continue

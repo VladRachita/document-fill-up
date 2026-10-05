@@ -674,6 +674,12 @@ def convert_command(
         typer.echo(json.dumps({**conversion.as_dict(), "output": str(path)}, indent=2))
     else:
         console.print(f"[green]Written[/] {path} ({conversion.engine}, {conversion.seconds:.1f} s)")
+        if conversion.ocr:
+            console.print(
+                f"Scanned: read with OCR, {conversion.ocr['words']} words, "
+                f"{conversion.ocr['confidence']:.0f}% confidence, "
+                f"{len(conversion.ocr['uncertain'])} to check"
+            )
         for warning in conversion.warnings:
             console.print(f"[yellow]warning:[/] {escape(warning)}")
         if conversion.reference:

@@ -117,6 +117,8 @@
   .diff-item { font-size: 13.5px; padding: 6px 0; border-bottom: 1px solid var(--border); word-break: break-word; }
   .diff-item del { color: var(--missing); text-decoration: line-through; }
   .diff-item ins { color: var(--added); text-decoration: none; border-bottom: 1px dashed var(--added); }
+  .uncertain { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+  .uncertain span { padding: 1px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
 
   .pages-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0 10px; }
   .pages-head h3 { margin: 0; font-size: 15px; }
@@ -342,7 +344,9 @@ function renderConvert() {
   put($("engine-picker"), target ? [
     el("button", { type: "button", class: "pick", "aria-pressed": String(state.engine === "auto"), disabled: !ready.length,
       onclick: () => { state.engine = "auto"; renderConvert(); } },
-      el("strong", {}, "Auto"), el("span", {}, ready.length ? `the best installed: ${ready[0].title}` : "no engine installed")),
+      el("strong", {}, "Auto"), el("span", {}, !ready.length ? "no engine installed"
+        : target === "docx" && ready.some((e) => e.name === "ocr") ? `${ready[0].title}; a scan is read with OCR`
+        : `the best installed: ${ready[0].title}`)),
     engines.map((e) => el("button", { type: "button", class: "pick", "aria-pressed": String(state.engine === e.name), disabled: !e.available,
       title: e.missing || e.description, onclick: () => { state.engine = e.name; renderConvert(); } },
       el("strong", {}, e.title), el("span", {}, e.available ? e.description : e.missing))),
@@ -422,6 +426,14 @@ function checksTable(report) {
         `${check.score}`]),
       el("td", {}, statusPill(check)),
       el("td", { class: "detail" }, check.detail))));
+}
+
+function uncertainWords(report) {
+  const text = report.checks.find((c) => c.key === "text");
+  if (!text || !text.uncertain || !text.uncertain.length) return null;
+  return el("details", { class: "more" },
+    el("summary", {}, `Words to check (${text.uncertain.length}): read with little confidence`),
+    el("div", { class: "uncertain" }, text.uncertain.map((word) => el("span", {}, word))));
 }
 
 function textDifferences(report) {
@@ -513,7 +525,7 @@ function reportCard(report, title) {
     el("div", { class: "summary" }, gauge(report.score),
       el("div", {}, el("div", { class: "against" }, title), el("div", { class: "verdict" }, report.label))),
     report.warnings.length ? el("div", { class: "warnbox" }, report.warnings.map((w) => el("div", {}, w))) : null,
-    checksTable(report), textDifferences(report), fontsTable(report), pagesGrid(report));
+    checksTable(report), textDifferences(report), uncertainWords(report), fontsTable(report), pagesGrid(report));
 }
 
 function renderResults(result, comparison = null) {
@@ -523,7 +535,8 @@ function renderResults(result, comparison = null) {
     cards.push(el("div", { class: "card" },
       el("div", { class: "result-head" },
         el("div", {}, el("h2", {}, `${direction}: ${result.filename}`),
-          el("div", { class: "meta" }, `${result.source} · engine ${result.engine} · ${result.seconds} s · ${size(result.size)} · saved as ${result.saved_to}`)),
+          el("div", { class: "meta" }, `${result.source} · engine ${result.engine} · ${result.seconds} s · ${size(result.size)} · saved as ${result.saved_to}`),
+          result.ocr ? el("div", { class: "meta" }, `Scanned: the text of its pages was read with OCR (${result.ocr.words} words, ${Math.round(result.ocr.confidence)}% confidence) and written as paragraphs you can edit.`) : null),
         el("a", { class: "btn primary", href: result.url, download: result.filename }, `Download ${result.filename}`)),
       result.warnings.length ? el("div", { class: "warnbox" }, result.warnings.map((w) => el("div", {}, w))) : null));
     if (result.reference) cards.push(reportCard(result.reference, "Against the real document"));
