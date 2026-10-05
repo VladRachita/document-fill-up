@@ -19,6 +19,8 @@ from docfill.extraction.articles import (
     extract_articles,
     extract_name_reservation,
     extract_premises,
+    sheet_activities,
+    sheet_capital,
 )
 from docfill.extraction.clauses import extract_clauses
 from docfill.extraction.derive import complete_values, representation
@@ -381,6 +383,48 @@ def test_the_premises_described_before_their_address(scanned):
     )
 
 
+@pytest.mark.parametrize(
+    ("text", "capital", "count"),
+    [
+        ("Capital social: 500 lei\nNumăr de părți sociale: 50", "500 lei", "50"),
+        (
+            "Capitalul social subscris: 1.000 lei, împărțit în 100 de părți sociale",
+            "1.000 lei",
+            "100",
+        ),
+        ("Capital social - 45.000 RON\nNr. părți sociale: 4.500", "45.000 lei", "4.500"),
+        # only the nominal value: the number of părți sociale is computed
+        ("Capital social: 200 lei\nValoare nominală: 10 lei", "200 lei", "20"),
+        ("Capital social: 500", "500 lei", None),
+    ],
+)
+def test_the_capital_on_the_clients_sheet(text, capital, count):
+    assert sheet_capital(text) == (capital, count)
+
+
+def test_the_activities_on_the_clients_sheet():
+    text = text_of(
+        [
+            "Coduri CAEN secundare:",
+            "- 7311 - Activitati ale agentiilor de publicitate (pentru reclame)",
+            "CAEN 5912 (Secundar): Activitati de post-productie video, editare si montaj",
+            "Cod CAEN principal: CAEN 5911 (Principal): Productie cinematografica (de baza).",
+            "CAEN 3299 (Secundar): Fabricarea altor produse manufacturiere (exclusiv bijuterii)",
+        ]
+    )
+    assert sheet_activities(text) == [  # the main one first, the notes left out
+        "5911 Productie cinematografica",
+        "7311 Activitati ale agentiilor de publicitate",
+        "5912 Activitati de post-productie video, editare si montaj",
+        "3299 Fabricarea altor produse manufacturiere (exclusiv bijuterii)",
+    ]
+    # no marks and no headings: the first is the main activity
+    assert sheet_activities("CAEN 6201: Software\nCAEN 6202: Consultanta") == [
+        "6201 Software",
+        "6202 Consultanta",
+    ]
+
+
 def test_no_premises_no_office():
     assert extract_premises("Spațiul va fi utilizat în vederea stabilirii sediului.") == []
 
@@ -446,6 +490,7 @@ def test_document_types_by_their_title():
         for name in ("act_constitutiv", "dovada_denumire", "dovada_sediu")
     ]
     classifier = DocTypeClassifier(extra_types=lambda: known)
+    sheet_type = DocType("date_societate", "date_societate", "", known[0].seeds)
     for paragraphs, expected in (
         (ACT_TWO_ASSOCIATES, "act_constitutiv"),
         (NAME_RESERVATION, "dovada_denumire"),
@@ -460,6 +505,17 @@ def test_document_types_by_their_title():
     # the title as a scanner app reads it, the parties as they are named in the plural
     glued = text_of(COMODAT_APARTMENT).replace("CONTRACT DE COMODAT", "CONTRACTDECOMODAT", 1)
     assert classifier.by_title(glued) == "dovada_sediu"
+    # the client's sheet of activities and capital; not an invoice that prints the capital
+    sheet = "Cod CAEN principal: CAEN 6201 (Principal): Software\nCapital social: 200 lei"
+    assert DocTypeClassifier(extra_types=lambda: [*known, sheet_type]).by_title(sheet) == (
+        "date_societate"
+    )
+    capital_only = "Capital social: 200 lei\nNumăr de părți sociale: 20"
+    assert DocTypeClassifier(extra_types=lambda: [*known, sheet_type]).by_title(capital_only) == (
+        "date_societate"
+    )
+    invoice = "FACTURĂ\nFurnizor: EXEMPLU S.R.L.\nCapital social: 200 lei\nTotal: 100 lei"
+    assert DocTypeClassifier(extra_types=lambda: [*known, sheet_type]).by_title(invoice) is None
     # not a list of documents that names a contract
     assert classifier.by_title("Opis\n3. Contract de comodat nr. 1\n4. Dovada") is None
     # a type the classifier was not taught is never named by its title

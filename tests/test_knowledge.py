@@ -430,7 +430,7 @@ def test_procedure_fields_are_asked_for(kb, context):
     rows = field_rows(anexa4, None, 0.5, None, procedure.fields, procedure.required_fields)
     by_name = {row.name: row for row in rows}
     assert by_name["share_capital"].required and by_name["associates"].kind == "list"
-    assert by_name["share_capital"].group == "company"
+    assert by_name["share_capital"].group == "capital"
 
 
 # --------------------------------------------------------------------------- API
@@ -610,7 +610,7 @@ def test_cli_knowledge(tmp_path):
 
     assert run("templates", "seed").exit_code == 0
     seeded = run("knowledge", "seed")
-    assert seeded.exit_code == 0 and "69 created" in seeded.stdout
+    assert seeded.exit_code == 0 and "70 created" in seeded.stdout
     assert "srl.infiintare" in run("knowledge", "list", "--kind", "procedure").stdout
     check = run("knowledge", "check", "sa.infiintare", "-s", "share_capital=100", "--json")
     assert check.exit_code == 1  # an error-level check failed

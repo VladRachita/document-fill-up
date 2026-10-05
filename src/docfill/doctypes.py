@@ -43,9 +43,18 @@ _TITLE_LINES = 12
 # Documents recognised by words anywhere in them (accent-free, lower case, single blanks): the
 # "RO CEI Reader" export of an electronic identity card names the application in its footer.
 # A contract of loan for use names both its parties (comodant, comodatar) wherever its title is.
+# The sheet of the company's activities and capital the client fills for the act constitutiv:
+# short, with "Cod CAEN principal" / "Coduri CAEN secundare" or "CAEN 5911 (Principal)", or the
+# share capital with the number of părți sociale.
 SIGNATURES: tuple[tuple[str, str], ...] = (
     ("id_card", r"\bro cei reader\b"),
-    ("dovada_sediu", r"\bcomodant(?:ul|ului)?\b.*\bcomodatar|\bcomodatar\w*\b.*\bcomodant"),
+    ("dovada_sediu", r"\bcomodant(?:ul|ului|ii?)?\b.*\bcomodatar|\bcomodatar\w*\b.*\bcomodant"),
+    (
+        "date_societate",
+        r"^(?=.{0,4000}$).*(?:\bcod(?:ul|uri|urile)? caen (?:principal|secundar)"
+        r"|\bcaen 0000 ?\( ?(?:principal|secundar)"
+        r"|\bcapital(?:ul)? social(?: subscris)? ?:.*\bparti sociale\b)",
+    ),
 )
 
 

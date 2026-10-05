@@ -46,6 +46,7 @@ GROUPS = {
     "id_card": "Identity card",
     "parents": "Parents",
     "company": "Company",
+    "capital": "Capitalul social, părțile sociale",
     "filing": "Request",
     "changes": "Changes (mențiuni)",
     "closure": "Closure (radiere)",
@@ -580,7 +581,7 @@ _SPECS = [
         "share_capital",
         "Share capital (capital social, lei)",
         "short",
-        "company",
+        "capital",
         ("capital social", "capitalul social", "capital social subscris"),
         30,
     ),
@@ -837,8 +838,8 @@ _ROLE_SPECS = [
 # ---------------------------------------------------------------- articles of incorporation (SA)
 _SPECS += [
     *_ROLE_SPECS,
-    _f("share_count", "Number of shares (acțiuni)", "short", "articles", (), 15),
-    _f("share_form", "Shares are", "text", "articles", (), 40, ("nominative", "la purtător")),
+    _f("share_count", "Number of shares (părți sociale / acțiuni)", "short", "capital", (), 15),
+    _f("share_form", "Shares are", "text", "capital", (), 40, ("nominative", "la purtător")),
     _f(
         "company_duration",
         "Duration in years (empty: nedeterminată, undetermined)",

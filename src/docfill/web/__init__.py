@@ -104,6 +104,7 @@ class ExportIn(PreviewIn):
 # The roles of the persons given apart in step 1: the administrator, and the sole associate who
 # holds every share and is the beneficial owner (Legea nr. 129/2019, art. 4 alin. (2) lit. a)).
 _ADMINISTRATOR_ROLES = {"board_role": "administrator unic"}
+COMPANY_SHEET = "date_societate"  # the type of the sheet given in its own box in step 1
 
 
 def _associate_roles(administrator: bool) -> dict[str, str]:
@@ -277,6 +278,7 @@ def register_wizard(
         representative_type: Annotated[str | None, Form()] = None,
         associate: Annotated[list[UploadFile] | None, File()] = None,
         administrator: Annotated[list[UploadFile] | None, File()] = None,
+        company: Annotated[list[UploadFile] | None, File()] = None,
     ) -> dict[str, Any]:
         """Step 2: read + sanitize each file, detect its type, extract fields for the chosen
         reference documents (and the procedure's own fields). ``representative``: the identity
@@ -285,11 +287,12 @@ def register_wizard(
         as chosen with it. ``associate``: the identity card of the sole associate (also the
         beneficial owner, 100%), the administrator too unless ``administrator`` gives the
         administrator's identity card (then person 1, who signs the requests; the associate is
-        person 2)."""
+        person 2). ``company``: the client's sheet with the CAEN activities and the share capital
+        (read as such whatever its wording)."""
         names = [n for n in [template, *(templates or [])] if n]
         if not names:
             raise HTTPException(422, "choose at least one reference document")
-        if not files and not representative and not associate and not administrator:
+        if not any((files, representative, associate, administrator, company)):
             raise HTTPException(422, "add at least one file to read")
         if representative_type and representative_type not in REPRESENTATIVE_TYPES:
             raise HTTPException(422, f"representative_type: one of {list(REPRESENTATIVE_TYPES)}")
@@ -297,6 +300,9 @@ def register_wizard(
         spec = procedure_of(procedure)
         uploads = [read_upload(upload, settings.max_file_size) for upload in files or []]
         analyses = [docfill.analyze_bytes(data, name) for name, data in uploads]
+        for upload in company or []:  # the activities and the capital, given apart
+            name, data = read_upload(upload, settings.max_file_size)
+            analyses.append(docfill.analyze_bytes(data, name, COMPANY_SHEET))
         for upload in representative or []:
             name, data = read_upload(upload, settings.max_file_size)
             analysis = docfill.analyze_bytes(data, name)

@@ -667,12 +667,122 @@ def extract_premises(text: str, document: str | None = None) -> list[ExtractedFi
     return found
 
 
+# --------------------------------------------------------------------------- the company sheet
+
+# A Word file the client fills with the activities and the capital of the company to register:
+#
+#   Cod CAEN principal: CAEN 5911 (Principal): Producție cinematografică ... (note)
+#   Coduri CAEN secundare:
+#   CAEN 7311 (Secundar): Activități ale agențiilor de publicitate (note).
+#   Capital social: 500 lei / Număr de părți sociale: 50 / Valoare nominală: 10 lei
+#
+# The notes in brackets say why the client wants an activity; the act does not write them.
+SHEET_CONFIDENCE = 0.95
+_SHEET_CAEN = re.compile(
+    r"\b(?:cod(?:ul)?\s+)?caen\s*(?:rev\.?\s*\d\s*)?[:.]?\s*(?P<code>\d{4})\b"
+    r"(?:\s*\(\s*(?P<kind>principal|secundar)\w*\s*\))?\s*[:\-–—]?\s*"
+)
+_SHEET_SECTION = re.compile(r"\bcod(?:ul|uri|urile)?\s+caen\s+(?P<kind>principal|secundar)\w*")
+# a line of a CAEN section that leaves out the word: "- 7311 - Activități ale ..."
+_SHEET_CODE = re.compile(
+    r"^[\s\-–—•*·]*(?:\d{1,2}[.)]\s*)?(?P<code>\d{4})\b"
+    r"(?:\s*\(\s*(?P<kind>principal|secundar)\w*\s*\))?\s*[:\-–—]?\s*(?=\w)"
+)
+# a note at the end of the name, not the part of an official name in brackets ("(exclusiv ...)")
+_SHEET_NOTE = re.compile(
+    r"\s*\((?!\s*(?:exclusiv|inclusiv|cu\s+excep|except|n\.?\s*c\.?\s*a))[^()]*\)[\s.;,]*$"
+)
+_SHEET_CAPITAL = re.compile(
+    r"\bcapital(?:ul)?\s+social(?:\s+subscris)?(?:\s+(?:si\s+)?varsat)?(?:\s+(?:total|integral))?"
+    r"\s*(?:[:=\-–]|este\s+de|in\s+valoare\s+de|de)\s*(?P<amount>\d[\d.,]*(?:\s\d{3})*)\s*"
+    r"(?:lei|ron)?\b"
+)
+_SHEET_COUNT = re.compile(
+    r"\b(?:num[a]r(?:ul)?\s+(?:de\s+)?|nr\.?\s*(?:de\s+)?)?(?:parti\s+sociale|actiuni)\s*"
+    r"(?:[:=\-–]|este\s+de)\s*(?P<count>\d[\d.]*)"
+    r"|(?P<count_before>\d[\d.]*)\s+(?:de\s+)?(?:parti\s+sociale|actiuni)\b"
+)
+_SHEET_NOMINAL = re.compile(
+    r"\bvaloare(?:a)?\s+nominala(?:\s+(?:a\s+unei|pe)\s+(?:parti\s+sociale|parte\s+sociala|"
+    r"actiuni))?\s*(?:[:=\-–]|este\s+de|de)\s*(?P<value>\d[\d.,]*)"
+)
+
+
+def _sheet_activity_name(text: str) -> str:
+    name = _collapse(text).strip(" ;,")
+    while (note := _SHEET_NOTE.search(name)) and note.start() > 0:
+        name = name[: note.start()].strip(" ;,")
+    if name.endswith(".") and not re.search(r"(?i)\b(?:n\.\s*c\.\s*a|etc)\.$", name):
+        name = name[:-1]
+    return name.strip(" ;,:-–—")
+
+
+def sheet_activities(text: str) -> list[str]:
+    """``<class> <name>`` per activity of a company sheet, the main activity first: the one
+    marked ``(Principal)`` or listed under ``Cod CAEN principal``, otherwise the first."""
+    found: dict[str, str] = {}
+    main: str | None = None
+    section: str | None = None
+    for line in text.splitlines():
+        folded = fold(line)
+        if heading := _SHEET_SECTION.search(folded):
+            section = heading["kind"]
+        match = _SHEET_CAEN.search(folded) or (_SHEET_CODE.match(folded) if section else None)
+        if match is None:
+            continue
+        code = match["code"]
+        if not found.get(code):
+            found[code] = _sheet_activity_name(line[match.end() :])
+        if main is None and (match["kind"] or section) == "principal":
+            main = code
+    codes = list(found)
+    if main:
+        codes.remove(main)
+        codes.insert(0, main)
+    return [f"{code} {found[code]}".strip() for code in codes]
+
+
+def sheet_capital(text: str) -> tuple[str | None, str | None]:
+    """``(share capital, number of shares)`` of a company sheet; the number of shares is the
+    capital divided by the nominal value when only that is given."""
+    folded = fold(text)
+    capital = count = None
+    if match := _SHEET_CAPITAL.search(folded):
+        amount = match["amount"].strip().rstrip(".,")
+        if parse_amount(amount):
+            capital = f"{amount} lei"
+    if match := _SHEET_COUNT.search(folded):
+        count = (match["count"] or match["count_before"]).rstrip(".")
+    elif capital and (match := _SHEET_NOMINAL.search(folded)):
+        total, nominal = parse_amount(capital), parse_amount(match["value"])
+        if total and nominal and (total / nominal).is_integer():
+            count = format_amount(total / nominal)
+    return capital, count
+
+
+def extract_company_sheet(text: str, document: str | None = None) -> list[ExtractedField]:
+    """The activities and the capital of the company, from the sheet the client fills."""
+    found: list[ExtractedField] = []
+    if activities := sheet_activities(text):
+        evidence = activities[0]
+        found.append(
+            _field("caen_activities", "\n".join(activities), SHEET_CONFIDENCE, evidence, document)
+        )
+    capital, count = sheet_capital(text)
+    if capital:
+        found.append(_field("share_capital", capital, SHEET_CONFIDENCE, capital, document))
+    if count:
+        found.append(_field("share_count", count, SHEET_CONFIDENCE, count, document))
+    return found
+
+
 # Document types read by their own extractor, instead of the general one (labels, patterns,
 # a single identification clause), which would take their persons for the applicant.
 EXTRACTORS: dict[str, Callable[[str, str | None], list[ExtractedField]]] = {
     "act_constitutiv": extract_articles,
     "dovada_denumire": extract_name_reservation,
     "dovada_sediu": extract_premises,
+    "date_societate": extract_company_sheet,
 }
 
 __all__ = [
@@ -681,6 +791,9 @@ __all__ = [
     "company_address",
     "company_name",
     "extract_articles",
+    "extract_company_sheet",
     "extract_name_reservation",
     "extract_premises",
+    "sheet_activities",
+    "sheet_capital",
 ]

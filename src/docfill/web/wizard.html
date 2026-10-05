@@ -300,6 +300,16 @@
             <ul class="files" id="admin-list"></ul>
           </div>
         </div>
+        <div class="rep" id="company-box" hidden>
+          <h3>Activities and share capital <span class="muted">(optional)</span></h3>
+          <p class="hint">A Word file with the CAEN activities (<code>Cod CAEN principal: CAEN 5911 (Principal): …</code>, then one <code>CAEN 7311 (Secundar): …</code> per line) and the share capital (<code>Capital social: 500 lei</code>, <code>Număr de părți sociale: 50</code>). They fill the object of activity and the capital; the notes in brackets are left out.</p>
+          <label class="drop small" id="company-drop">
+            <input type="file" id="company-input" accept=".docx,.doc,.pdf">
+            <strong>CAEN activities and share capital</strong>
+            <span class="muted" style="font-size:13px">Word (.docx, .doc) or PDF</span>
+          </label>
+          <ul class="files" id="company-list"></ul>
+        </div>
         <div class="rep" id="rep-box">
           <h3>Representative filing the request <span class="muted">(optional)</span></h3>
           <p class="hint">A lawyer or a proxy who files the request for the company: their data is kept apart, in “Filed by” (XII) and the contact person (VII), never as a person of the company.</p>
@@ -430,7 +440,8 @@ const GROUPS = [
   ["person", "Person 1 (applicant)"], ["birth", "Person 1: birth"], ["domicile", "Person 1: domicile"],
   ["id_card", "Person 1: identity card"], ["person2", "Person 2"], ["person3", "Person 3"],
   ["roles", "Shareholders, management, beneficial owners"],
-  ["company", "Company"], ["articles", "Articles of incorporation (act constitutiv)"],
+  ["company", "Company"], ["capital", "Capitalul social, părțile sociale"],
+  ["articles", "Articles of incorporation (act constitutiv)"],
   ["fiscal", "Tax registration (Anexa 1, vector fiscal)"], ["filing", "Request"],
   ["changes", "Changes (mențiuni)"], ["closure", "Closure (radiere)"], ["contact", "Contact person"],
   ["billing", "Billing"], ["filer", "Filed by"], ["parents", "Parents"], ["other", "Other"],
@@ -456,7 +467,7 @@ const SEVERITY = { error: ["bad", "Error"], warning: ["warn", "Warning"], info: 
 
 const state = {
   step: 1, maxStep: 1, templates: [], selected: [], docTypes: [],
-  files: [], repFiles: [], repType: "", assocFiles: [], adminFiles: [], adminSame: true,
+  files: [], repFiles: [], repType: "", assocFiles: [], adminFiles: [], adminSame: true, companyFiles: [],
   filesDirty: true, documents: [], activeDoc: 0,
   rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {},
   previews: [], activePreview: 0, filter: "attention",
@@ -795,6 +806,8 @@ function renderUploadHint() {
         roles.length ? ` (each ${roles.join(", ")})` : "",
         ": one file per person, up to 3 people; they become persons 2 and 3 in the order you add them (you can change it in the next step).") : null,
       el("li", {}, "Optional: an already filled form, a client sheet or any document identifying a person (PDF, Word): its data is read too."),
+      needsCompanySheet() ? el("li", {}, "Optional: the Word file with the company's ", el("strong", {}, "CAEN activities"), " and ",
+        el("strong", {}, "share capital"), ", in its own box below.") : null,
       currentProcedure() ? el("li", {}, "Optional: the documents of the file (proof of the registered office…): they are ticked off on the final checklist.") : null));
 }
 
@@ -804,7 +817,7 @@ function toggleTemplate(name, on) {
 
 function updateScanButton() {
   const nothing = !state.selected.length;
-  const noFiles = !state.files.length && !state.repFiles.length && !state.assocFiles.length &&
+  const noFiles = !state.files.length && !state.repFiles.length && !state.assocFiles.length && !state.companyFiles.length &&
     !(state.adminFiles.length && !state.adminSame);
   $("scan-btn").disabled = nothing || noFiles;
   $("manual-btn").disabled = nothing;
@@ -860,6 +873,13 @@ function needsRoles() {
     ["associate", "board_role"].every((role) => t.fields.includes(role)));
 }
 
+// The client's Word file with the CAEN activities and the share capital: for the documents that
+// write them (the act constitutiv, Anexa 4...).
+function needsCompanySheet() {
+  return state.templates.some((t) => state.selected.includes(t.name) &&
+    ["caen_activities", "share_capital"].some((name) => t.fields.includes(name)));
+}
+
 function fileItems(files, onRemove) {
   return files.map((file) =>
     el("li", {},
@@ -874,6 +894,8 @@ function renderRoles() {
   put($("admin-list"), fileItems(state.adminFiles, () => { state.adminFiles = []; state.filesDirty = true; renderRoles(); }));
   $("admin-same").checked = state.adminSame;
   $("admin-slot").hidden = state.adminSame;
+  $("company-box").hidden = !needsCompanySheet();
+  put($("company-list"), fileItems(state.companyFiles, () => { state.companyFiles = []; state.filesDirty = true; renderRoles(); }));
   updateScanButton();
 }
 
@@ -905,6 +927,7 @@ async function scan() {
       state.files.forEach((file) => form.append("files", file, file.name));
       state.repFiles.forEach((file) => form.append("representative", file, file.name));
       state.assocFiles.forEach((file) => form.append("associate", file, file.name));
+      state.companyFiles.forEach((file) => form.append("company", file, file.name));
       if (!state.adminSame) state.adminFiles.forEach((file) => form.append("administrator", file, file.name));
       if (state.repType) form.append("representative_type", state.repType);
       const result = await (await api("/wizard/analyze", { method: "POST", body: form })).json();
@@ -1519,7 +1542,7 @@ function download(file) {
 // was saved stays: the PDFs in the output folder, what docfill learned and the details it
 // remembers (in the database).
 function restart() {
-  Object.assign(state, { step: 1, maxStep: 1, files: [], repFiles: [], repType: "", assocFiles: [], adminFiles: [],
+  Object.assign(state, { step: 1, maxStep: 1, files: [], repFiles: [], repType: "", assocFiles: [], adminFiles: [], companyFiles: [],
     adminSame: true, filesDirty: true, documents: [], activeDoc: 0,
     rows: [], otherFields: [], values: {}, manual: {}, derivedFrom: {}, issues: {}, previews: [],
     activePreview: 0, filename: "", filenameTouched: false, allowMissing: false, legal: [], legalAck: false });
@@ -1550,6 +1573,7 @@ function init() {
   wireDrop("assoc-drop", "assoc-input", (files) => { if (files[0]) { state.assocFiles = [files[0]]; state.filesDirty = true; renderRoles(); } });
   wireDrop("admin-drop", "admin-input", (files) => { if (files[0]) { state.adminFiles = [files[0]]; state.filesDirty = true; renderRoles(); } });
   $("admin-same").addEventListener("change", (event) => { state.adminSame = event.target.checked; state.filesDirty = true; renderRoles(); });
+  wireDrop("company-drop", "company-input", (files) => { if (files[0]) { state.companyFiles = [files[0]]; state.filesDirty = true; renderRoles(); } });
   renderRoles();
   drop.addEventListener("dragover", (event) => { event.preventDefault(); drop.classList.add("over"); });
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));

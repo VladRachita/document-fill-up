@@ -63,6 +63,20 @@ doc_types:
         denumirii firmei s-au efectuat la optiunea si pe raspunderea solicitantului denumirea
         rezervata nu este constitutiva de drepturi rezervarea firmei este valabila pana la data
 
+  - key: date_societate
+    title: Datele societății (activități CAEN, capital social)
+    description: >
+      Fișa pe care clientul o completează pentru actul constitutiv: activitatea principală și
+      activitățile secundare (coduri CAEN), capitalul social și numărul de părți sociale.
+    seeds:
+      - >
+        Cod CAEN principal: CAEN (Principal): Producție cinematografică, video și de programe de
+        televiziune Coduri CAEN secundare: CAEN (Secundar): Activități ale agențiilor de
+        publicitate CAEN (Secundar): Comerț cu amănuntul prin Internet
+      - >
+        Activitatea principală cod CAEN Activități secundare coduri CAEN Capital social lei Număr
+        de părți sociale Valoare nominală a unei părți sociale lei aport în numerar
+
   - key: hotarare_aga
     title: Hotărâre AGA / decizia asociatului unic
     description: >

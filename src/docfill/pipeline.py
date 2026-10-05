@@ -200,7 +200,7 @@ PERSON_DOC_TYPES = {"id_card", "declaratie_administrator"}
 # beneficial owners; see extraction/articles.py) and documents about no person of the request
 # (the owner lending the registered office, the trade register's letterhead).
 NAMED_PERSONS_DOC_TYPES = {"act_constitutiv"}
-NO_PERSON_DOC_TYPES = {"dovada_denumire", "dovada_sediu"}
+NO_PERSON_DOC_TYPES = {"dovada_denumire", "dovada_sediu", "date_societate"}
 
 
 def names_persons(doc_type: str | None) -> bool:
