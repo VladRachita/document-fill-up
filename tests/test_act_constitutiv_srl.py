@@ -378,3 +378,77 @@ def test_the_act_from_the_proofs_of_the_name_and_the_office(settings):
         "ap. 31, camera 1, jud. Timiș."
     ) in text
     assert f"Asociat unic: {POPESCU_CLAUSE}." in text
+
+
+# The sheet the client fills for the act: the activities, each with a note saying why it is
+# wanted (the act does not write the notes), and the capital.
+COMPANY_SHEET = [
+    "Cod CAEN principal: CAEN 6201 (Principal): Activitati de realizare a software-ului la "
+    "comanda (Activitatea de baza a firmei)",
+    "",
+    "Coduri CAEN secundare: ",
+    "CAEN 6202 (Secundar): Activitati de consultanta in tehnologia informatiei (Pentru clienti).",
+    "CAEN 8559 (Secundar): Alte forme de invatamant n.c.a. (Pentru cursuri online pe viitor);",
+    "CAEN 4791 (Secundar): Comert cu amanuntul prin Internet (Pentru un magazin online)",
+    "",
+    "Capital social: 1.000 lei",
+    "Număr de părți sociale: 100",
+]
+
+
+def test_the_activities_and_the_capital_from_the_clients_sheet(settings, tmp_path):
+    _context(settings)
+    settings = settings.model_copy(update={"output_dir": tmp_path / "out"})
+    sheet = ("date firma.docx", make_docx(COMPANY_SHEET), "application/octet-stream")
+    popescu = ("popescu.docx", sworn_statement_docx(POPESCU), "application/octet-stream")
+    templates = ["act-constitutiv-srl"]
+    with TestClient(create_app(settings)) as client:
+        body = client.post(
+            "/wizard/analyze",
+            files=[("company", sheet), ("associate", popescu)],  # the boxes of step 1
+            data={"templates": templates},
+        ).json()
+        # the sheet is no one's document
+        assert [(d["doc_type"], d["person"]) for d in body["documents"]] == [
+            ("date_societate", None),
+            ("declaratie_administrator", 1),
+        ]
+        # with the other files, it is recognised by its wording
+        mixed = client.post(
+            "/wizard/analyze", files=[("files", sheet)], data={"templates": templates}
+        ).json()
+        assert [d["doc_type"] for d in mixed["documents"]] == ["date_societate"]
+        rows = {row["name"]: row for row in body["rows"]}
+        assert rows["caen_activities"]["value"] == (
+            "6201 Activitati de realizare a software-ului la comanda\n"
+            "6202 Activitati de consultanta in tehnologia informatiei\n"
+            "8559 Alte forme de invatamant n.c.a.\n"
+            "4791 Comert cu amanuntul prin Internet"
+        )
+        # the capital and the părți sociale, together in the review
+        assert rows["share_capital"]["value"] == "1.000 lei"
+        assert rows["share_count"]["value"] == "100"
+        assert rows["share_capital"]["group"] == rows["share_count"]["group"] == "capital"
+        values = {name: row["value"] for name, row in rows.items() if row["value"]}
+        values.update({key: COMPANY[key] for key in ("company_name", "company_city", "today")})
+        exported = client.post(
+            "/wizard/export",
+            json={"templates": templates, "values": values, "allow_missing": True},
+        ).json()
+        text = act_text(client.get(exported["files"][0]["url"]).content)
+    assert (
+        "Art. 2.1. — Obiectul de activitate al societății este: Activitati de realizare a "
+        "software-ului la comanda Domeniul principal de activitate corespunde grupei CAEN 620, "
+        "căruia îi corespunde clasa CAEN 6201. — activitatea principală clasa CAEN 6201 și "
+        "denumirea activității Activitati de realizare a software-ului la comanda — activități "
+        "secundare: — clasa CAEN 6202 și denumirea activității Activitati de consultanta in "
+        "tehnologia informatiei; — clasa CAEN 8559 și denumirea activității Alte forme de "
+        "invatamant n.c.a.; — clasa CAEN 4791 și denumirea activității Comert cu amanuntul prin "
+        "Internet."
+    ) in text
+    assert "Pentru clienti" not in text and "de baza a firmei" not in text  # the sheet's notes
+    assert (
+        "capitalul social subscris al societății este de 1.000 lei, aport în numerar, fiind "
+        "împărțit într-un număr de 100 de părți sociale, cu o valoare nominală de 10 lei/parte "
+        "socială."
+    ) in text

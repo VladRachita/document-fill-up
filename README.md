@@ -131,8 +131,22 @@ docfill serve                 # open http://127.0.0.1:8000
      company, with or without an act constitutiv. For the **act constitutiv of an SRL**, the
      box *Sole associate and administrator* takes the sole associate's identity card and,
      unless *the sole associate is also the administrator* stays ticked, the administrator's
-     (the administrator is then person 1, who signs the requests). *Fill in by hand* is also
-     possible.
+     (the administrator is then person 1, who signs the requests). When a ticked document
+     writes the CAEN activities or the share capital (the act constitutiv, Anexa 4...), the box
+     *Activities and share capital* takes the client's Word file with them:
+
+     ```
+     Cod CAEN principal: CAEN 5911 (Principal): Producție cinematografică ... (activitatea de bază)
+     Coduri CAEN secundare:
+     CAEN 7311 (Secundar): Activități ale agențiilor de publicitate (pentru reclame).
+     Capital social: 500 lei
+     Număr de părți sociale: 50
+     ```
+
+     The main activity comes first, the notes in brackets are left out (not a part of an
+     official name such as *(exclusiv ...)*), and the number of părți sociale is computed from
+     a nominal value (`Valoare nominală: 10 lei`) when only that is given. The same file among
+     the other files is recognised by its wording. *Fill in by hand* is also possible.
 2. **Scan & clean.** For each file: the **detected document type** with its confidence, or
    *recognised from its title* (change it if wrong; the classifier learns from it), **whose
    document it is** (person 1, 2 or 3: each identity card is a person, documents with the same
@@ -304,8 +318,8 @@ paragraph without blanks copied verbatim:
 |---|---|
 | the firm, `conform dovezii privind disponibilitatea firmei nr. … din …` | the proof of the firm name (ONRC, Formular nr. 17) |
 | `Art. 1.4. — Sediul societății este în …` | the proof of the registered office (contract de comodat / închiriere): the premises `situat în …`, the one an address follows when the premises are described first (`imobilul — apartament cu două camere, situat la etajul 1, cu suprafața … — situat în Mun. …`), not an owner's domicile; the firm also when it is described (`… S.R.L., persoană juridică română în curs de constituire`); `Ale. lancu`, `BI. 12`, `Et. Vil`, `Timisoara` as OCR reads a scan are written `Ale. Iancu`, `bl. 12`, `et. VII`, `Timișoara`. OCR may also misread the words around the address (`imobllul sltuat Tn`), or the title (the contract is then recognised by its parties, *comodant* and *comodatar*): the first address after the premises is taken, at a lower confidence |
-| `Art. 2.1.` the object of activity, the main domain (group and class), the main and the secondary activities | the CAEN activities typed in the review, the main one first; the object is proposed from the main activity and can be written otherwise |
-| `Art. 3.1.` the share capital, the number of părți sociale (`50 de părți sociale`) and their nominal value (computed) | typed in the review |
+| `Art. 2.1.` the object of activity, the main domain (group and class), the main and the secondary activities | the client's sheet of activities and capital (step 1), or typed in the review, the main one first; the object is proposed from the main activity and can be written otherwise |
+| `Art. 3.1.` the share capital, the number of părți sociale (`50 de părți sociale`) and their nominal value (computed) | the client's sheet, or typed in the review, where both are together under *Capitalul social, părțile sociale* (CAPITOLUL III of the act) |
 | `Asociat unic:`, `Art. 3.2.` and `Art. 10.` (the beneficial owner, 100%) | the sole associate's identity card |
 | `Art. 6.1.` the administrator | the same person, or the administrator's identity card |
 | `Art. 12.1.` and `Data:` | the date of the documents (today, editable) |
