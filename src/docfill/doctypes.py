@@ -172,37 +172,39 @@ DOC_TYPES: dict[str, DocType] = {
     for doc in (
         DocType(
             "id_card",
-            "Romanian identity card (CI / CEI)",
-            "Carte de identitate (CI) or carte electronică de identitate (CEI, also the RO CEI "
-            "Reader export): name, CNP, domicile, ID series/number, MRZ",
+            "Carte de identitate românească (CI / CEI)",
+            "Carte de identitate (CI) sau carte electronică de identitate (CEI, inclusiv exportul "
+            "din aplicația RO CEI Reader): nume, CNP, domiciliu, seria și numărul actului, zona "
+            "citibilă automat (MRZ)",
             _ID_CARD,
         ),
         DocType(
             "birth_certificate",
-            "Birth certificate",
-            "Certificat de naștere: name, CNP, date and place of birth, parents",
+            "Certificat de naștere",
+            "Certificat de naștere: nume, CNP, data și locul nașterii, părinții",
             _BIRTH_CERTIFICATE,
         ),
         DocType(
             "onrc_anexa_2a",
-            "ONRC Anexa 2a - registration request",
+            "ONRC Anexa 2a - cerere de înregistrare",
             "Cerere de înregistrare în registrul comerțului (persoane juridice)",
             _ANEXA_2A,
         ),
         DocType(
             "onrc_anexa_4",
-            "ONRC Anexa 4 - sworn statement",
+            "ONRC Anexa 4 - declarație pe propria răspundere",
             "Declarație privind îndeplinirea condițiilor de funcționare",
             _ANEXA_4,
         ),
         DocType(
             "declaratie_administrator",
-            "Sworn statement of an administrator",
-            "Declarație pe propria răspundere a administratorului (condiții legale): identifies "
-            "one person (CNP, domicile, identity card), read like their identity card",
+            "Declarație pe propria răspundere a administratorului",
+            "Declarație pe propria răspundere a administratorului (condiții legale): identifică "
+            "o persoană (CNP, domiciliu, act de identitate) și se citește ca actul său de "
+            "identitate",
             _SWORN_STATEMENT,
         ),
-        DocType(UNKNOWN, "Other document", "Not one of the known types", _OTHER),
+        DocType(UNKNOWN, "Alt document", "Nu face parte din tipurile cunoscute", _OTHER),
     )
 }
 

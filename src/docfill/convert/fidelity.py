@@ -46,21 +46,22 @@ from rapidfuzz.distance import Indel
 from docfill.convert.engines import run_libreoffice
 from docfill.convert.ocr import clean_page
 from docfill.errors import DocumentReadError
+from docfill.ro import counted
 
 WEIGHTS = {"layout": 50, "text": 30, "pages": 8, "fonts": 8, "images": 4}
 TITLES = {
-    "layout": "Layout, page by page",
+    "layout": "Aranjarea în pagină, pagină cu pagină",
     "text": "Text",
-    "pages": "Number of pages",
-    "fonts": "Fonts",
-    "images": "Pictures",
+    "pages": "Numărul de pagini",
+    "fonts": "Fonturi",
+    "images": "Imagini",
 }
 # (lowest score, verdict, what it means)
 VERDICTS = [
-    (97.0, "identical", "1:1 — practically identical"),
-    (90.0, "very_close", "Very close — small differences"),
-    (75.0, "close", "Close — visible differences"),
-    (0.0, "different", "Different — check the document"),
+    (97.0, "identical", "1:1 — practic identic"),
+    (90.0, "very_close", "Foarte apropiat — diferențe mici"),
+    (75.0, "close", "Apropiat — diferențe vizibile"),
+    (0.0, "different", "Diferit — verificați documentul"),
 ]
 OK, WARN = 95.0, 80.0  # a check is ok from 95, to look at from 80, bad under it
 # The picture of a page: white, ink in both, only in the original, only in the converted one.
@@ -128,7 +129,7 @@ def _open_pdf(data: bytes) -> pdfium.PdfDocument:
         return pdfium.PdfDocument(data)
     except pdfium.PdfiumError as exc:
         raise DocumentReadError(
-            f"the PDF cannot be opened: damaged, or protected by a password ({exc})"
+            f"PDF-ul nu poate fi deschis: este deteriorat sau protejat cu parolă ({exc})"
         ) from exc
 
 
@@ -240,15 +241,15 @@ def pdf_rendition(data: bytes) -> Rendition:
     text, fonts, pages = _pdf_text(data)
     found = words(text)
     rendition = Rendition(
-        "pdf", data, found, True, dict(fonts), _pdf_images(data), pages, "in the original PDF"
+        "pdf", data, found, True, dict(fonts), _pdf_images(data), pages, "în PDF-ul original"
     )
     if pages and not found:
         rendition.scan = True
         rendition.images = 0  # the pictures are the pages themselves
         rendition.warnings.append(
-            "The PDF has no text, only pictures of its pages (a scan): its text cannot be "
-            "compared, and a Word document made from it shows the pages as pictures. Read it "
-            "with OCR first to edit its text."
+            "PDF-ul nu conține text, ci doar imagini ale paginilor (este scanat): textul său nu "
+            "poate fi comparat, iar un document Word creat din el afișează paginile ca imagini. "
+            "Citiți-l mai întâi prin OCR pentru a-i putea modifica textul."
         )
     return rendition
 
@@ -269,7 +270,7 @@ class _WordFile:
             self.archive = zipfile.ZipFile(io.BytesIO(data))
             self.body = self._xml("word/document.xml")
         except (zipfile.BadZipFile, KeyError, etree.XMLSyntaxError) as exc:
-            raise DocumentReadError(f"invalid Word document ({exc})") from exc
+            raise DocumentReadError(f"document Word invalid ({exc})") from exc
         names = sorted(self.archive.namelist())
         self.headers = self._all(n for n in names if re.fullmatch(r"word/header\d*\.xml", n))
         self.footers = self._all(n for n in names if re.fullmatch(r"word/footer\d*\.xml", n))
@@ -400,7 +401,7 @@ class _WordFile:
         if not pages or not recorded or abs(recorded - counted) > max(20, 0.1 * counted):
             return None
         application = (app.findtext(f"{EXTENDED}Application") or "").strip()
-        return pages, f"as {application or 'the editor'} counted them when it last saved it"
+        return pages, f"după numărarea făcută de {application or 'editor'} la ultima salvare"
 
 
 def word_rendition(data: bytes, kind: str, timeout: int, layout: bool = True) -> Rendition:
@@ -424,14 +425,15 @@ def word_rendition(data: bytes, kind: str, timeout: int, layout: bool = True) ->
         fonts,
         images,
         laid_out.pages,
-        "in the Word document laid out by LibreOffice",
+        "în documentul Word paginat cu LibreOffice",
     )
     used = {font_key(name): name for name in laid_out.fonts}
     for name in fonts:
         if match_font(name, used)[0] == "replaced":
             rendition.warnings.append(
-                f"The font {name} is not installed here: the Word document was laid out with "
-                "another font to be compared, so its layout score may be lower than in Word."
+                f"Fontul {name} nu este instalat aici: documentul Word a fost paginat cu alt "
+                "font pentru comparare, așa că scorul aranjării în pagină poate fi mai mic decât "
+                "în Word."
             )
     return rendition
 
@@ -497,7 +499,7 @@ class Fidelity:
     def verdict(self) -> tuple[str, str]:
         score = self.score
         if score is None:
-            return "unknown", "Nothing could be compared"
+            return "unknown", "Nu s-a putut compara nimic"
         return next((key, label) for lowest, key, label in VERDICTS if score >= lowest)
 
     def check(self, key: str) -> Check:
@@ -506,7 +508,7 @@ class Fidelity:
     def as_dict(self) -> dict[str, Any]:
         verdict, label = self.verdict
         if self.score is not None and self.check("layout").score is None:
-            label += " (pages not compared)"
+            label += " (paginile nu au fost comparate)"
         return {
             "against": self.against,
             "score": None if self.score is None else round(self.score, 1),
@@ -593,8 +595,9 @@ def _layout(expected: Rendition, actual: Rendition, previews: int) -> tuple[Chec
         return Check(
             "layout",
             None,
-            "Not measured: LibreOffice made this PDF, so it would be compared with its own "
-            "layout. Add the real PDF (the one Word saves) to compare the pages.",
+            "Nemăsurat: acest PDF a fost creat de LibreOffice, deci ar fi comparat cu propria "
+            "sa paginare. Adăugați PDF-ul de referință (cel salvat de Word) pentru a compara "
+            "paginile.",
         ), []
     tolerance = SCAN_TOLERANCE if expected.scan else TOLERANCE
     left, right = _open_pdf(expected.pdf), _open_pdf(actual.pdf)
@@ -617,19 +620,25 @@ def _layout(expected: Rendition, actual: Rendition, previews: int) -> tuple[Chec
         left.close()
         right.close()
     if not pages:
-        return Check("layout", None, "Neither document has a page."), []
+        return Check("layout", None, "Niciunul dintre documente nu are pagini."), []
     mean = sum(page.score for page in pages) / len(pages)
     worst = min(pages, key=lambda page: page.score)
-    detail = f"{len(pages)} page{'s' if len(pages) != 1 else ''} compared"
+    detail = counted(len(pages), "pagină comparată", "pagini comparate")
     if expected.scan:
-        kept = "stamps and signatures as pictures" if expected.stamps else "stamps left out"
-        detail += f" (a scan: its lines within 2 mm, as typed again; {kept})"
+        kept = (
+            "ștampilele și semnăturile păstrate ca imagini" if expected.stamps else "fără ștampile"
+        )
+        detail += (
+            f" (document scanat: rândurile comparate cu o toleranță de 2 mm, ca la o "
+            f"retehnoredactare; {kept})"
+        )
     if count > MAX_PAGES:
-        detail += f" (the first {MAX_PAGES} of {count})"
+        detail += f" (primele {MAX_PAGES} din {count})"
     if len(pages) > 1:
         same = sum(page.score >= OK for page in pages)
         detail += (
-            f"; {same} practically identical; lowest: page {worst.number} ({worst.score:.0f}%)"
+            f"; practic identice: {same}; cel mai mic scor: pagina {worst.number} "
+            f"({worst.score:.0f}%)"
         )
     return Check("layout", mean, detail + "."), pages
 
@@ -640,19 +649,22 @@ def _clip(found: list[str], limit: int = 12) -> str:
 
 def _text(expected: Rendition, actual: Rendition) -> Check:
     if not expected.words:
-        return Check("text", None, "Not measured: the original has no text (a scan?).")
+        return Check("text", None, "Nemăsurat: originalul nu conține text (este scanat?).")
     a = [word.casefold() for word in expected.words]
     b = [word.casefold() for word in actual.words]
     common = (len(a) + len(b) - Indel.distance(a, b)) // 2  # longest common subsequence
     both_printed = expected.words_from_pages and actual.words_from_pages
     if both_printed:
         score = 200 * common / (len(a) + len(b))
-        detail = f"{common} of {len(a)} words in the same order"
+        detail = f"{common} din {counted(len(a), 'cuvânt', 'cuvinte')}, în aceeași ordine"
         if added := len(b) - common:
-            detail += f"; {added} added"
+            detail += f"; adăugate: {added}"
     else:  # the PDF also prints page headers, footers and list numbers on every page
         score = 100 * common / len(a)
-        detail = f"{common} of the {len(a)} words of the document are in it, in the same order"
+        detail = (
+            f"se regăsesc {common} din {counted(len(a), 'cuvânt', 'cuvinte')} ale documentului, "
+            "în aceeași ordine"
+        )
     differences: list[dict[str, str]] = []
     pending: dict[str, Any] | None = None
     for op in [*Indel.opcodes(a, b), None]:
@@ -682,21 +694,21 @@ def _pages_check(expected: Rendition, actual: Rendition) -> Check:
         return Check(
             "pages",
             None,
-            "Not measured: the number of pages Word counted is not saved in the document, or "
-            "is out of date (it was changed by another program).",
+            "Nemăsurat: numărul de pagini calculat de Word nu este salvat în document sau nu "
+            "este actualizat (documentul a fost modificat cu alt program).",
         )
     score = 100 * max(0.0, 1 - abs(actual.pages - expected.pages) / expected.pages)
-    plural = "s" if actual.pages != 1 else ""
     return Check(
         "pages",
         score,
-        f"{actual.pages} page{plural} for {expected.pages} {expected.pages_source}.",
+        f"{counted(actual.pages, 'pagină', 'pagini')} față de {expected.pages} "
+        f"{expected.pages_source}.",
     )
 
 
 def _fonts_check(expected: Rendition, actual: Rendition) -> Check:
     if not expected.fonts:
-        return Check("fonts", None, "Not measured: the fonts of the original are not known.")
+        return Check("fonts", None, "Nemăsurat: fonturile originalului nu sunt cunoscute.")
     families: dict[str, list[Any]] = {}  # key -> [name, characters]
     for name, characters in expected.fonts.items():
         families.setdefault(font_key(name), [font_name(name), 0])[1] += characters
@@ -708,7 +720,7 @@ def _fonts_check(expected: Rendition, actual: Rendition) -> Check:
         points += characters * {"same": 1.0, "metric": METRIC_MATCH, "replaced": 0.0}[match]
         rows.append({"font": name, "used": used, "match": match, "share": characters / total})
     replaced = [
-        row["font"] + (f" (or {free}, of the same widths)" if (free := twin(row["font"])) else "")
+        row["font"] + (f" (sau {free}, cu aceleași lățimi)" if (free := twin(row["font"])) else "")
         for row in rows
         if row["match"] == "replaced"
     ]
@@ -717,28 +729,28 @@ def _fonts_check(expected: Rendition, actual: Rendition) -> Check:
     instead = [name for key, name in available.items() if key not in matched]
     if replaced:
         detail = (
-            f"Replaced by other fonts: {', '.join(replaced)}. Lines may break elsewhere: "
-            "install these fonts where the document is converted."
+            f"Înlocuite cu alte fonturi: {', '.join(replaced)}. Rândurile se pot termina în alt "
+            "loc: instalați aceste fonturi pe calculatorul pe care se face conversia."
         )
         if instead:
-            detail += f" Used instead: {', '.join(instead)}."
+            detail += f" Folosite în schimb: {', '.join(instead)}."
     elif metric:
         detail = (
-            f"Fonts of the same widths: {', '.join(metric)} (the lines break at the same "
-            "place; install the original fonts for the same letters)."
+            f"Fonturi cu aceleași lățimi: {', '.join(metric)} (rândurile se termină în același "
+            "loc; instalați fonturile originale pentru aceleași forme ale literelor)."
         )
     else:
-        detail = "The same fonts."
+        detail = "Aceleași fonturi."
     return Check("fonts", 100 * points / total, detail, {"fonts": rows})
 
 
 def _images(expected: Rendition, actual: Rendition) -> Check:
     if expected.scan:
-        return Check("images", None, "A scan: its pages are pictures, not counted.")
+        return Check("images", None, "Document scanat: paginile sunt imagini și nu se numără.")
     if not expected.images and not actual.images:
-        return Check("images", None, "No pictures.")
+        return Check("images", None, "Nicio imagine.")
     score = 100 * min(expected.images, actual.images) / max(expected.images, actual.images)
-    return Check("images", score, f"{actual.images} for {expected.images} in the original.")
+    return Check("images", score, f"{actual.images} față de {expected.images} în original.")
 
 
 def ocr_text(expected: Rendition, ocr: dict[str, Any]) -> Check:
@@ -746,12 +758,13 @@ def ocr_text(expected: Rendition, ocr: dict[str, Any]) -> Check:
     is, and the words to check."""
     uncertain = ocr.get("uncertain", [])
     detail = (
-        f"Read with OCR (the scan has no text): {ocr['words']} words, "
-        f"{ocr['confidence']:.0f}% confident on average"
+        f"Citit prin OCR (documentul scanat nu conține text): "
+        f"{counted(ocr['words'], 'cuvânt', 'cuvinte')}, grad mediu de încredere "
+        f"{ocr['confidence']:.0f}%"
     )
     if uncertain:
         sample = ", ".join(dict.fromkeys(uncertain))
-        detail += f"; {len(uncertain)} to check: {sample[:300]}"
+        detail += f"; de verificat ({len(uncertain)}): {sample[:300]}"
     return Check("text", float(ocr["confidence"]), detail + ".", {"uncertain": uncertain[:100]})
 
 

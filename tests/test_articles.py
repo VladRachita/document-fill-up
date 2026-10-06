@@ -767,7 +767,7 @@ def test_lawyer_or_proxy_is_asked_each_time():
     rows = {row.name: row for row in field_rows(request, None, 0.5, memory={})}
     assert rows["representative_type"].value == ""
     issue = validate_values({"filer_last_name": "Ionescu"})["representative_type"]
-    assert "lawyer" in issue[0]
+    assert "avocat" in issue[0]
     assert "representative_type" not in validate_values(
         {"filer_last_name": "Ionescu", "representative_type": REPRESENTATIVE_TYPES[1]}
     )

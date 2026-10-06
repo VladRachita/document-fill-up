@@ -1,27 +1,28 @@
 name: residence-declaration
-title: Declaration of Residence
+title: Declarație privind domiciliul
 description: >
-  Sworn statement of a person's home address. Uses the person's name and full home address.
+  Declarație pe propria răspundere privind adresa de domiciliu a unei persoane. Folosește
+  numele persoanei și adresa completă de domiciliu.
 kind: text
 optional_fields:
   - region
 body: |
-  # DECLARATION OF RESIDENCE
+  # DECLARAȚIE PE PROPRIA RĂSPUNDERE PRIVIND DOMICILIUL
 
-  I, the undersigned {{ first_name }} {{ last_name | upper }}, hereby declare on my own
-  responsibility that my permanent home address is:
+  Subsemnatul(a) {{ last_name | upper }} {{ first_name }}, declar pe propria răspundere că
+  domiciliul meu este la adresa:
 
-  Street: {{ street_address }}
-  Postal code: {{ postal_code }}
-  City: {{ city }}
-  County / State: {{ region }}
-  Country: {{ country }}
+  Strada și numărul: {{ street_address }}
+  Cod poștal: {{ postal_code }}
+  Localitatea: {{ city }}
+  Județul / sectorul: {{ region }}
+  Țara: {{ country }}
 
-  I confirm that the information above is true and complete, and I understand that
-  providing false information may have legal consequences.
+  Confirm că informațiile de mai sus sunt reale și complete, cunoscând prevederile
+  art. 326 din Codul penal privind falsul în declarații.
 
   ---
 
-  Date: {{ today }}
+  Data: {{ today }}
 
-  Signature: ____________________
+  Semnătura: ____________________

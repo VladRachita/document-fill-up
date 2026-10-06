@@ -18,7 +18,7 @@ def read_image(data: bytes, source: str, settings: Settings) -> RawDocument:
             image.load()
             text = ocr_image(image, settings.ocr_languages, settings.tesseract_cmd)
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
-        raise DocumentReadError(f"{source}: invalid image ({exc})") from exc
+        raise DocumentReadError(f"{source}: imagine invalidă ({exc})") from exc
     return RawDocument(
         source=source,
         doc_type=DocumentType.IMAGE,

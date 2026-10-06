@@ -51,7 +51,7 @@ def knowledge_page() -> str:
 
 def _kind(kind: str) -> str:
     if kind not in KINDS:
-        raise HTTPException(404, f"unknown kind '{kind}'")
+        raise HTTPException(404, f"tip de înregistrare necunoscut: „{kind}”")
     return kind
 
 
@@ -104,7 +104,7 @@ def register_knowledge(app: FastAPI, context: App) -> None:
         else:
             specs = parse_knowledge(payload.knowledge or {}, "request")
         if not specs:
-            raise HTTPException(422, "no knowledge entries in the request")
+            raise HTTPException(422, "cererea nu conține nicio înregistrare de cunoștințe")
         _, warnings = knowledge.check_references(specs)
         results = knowledge.save_all(
             specs,
@@ -173,7 +173,7 @@ def register_knowledge(app: FastAPI, context: App) -> None:
         """Teach the document classifier with example documents of a type (sensitive numbers
         are removed; prefer blank or sample documents)."""
         if name not in docfill.classifier.types():
-            raise HTTPException(404, f"unknown document type '{name}'")
+            raise HTTPException(404, f"tip de document necunoscut: „{name}”")
         texts = []
         for upload in files:
             data = upload.file.read(settings.max_file_size + 1)

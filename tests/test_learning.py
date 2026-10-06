@@ -102,7 +102,7 @@ def test_spelling_fix_is_learned(app):
         )
     )
     fixed = extract(app, "City: Com. Sarbatoreni").fields["city"]
-    assert fixed.value == "Com. Sărbătoreni" and "spelling learned" in fixed.evidence
+    assert fixed.value == "Com. Sărbătoreni" and "scriere învățată" in fixed.evidence
 
 
 def test_a_spelling_fix_reaches_the_city_derived_from_an_address(app):

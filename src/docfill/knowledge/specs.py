@@ -64,7 +64,7 @@ class _Model(BaseModel):
 
 def _http(value: str | None) -> str | None:
     if value and not re.match(r"https?://", value):
-        raise ValueError("url must start with http:// or https://")
+        raise ValueError("adresa (url) trebuie să înceapă cu http:// sau https://")
     return value
 
 
@@ -158,7 +158,7 @@ class ProcedureSpec(_Entry):
     def _field_names(cls, names: list[str]) -> list[str]:
         for name in names:
             if not re.fullmatch(FIELD_PATTERN, name):
-                raise ValueError(f"invalid field name {name!r}")
+                raise ValueError(f"nume de câmp invalid: {name!r}")
         return list(dict.fromkeys(names))
 
     def references(self) -> dict[str, list[str]]:
@@ -236,28 +236,28 @@ class Check(_Model):
     def _complete(self) -> Check:
         for name in self.when:
             if not re.fullmatch(FIELD_PATTERN, name):
-                raise ValueError(f"invalid field name in 'when': {name!r}")
+                raise ValueError(f"nume de câmp invalid în „when”: {name!r}")
         if self.type in ("required", "required_any"):
             if not self.fields and not self.field:
-                raise ValueError(f"a '{self.type}' check needs 'fields' (or 'field')")
+                raise ValueError(f"o verificare „{self.type}” necesită „fields” (sau „field”)")
             for name in self.fields:
                 if not re.fullmatch(FIELD_PATTERN, name):
-                    raise ValueError(f"invalid field name {name!r}")
+                    raise ValueError(f"nume de câmp invalid: {name!r}")
         elif not self.field:
-            raise ValueError(f"a '{self.type}' check needs 'field'")
+            raise ValueError(f"o verificare „{self.type}” necesită „field”")
         if self.type in _NEEDS_VALUE and self.value is None:
-            raise ValueError(f"a '{self.type}' check needs 'value'")
+            raise ValueError(f"o verificare „{self.type}” necesită „value”")
         if self.type in _NEEDS_PHRASES and not self.any_of:
-            raise ValueError(f"a '{self.type}' check needs 'any_of'")
+            raise ValueError(f"o verificare „{self.type}” necesită „any_of”")
         if self.type == "contains_field" and not self.other:
-            raise ValueError("a 'contains_field' check needs 'other'")
+            raise ValueError("o verificare „contains_field” necesită „other”")
         if self.type in _NEEDS_PATTERN:
             if not self.pattern:
-                raise ValueError(f"a '{self.type}' check needs 'pattern'")
+                raise ValueError(f"o verificare „{self.type}” necesită „pattern”")
             try:
                 re.compile(self.pattern)
             except re.error as exc:
-                raise ValueError(f"invalid pattern: {exc}") from exc
+                raise ValueError(f"tipar (expresie regulată) invalid: {exc}") from exc
         return self
 
     def targets(self) -> list[str]:
@@ -311,7 +311,9 @@ class DocTypeSpec(_Entry):
     def _long_enough(cls, seeds: list[str]) -> list[str]:
         for seed in seeds:
             if len(seed.split()) < 8:
-                raise ValueError("each seed should be a typical text of at least 8 words")
+                raise ValueError(
+                    "fiecare exemplu (seed) trebuie să fie un text tipic de cel puțin 8 cuvinte"
+                )
         return seeds
 
 
@@ -361,5 +363,5 @@ class KnowledgeFile(_Model):
 
 def parse_spec(kind: str, data: dict[str, Any]) -> AnySpec:
     if kind not in SPEC_TYPES:
-        raise ValueError(f"unknown knowledge kind {kind!r}; expected one of {', '.join(KINDS)}")
+        raise ValueError(f"tip de cunoștințe necunoscut {kind!r}; se acceptă: {', '.join(KINDS)}")
     return SPEC_TYPES[kind].model_validate(data)  # type: ignore[return-value]

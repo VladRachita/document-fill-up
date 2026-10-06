@@ -195,11 +195,11 @@ def test_county_codes_misread_by_ocr(text, county):
         ("Com. Hărman, Sat Podu Oltului", False, None),
         ("Mun. București Sector 2", True, None),
         ("Mun. București", False, None),  # a domicile: its sector is in the county field
-        ("Mun. Sib", False, "cut off"),
-        ("Mun. Cluj", False, "cut off"),
-        ("Mun. Alba", False, "cut off"),
-        ("Mun. Set", False, "Not a known municipality"),
-        ("Mun. București", True, "sector of Bucharest"),
+        ("Mun. Sib", False, "trunchiat"),
+        ("Mun. Cluj", False, "trunchiat"),
+        ("Mun. Alba", False, "trunchiat"),
+        ("Mun. Set", False, "Nu este un municipiu cunoscut"),
+        ("Mun. București", True, "sectorul municipiului București"),
     ],
 )
 def test_places_that_cannot_be_what_a_card_prints(place, birth, problem):
@@ -223,20 +223,20 @@ def test_county_code(text, code):
         ("Oraș Dej", "CJ", False, None, ()),
         ("Mun. Huedin", "CJ", False, None, ()),
         # the county of the card is the one the name is looked up in
-        ("Mun. Cluj-Napoca", "AB", False, "județul Alba (there is one in Cluj)", ()),
+        ("Mun. Cluj-Napoca", "AB", False, "județul Alba (există una cu acest nume în: Cluj)", ()),
         ("Com. Hărman", "BV", False, None, ()),
-        ("Com. Hărman", "CJ", False, "județul Cluj (there is one in Brașov)", ()),
+        ("Com. Hărman", "CJ", False, "județul Cluj (există una cu acest nume în: Brașov)", ()),
         ("Com. Hărman, Sat Podu Oltului", "BV", False, None, ()),
         # a name cut off by glare: the municipalities that begin so, the kind printed first
-        ("Mun. Plo", "PH", False, "cut off", ("Mun. Ploiești",)),
-        ("Mun. Ca", "SV", False, "cut off", ("Mun. Câmpulung Moldovenesc",)),
-        ("Oraș Huedi", "CJ", False, "cut off", ("Oraș Huedin",)),
-        ("Mun. Me", "SB", False, "cut off", ("Mun. Mediaș",)),
-        ("Com. Car", "DJ", False, "cut off", ("Com. Cârna", "Com. Carpen", "Com. Cârcea")),
+        ("Mun. Plo", "PH", False, "trunchiat", ("Mun. Ploiești",)),
+        ("Mun. Ca", "SV", False, "trunchiat", ("Mun. Câmpulung Moldovenesc",)),
+        ("Oraș Huedi", "CJ", False, "trunchiat", ("Oraș Huedin",)),
+        ("Mun. Me", "SB", False, "trunchiat", ("Mun. Mediaș",)),
+        ("Com. Car", "DJ", False, "trunchiat", ("Com. Cârna", "Com. Carpen", "Com. Cârcea")),
         # one letter misread
-        ("Oraș Hucdin", "CJ", False, "did you mean Huedin", ("Oraș Huedin",)),
-        ("Com. Harmann", "BV", False, "did you mean Hărman", ("Com. Hărman",)),
-        ("Com. Hărman, Sat Podu Oltuli", "BV", False, "did you mean Podu Oltului", None),
+        ("Oraș Hucdin", "CJ", False, "ați vrut să scrieți Huedin", ("Oraș Huedin",)),
+        ("Com. Harmann", "BV", False, "ați vrut să scrieți Hărman", ("Com. Hărman",)),
+        ("Com. Hărman, Sat Podu Oltuli", "BV", False, "ați vrut să scrieți Podu Oltului", None),
         # a name the register does not have, that looks like none of its names: left alone
         ("Com. Sărbătoreni", "BV", False, None, ()),
         ("Sat Valea Lungă", None, False, None, ()),
@@ -265,8 +265,8 @@ def test_a_suggestion_replaces_only_the_doubted_part_of_a_place():
         ("SPCLEP Alba Iulia", None, ()),
         ("SPCLEP Sector 4", None, ()),  # not a place of the register
         ("SPCLEP Săcălaz", None, ()),
-        ("SPCLEP Drobeta-Tumu Severin", "did you mean Drobeta-Turnu Severin", None),
-        ("SPCLEP Cluj", "cut off", ("SPCLEP Cluj-Napoca",)),
+        ("SPCLEP Drobeta-Tumu Severin", "ați vrut să scrieți Drobeta-Turnu Severin", None),
+        ("SPCLEP Cluj", "trunchiat", ("SPCLEP Cluj-Napoca",)),
         ("SPCLEP Xyzzyq", None, ()),
         ("I.N.E.P.", None, ()),
     ],
@@ -359,10 +359,10 @@ def test_validate_values_cross_checks():
             "id_expiry_date": "01.01.2000",
         }
     )
-    assert issues["date_of_birth"] == ["Differs from the date of birth in the CNP"]
-    assert issues["sex"] == ["Differs from the sex encoded in the CNP"]
+    assert issues["date_of_birth"] == ["Diferă de data nașterii din CNP"]
+    assert issues["sex"] == ["Diferă de sexul codificat în CNP"]
     assert "IBAN" in issues["billing_iban"][0]
-    assert issues["id_expiry_date"] == ["The identity card has expired"]
+    assert issues["id_expiry_date"] == ["Cartea de identitate a expirat"]
 
 
 @requires_tesseract

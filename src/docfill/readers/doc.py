@@ -45,7 +45,9 @@ def _with_libreoffice(tool: str, data: bytes, source: str) -> RawDocument:
             )
             converted = (Path(folder) / "document.docx").read_bytes()
         except (subprocess.SubprocessError, OSError) as exc:
-            raise DocumentReadError(f"{source}: could not convert the .doc file ({exc})") from exc
+            raise DocumentReadError(
+                f"{source}: fișierul .doc nu a putut fi convertit ({exc})"
+            ) from exc
     raw = read_docx(converted, source)
     return raw.model_copy(update={"doc_type": DocumentType.DOC})
 
@@ -66,7 +68,7 @@ def _with_antiword(data: bytes, source: str) -> RawDocument:
             check=True,
         )
     except (subprocess.SubprocessError, OSError) as exc:
-        raise DocumentReadError(f"{source}: could not read the .doc file ({exc})") from exc
+        raise DocumentReadError(f"{source}: fișierul .doc nu a putut fi citit ({exc})") from exc
     text = completed.stdout.decode("utf-8", errors="replace")
     lines = [line.rstrip() for line in text.splitlines()]
     return RawDocument(
@@ -80,8 +82,8 @@ def read_doc(data: bytes, source: str) -> RawDocument:
     tool = doc_converter()
     if tool is None:
         raise UnsupportedDocumentError(
-            f"{source}: reading legacy Word .doc files needs antiword or LibreOffice "
-            "(e.g. apt install antiword); or save the file as .docx"
+            f"{source}: citirea fișierelor Word vechi (.doc) necesită antiword sau LibreOffice "
+            "(de exemplu, apt install antiword); alternativ, salvați fișierul ca .docx"
         )
     if tool == "antiword":
         return _with_antiword(data, source)

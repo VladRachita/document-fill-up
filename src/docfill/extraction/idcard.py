@@ -22,8 +22,8 @@ from docfill.ro import office_doubt, repair_county_codes
 SUSPECT_CONFIDENCE = 0.45  # under the default fill threshold: shown, never filled in
 GUESS_CONFIDENCE = 0.75  # a first name corrected to a Romanian one: filled in, with a note
 ALTERNATIVE_CONFIDENCE = 0.4  # a reading offered next to the value, to be picked by a person
-CORRECTED = "Read as"  # the note of a name that was corrected: the zone can overrule it
-UNKNOWN_NAME = "Not a known Romanian"  # the note of a name that may be misread or cut off
+CORRECTED = "Citit ca"  # the note of a name that was corrected: the zone can overrule it
+UNKNOWN_NAME = "Nu este un nume românesc cunoscut"  # a name that may be misread or cut off
 NAME_NOTES = (CORRECTED, UNKNOWN_NAME)  # what the machine readable zone can settle
 
 _UPPER = "A-ZĂÂÎȘȚŞŢ"
@@ -113,15 +113,15 @@ def suspicious(spec: FieldSpec, value: str) -> str | None:
     if spec.kind not in ("name", "place", "address") and not spec.name.endswith("id_issued_by"):
         return None
     if _SYMBOLS.search(value):
-        return "contains symbols that are not part of the text: check it against the card"
+        return "conține simboluri care nu fac parte din text: comparați cu cartea de identitate"
     if spec.kind != "address" and "/" in value:
-        return "reads like a printed label, not a value: check it against the card"
+        return "pare o etichetă tipărită, nu o valoare: comparați cu cartea de identitate"
     words = re.findall(rf"[{_UPPER}{_LOWER}]{{3,}}", value)
     if any(get_close_matches(fold(word), _LABEL_WORDS, n=1, cutoff=0.8) for word in words):
-        return "reads like a printed label, not a value: check it against the card"
+        return "pare o etichetă tipărită, nu o valoare: comparați cu cartea de identitate"
     letters = sum(char.isalpha() for char in value)
     if letters < 3 or letters < 0.4 * len(value.replace(" ", "")):
-        return "has too few letters to be read reliably: check it against the card"
+        return "are prea puține litere pentru a fi citit sigur: comparați cu cartea de identitate"
     return None
 
 
@@ -148,21 +148,21 @@ def _review_name(candidate: ExtractedField, kind: str) -> tuple[dict, list[Extra
     issues, confidence, extra = list(candidate.issues), candidate.confidence, []
     if fix.uncertain_digits:
         confidence = min(confidence, GUESS_CONFIDENCE)
-        issues.append("Digits read inside the name were replaced by letters: check it")
+        issues.append("Cifrele citite în nume au fost înlocuite cu litere: verificați numele")
     suggestion = fix.suggestion or (fix.guess if kind == names.FAMILY else None)
     if fix.guess and kind == names.GIVEN:
         confidence = min(confidence, GUESS_CONFIDENCE)
         issues.append(
-            f"{CORRECTED} '{fix.value}', corrected to the Romanian first name {fix.guess}: "
-            "check it against the card"
+            f"{CORRECTED} „{fix.value}”, corectat în prenumele românesc {fix.guess}: "
+            "comparați cu cartea de identitate"
         )
         changes.update(value=fix.guess, original=fix.value)
         reading = {"value": fix.value, "confidence": ALTERNATIVE_CONFIDENCE, "original": None}
         extra.append(candidate.model_copy(update=reading))
     elif suggestion:
         confidence = min(confidence, SUSPECT_CONFIDENCE)
-        what = "first name" if kind == names.GIVEN else "surname"
-        issues.append(f"{UNKNOWN_NAME} {what}: did you mean {suggestion}? Check it")
+        what = "prenume" if kind == names.GIVEN else "nume de familie"
+        issues.append(f"{UNKNOWN_NAME} ({what}): ați vrut să scrieți {suggestion}? Verificați")
         offer = {"value": suggestion, "confidence": SUSPECT_CONFIDENCE - 0.01, "source": "derived"}
         extra.append(candidate.model_copy(update={**offer, "issues": []}))
     if issues != candidate.issues:

@@ -197,7 +197,7 @@ def test_a_missing_line_and_an_extra_page_are_found():
     assert text.extra["differences"][-1]["added"] == "De adaugat"
     assert report.verdict[0] == "different"
     data = report.as_dict()
-    assert data["checks"][0]["title"] == "Layout, page by page"
+    assert data["checks"][0]["title"] == "Aranjarea în pagină, pagină cu pagină"
     assert json.dumps(data)  # plain JSON
 
 
@@ -208,14 +208,14 @@ def test_without_pages_the_score_says_so():
     assert report.check("layout").score is None
     assert report.check("text").score == 100  # the page number printed is not held against it
     assert report.check("fonts").score == 90  # Liberation Serif: the widths of Times New Roman
-    assert report.as_dict()["label"].endswith("(pages not compared)")
+    assert report.as_dict()["label"].endswith("(paginile nu au fost comparate)")
 
 
 def test_a_scan_has_no_text_to_compare():
     rendition = pdf_rendition(make_scanned_pdf(["IDENTITY CARD"]))
     assert rendition.words == [] and rendition.scan
     assert rendition.images == 0  # its pictures are its pages: not counted as pictures
-    assert "no text" in rendition.warnings[0]
+    assert "nu conține text" in rendition.warnings[0]
     report = compare(rendition, rendition)
     assert report.check("text").score is None
     assert report.check("images").score is None
@@ -232,16 +232,16 @@ def test_only_word_and_pdf_documents_are_converted(settings):
         document_kind(make_text_pdf(LETTER), "big.pdf", small)
     assert document_kind(make_text_pdf(LETTER), "a.pdf", settings) == "pdf"
     assert document_kind(word_document(), "a.docx", settings) == "docx"
-    with pytest.raises(ConversionError, match="already a PDF"):
+    with pytest.raises(ConversionError, match="deja un document PDF"):
         convert(make_text_pdf(LETTER), "a.pdf", "pdf", settings=settings)
-    with pytest.raises(ConversionError, match="choose pdf or docx"):
+    with pytest.raises(ConversionError, match="alegeți pdf sau docx"):
         convert(make_text_pdf(LETTER), "a.pdf", "odt", settings=settings)
 
 
 def test_engines_and_what_they_need(monkeypatch, tmp_path):
     assert [e.name for e in engines_for("pdf")] == ["libreoffice"]
     assert [e.name for e in engines_for("docx")] == ["pdf2docx", "ocr", "libreoffice"]
-    with pytest.raises(ConversionError, match="choose auto, libreoffice"):
+    with pytest.raises(ConversionError, match="alegeți auto, libreoffice"):
         choose_engine("pdf", "pdf2docx")
     # LibreOffice without Writer (a distribution's core package alone)
     program = tmp_path / "program"
@@ -249,10 +249,10 @@ def test_engines_and_what_they_need(monkeypatch, tmp_path):
     (program / "soffice").write_text("")
     (program / "soffice.bin").write_text("")
     monkeypatch.setattr("docfill.convert.engines.libreoffice", lambda: str(program / "soffice"))
-    assert "Writer is not installed" in libreoffice_missing()
+    assert "Writer nu este instalat" in libreoffice_missing()
     monkeypatch.setattr("docfill.convert.engines.libreoffice", lambda: None)
-    assert "LibreOffice is not installed" in libreoffice_missing()
-    with pytest.raises(ConverterUnavailableError, match="no engine can convert to pdf"):
+    assert "LibreOffice nu este instalat" in libreoffice_missing()
+    with pytest.raises(ConverterUnavailableError, match="niciun motor nu poate converti în pdf"):
         choose_engine("pdf")
     assert engines_for("pdf")[0].as_dict()["available"] is False
 
@@ -284,7 +284,7 @@ def test_word_to_pdf_against_the_real_pdf(settings):
     )
     assert conversion.reference.score == 100  # the same fonts, the same pages
     assert conversion.reference.check("layout").score == 100
-    with pytest.raises(ConversionError, match="must be a PDF document"):
+    with pytest.raises(ConversionError, match="trebuie să fie un document PDF"):
         convert_and_score(data, "act.docx", reference=("real.docx", data), settings=settings)
 
 
@@ -307,7 +307,7 @@ def test_pdf_to_word_with_libreoffice(settings):
         make_text_pdf(LETTER), "decl.pdf", engine="libreoffice", previews=0, settings=settings
     )
     assert conversion.engine == "libreoffice"
-    assert "frame" in conversion.warnings[0]
+    assert "cadru" in conversion.warnings[0]
     assert conversion.fidelity.check("text").score == 100
     assert conversion.fidelity.check("layout").score is not None
 
@@ -334,7 +334,7 @@ def client(settings):
 
 def test_convert_page_and_engines(client):
     page = client.get("/convert")
-    assert page.status_code == 200 and "Convert" in page.text
+    assert page.status_code == 200 and "Convertiți" in page.text
     assert set(client.get("/convert/engines").json()) == {"pdf", "docx"}
     assert set(client.get("/health").json()["convert"]) == {"pdf", "docx"}
     assert 'href="/convert"' in client.get("/wizard").text

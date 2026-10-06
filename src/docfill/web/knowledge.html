@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="ro">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>docfill knowledge</title>
+<title>docfill · baza de cunoștințe</title>
 <link rel="icon" href="data:,">
 <style>
   :root {
@@ -80,9 +80,9 @@
 <body>
 <header>
   <div class="wrap">
-    <div class="brand">docfill<small>knowledge base · registrul comerțului</small></div>
-    <a class="navlink" href="/wizard">← Wizard</a>
-    <a class="navlink" href="/convert">Convert documents</a>
+    <div class="brand">docfill<small>baza de cunoștințe · registrul comerțului</small></div>
+    <a class="navlink" href="/wizard">← Asistent</a>
+    <a class="navlink" href="/convert">Conversie documente</a>
     <div class="pills" id="pills" aria-live="polite"></div>
   </div>
 </header>
@@ -91,66 +91,66 @@
   <div class="banner" id="banner" role="alert"></div>
 
   <div class="card">
-    <h2>How docfill becomes an expert</h2>
+    <h2>Cum devine docfill un expert</h2>
     <div class="explain">
-      <div><b>1. Knowledge you feed</b>Legal forms, procedures (open / change / close), legal rules and document types, written as YAML. Every change is versioned and kept in the history.</div>
-      <div><b>2. Verified by people</b>Everything starts as <span class="pill warn">draft</span>. A lawyer or expert checks it and marks it <span class="pill ok">verified</span>; changing it makes it draft again.</div>
-      <div><b>3. Laws you feed</b>Upload the text of a law or an ONRC guide: it is split into articles, searchable here, and shown next to the rules that cite it.</div>
-      <div><b>4. Learning from files</b>Every file saved in the wizard teaches the document classifier and records which rules were overridden, so wrong or outdated rules surface for review.</div>
+      <div><b>1. Cunoștințele pe care le adăugați</b>Forme juridice, proceduri (înființare / modificare / radiere), reguli legale și tipuri de documente, scrise în format YAML. Fiecare modificare primește o versiune nouă și se păstrează în istoric.</div>
+      <div><b>2. Verificate de oameni</b>Orice înregistrare pornește ca <span class="pill warn">ciornă</span>. Un jurist sau un expert o verifică și o marchează <span class="pill ok">verificată</span>; orice modificare ulterioară o readuce la stadiul de ciornă.</div>
+      <div><b>3. Actele normative pe care le adăugați</b>Încărcați textul unei legi sau al unui ghid ONRC: este împărțit pe articole, poate fi căutat aici și este afișat lângă regulile care îl citează.</div>
+      <div><b>4. Învățare din dosare</b>Fiecare dosar salvat în asistent antrenează clasificatorul de documente și înregistrează regulile care au fost ignorate, astfel încât regulile greșite sau depășite să fie semnalate pentru revizuire.</div>
     </div>
   </div>
 
   <div class="grid-2">
     <div class="card">
-      <h2>Search the knowledge and the laws</h2>
-      <p class="hint">E.g. "capital social minim SA", "radiere PFA", "beneficiar real".</p>
+      <h2>Căutați în cunoștințe și în legi</h2>
+      <p class="hint">De exemplu: „capital social minim SA”, „radiere PFA”, „beneficiar real”.</p>
       <form id="search-form" class="row">
-        <input type="text" id="q" placeholder="Search…" style="flex:1" autocomplete="off">
-        <button class="btn primary" type="submit">Search</button>
+        <input type="text" id="q" placeholder="Căutați…" style="flex:1" autocomplete="off">
+        <button class="btn primary" type="submit">Căutați</button>
       </form>
       <div id="hits"></div>
     </div>
 
     <div class="card">
-      <h2>Feed docfill</h2>
+      <h2>Adăugați informații în docfill</h2>
       <div class="tabs" id="feed-tabs" role="tablist"></div>
       <form id="feed-law" data-panel="law">
-        <p class="hint">A law, ordinance, order or ONRC guide as TXT, HTML (e.g. saved from legislatie.just.ro), PDF or DOCX. The same citation replaces the previous version.</p>
-        <label class="f" for="law-file">File</label><input type="file" id="law-file" accept=".txt,.md,.html,.htm,.pdf,.docx" required>
-        <label class="f" for="law-citation">Citation (how rules cite it)</label><input type="text" id="law-citation" placeholder="Legea nr. 31/1990" required>
-        <label class="f" for="law-title">Title</label><input type="text" id="law-title" placeholder="Legea societăților (forma consolidată)">
-        <label class="f" for="law-url">Source URL (optional)</label><input type="text" id="law-url" placeholder="https://legislatie.just.ro/...">
-        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Add the text</button></div>
+        <p class="hint">O lege, ordonanță, ordin sau ghid ONRC în format TXT, HTML (de exemplu, salvat de pe legislatie.just.ro), PDF sau DOCX. Un text cu aceeași citare înlocuiește versiunea anterioară.</p>
+        <label class="f" for="law-file">Fișier</label><input type="file" id="law-file" accept=".txt,.md,.html,.htm,.pdf,.docx" required>
+        <label class="f" for="law-citation">Citare (forma în care îl citează regulile)</label><input type="text" id="law-citation" placeholder="Legea nr. 31/1990" required>
+        <label class="f" for="law-title">Titlu</label><input type="text" id="law-title" placeholder="Legea societăților (forma consolidată)">
+        <label class="f" for="law-url">Adresa sursei (URL, opțional)</label><input type="text" id="law-url" placeholder="https://legislatie.just.ro/...">
+        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Adăugați textul</button></div>
       </form>
       <form id="feed-yaml" data-panel="yaml" hidden>
-        <p class="hint">Add or correct entries (legal forms, procedures, rules, document types). Use "Edit" on an entry below to start from its current version.</p>
+        <p class="hint">Adăugați sau corectați înregistrări (forme juridice, proceduri, reguli, tipuri de documente). Folosiți „Modificați” la o înregistrare de mai jos pentru a porni de la versiunea ei actuală.</p>
         <textarea id="yaml" spellcheck="false" placeholder="rules:&#10;  - key: sa-capital-minim&#10;    title: Capitalul social minim al unei SA&#10;    applies_to: {entities: [sa], operations: [infiintare]}&#10;    severity: error&#10;    check: {type: min_amount, field: share_capital, value: 90000}&#10;    message: Capitalul social al unei SA nu poate fi mai mic de 90.000 lei.&#10;    legal_basis:&#10;      - {citation: Legea nr. 31/1990, article: art. 10 alin. (1)}"></textarea>
-        <label class="f"><input type="checkbox" id="yaml-verified"> I verified this content (saved as verified, in my name)</label>
-        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Save</button></div>
+        <label class="f"><input type="checkbox" id="yaml-verified"> Am verificat acest conținut (se salvează ca verificat, pe numele meu)</label>
+        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Salvați</button></div>
       </form>
       <form id="feed-teach" data-panel="teach" hidden>
-        <p class="hint">Teach the document classifier with examples of a document type (sensitive numbers are removed; prefer blank or sample documents).</p>
-        <label class="f" for="teach-type">Document type</label><select id="teach-type"></select>
-        <label class="f" for="teach-files">Example files</label><input type="file" id="teach-files" multiple accept=".pdf,.docx,.png,.jpg,.jpeg" required>
-        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Teach</button></div>
+        <p class="hint">Antrenați clasificatorul de documente cu exemple ale unui tip de document (numerele sensibile sunt eliminate; folosiți de preferință documente necompletate sau modele).</p>
+        <label class="f" for="teach-type">Tipul documentului</label><select id="teach-type"></select>
+        <label class="f" for="teach-files">Fișiere exemplu</label><input type="file" id="teach-files" multiple accept=".pdf,.docx,.png,.jpg,.jpeg" required>
+        <div class="row" style="margin-top:10px"><button class="btn primary" type="submit">Antrenați</button></div>
       </form>
     </div>
   </div>
 
   <div class="card">
     <div class="row" style="justify-content:space-between">
-      <h2>Knowledge entries</h2>
+      <h2>Înregistrările bazei de cunoștințe</h2>
       <div class="row">
-        <label class="muted" style="font-size:13px" for="reviewer">Your name (for verify / retire)</label>
-        <input type="text" id="reviewer" style="width:220px" placeholder="e.g. Av. Maria Ionescu" autocomplete="name">
+        <label class="muted" style="font-size:13px" for="reviewer">Numele dumneavoastră (pentru verificare / retragere)</label>
+        <input type="text" id="reviewer" style="width:220px" placeholder="de exemplu, Av. Maria Ionescu" autocomplete="name">
       </div>
     </div>
     <div class="row" style="margin:8px 0 10px">
       <div class="tabs" id="kind-tabs" role="tablist" style="margin:0"></div>
-      <label class="muted" style="font-size:13px"><input type="checkbox" id="only-draft"> only not verified</label>
+      <label class="muted" style="font-size:13px"><input type="checkbox" id="only-draft"> doar cele neverificate</label>
       <span style="flex:1"></span>
-      <a class="btn small" href="/knowledge/export" download="docfill-knowledge.yaml">Export all (YAML)</a>
-      <button class="btn small" type="button" id="seed-btn" title="Load the knowledge shipped with docfill; entries changed here are kept">Load bundled knowledge</button>
+      <a class="btn small" href="/knowledge/export" download="docfill-knowledge.yaml">Exportați tot (YAML)</a>
+      <button class="btn small" type="button" id="seed-btn" title="Încărcați cunoștințele livrate cu docfill; înregistrările modificate aici se păstrează">Încărcați cunoștințele livrate</button>
     </div>
     <div id="entries"></div>
     <div id="detail"></div>
@@ -158,12 +158,12 @@
 
   <div class="grid-2">
     <div class="card">
-      <h2>What the saved files taught</h2>
-      <p class="hint">Rules that people often override are flagged for review; documents often provided but not listed in a procedure are suggested.</p>
+      <h2>Ce au învățat dosarele salvate</h2>
+      <p class="hint">Regulile ignorate des sunt semnalate pentru revizuire; documentele depuse des, dar neincluse într-o procedură, sunt propuse pentru adăugare.</p>
       <div id="feedback"></div>
     </div>
     <div class="card">
-      <h2>Laws and guides fed</h2>
+      <h2>Legi și ghiduri adăugate</h2>
       <div id="sources"></div>
     </div>
   </div>
@@ -172,8 +172,15 @@
 <script>
 "use strict";
 
-const KINDS = [["procedure", "Procedures"], ["rule", "Rules"], ["entity", "Legal forms"], ["doc_type", "Document types"]];
-const FEEDS = [["law", "Law or guide"], ["yaml", "Knowledge (YAML)"], ["teach", "Teach a document type"]];
+const KINDS = [["procedure", "Proceduri"], ["rule", "Reguli"], ["entity", "Forme juridice"], ["doc_type", "Tipuri de documente"]];
+const FEEDS = [["law", "Lege sau ghid"], ["yaml", "Cunoștințe (YAML)"], ["teach", "Antrenați un tip de document"]];
+// The status of an entry and the actions of its history (an entry: "înregistrare", feminine).
+const STATUSES = { draft: "ciornă", verified: "verificată", retired: "retrasă", created: "creată",
+  updated: "actualizată", restored: "restabilită" };
+const HIT_KINDS = { law: "lege", procedure: "procedură", rule: "regulă", entity: "formă juridică", doc_type: "tip de document" };
+// Romanian counts: "1 regulă", "2 reguli", "20 de reguli".
+const de = (n) => (n >= 20 && (n % 100 === 0 || n % 100 >= 20)) ? "de " : "";
+const count = (n, one, many) => n === 1 ? `1 ${one}` : `${n} ${de(n)}${many}`;
 const state = { kind: "procedure", feed: "law", entries: [], onlyDraft: false, detail: null };
 
 const $ = (id) => document.getElementById(id);
@@ -216,7 +223,7 @@ async function api(path, options = {}) {
   return response.status === 204 ? null : response.json();
 }
 const postJSON = (path, payload) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-const statusPill = (status) => el("span", { class: `pill ${status === "verified" ? "ok" : status === "retired" ? "" : "warn"}` }, status);
+const statusPill = (status) => el("span", { class: `pill ${status === "verified" ? "ok" : status === "retired" ? "" : "warn"}` }, STATUSES[status] || status);
 const reviewer = () => $("reviewer").value.trim();
 
 // ------------------------------------------------------------------ stats
@@ -227,37 +234,37 @@ async function loadStats() {
   const verified = Object.values(stats.entries).reduce((a, c) => a + (c.verified || 0), 0);
   const all = Object.keys(stats.entries).reduce((a, k) => a + total(k), 0);
   put($("pills"),
-    el("span", { class: `pill ${verified === all && all ? "ok" : "warn"}` }, `${verified} of ${all} entries verified`),
-    el("span", { class: "pill accent" }, `${stats.legal_texts.sources} law${stats.legal_texts.sources === 1 ? "" : "s"} · ${stats.legal_texts.passages} passages`),
-    stats.rules_to_review.length ? el("span", { class: "pill bad" }, `${stats.rules_to_review.length} rule${stats.rules_to_review.length === 1 ? "" : "s"} to review`) : null,
+    el("span", { class: `pill ${verified === all && all ? "ok" : "warn"}` }, `${verified} din ${count(all, "înregistrare", "înregistrări")} verificate`),
+    el("span", { class: "pill accent" }, `${count(stats.legal_texts.sources, "act normativ", "acte normative")} · ${count(stats.legal_texts.passages, "pasaj", "pasaje")}`),
+    stats.rules_to_review.length ? el("span", { class: "pill bad" }, count(stats.rules_to_review.length, "regulă de revizuit", "reguli de revizuit")) : null,
     stats.integrity_problems.length ? el("span", { class: "pill bad", title: stats.integrity_problems.map((p) => `${p.entry}: ${p.problem}`).join("\n") },
-      `${stats.integrity_problems.length} damaged entr${stats.integrity_problems.length === 1 ? "y" : "ies"}`) : null);
+      count(stats.integrity_problems.length, "înregistrare deteriorată", "înregistrări deteriorate")) : null);
   const rules = stats.rules.filter((r) => r.failed || r.passed);
   const suggestions = stats.procedures.filter((p) => p.suggested_documents.length);
   put($("feedback"),
     rules.length ? el("table", {},
-      el("tr", {}, el("th", {}, "Rule"), el("th", {}, "Passed"), el("th", {}, "Failed"), el("th", {}, "Overridden"), el("th", {}, "")),
+      el("tr", {}, el("th", {}, "Regulă"), el("th", {}, "Îndeplinită"), el("th", {}, "Neîndeplinită"), el("th", {}, "Ignorată"), el("th", {}, "")),
       rules.map((r) => el("tr", {}, el("td", {}, el("code", {}, r.rule)), el("td", {}, r.passed), el("td", {}, r.failed),
         el("td", {}, r.overridden + (r.override_rate != null ? ` (${Math.round(r.override_rate * 100)}%)` : "")),
-        el("td", {}, r.needs_review ? el("span", { class: "pill bad" }, "review") : "")))) : el("div", { class: "empty" }, "No files saved with a procedure yet."),
-    suggestions.map((p) => el("div", { class: "hit" }, el("div", { class: "t" }, `Documents often provided for ${p.procedure}`),
-      el("div", { class: "x" }, p.suggested_documents.map((d) => `${d.doc_type}: ${d.cases} of ${d.of} files`).join("\n")))));
+        el("td", {}, r.needs_review ? el("span", { class: "pill bad" }, "de revizuit") : "")))) : el("div", { class: "empty" }, "Niciun dosar salvat încă cu o procedură."),
+    suggestions.map((p) => el("div", { class: "hit" }, el("div", { class: "t" }, `Documente depuse des pentru ${p.procedure}`),
+      el("div", { class: "x" }, p.suggested_documents.map((d) => `${d.doc_type}: ${d.cases} din ${count(d.of, "dosar", "dosare")}`).join("\n")))));
 }
 
 async function loadSources() {
   const sources = await api("/knowledge/texts");
   put($("sources"), sources.length ? el("table", {},
-    el("tr", {}, el("th", {}, "Citation"), el("th", {}, "Passages"), el("th", {}, "")),
+    el("tr", {}, el("th", {}, "Citare"), el("th", {}, "Pasaje"), el("th", {}, "")),
     sources.map((s) => el("tr", {},
       el("td", {}, el("strong", {}, s.citation), s.title ? el("div", { class: "muted" }, s.title) : null,
-        s.url ? el("a", { href: s.url, target: "_blank", rel: "noopener", class: "navlink", style: "font-size:12.5px" }, "source") : null),
+        s.url ? el("a", { href: s.url, target: "_blank", rel: "noopener", class: "navlink", style: "font-size:12.5px" }, "sursa") : null),
       el("td", {}, s.passages),
-      el("td", {}, el("button", { type: "button", class: "btn link small", onclick: () => removeSource(s.citation) }, "Remove")))))
-    : el("div", { class: "empty" }, "No laws yet. Feed the laws your rules cite (e.g. Legea nr. 31/1990, Legea nr. 265/2022, OUG nr. 44/2008) to see their articles next to the checks."));
+      el("td", {}, el("button", { type: "button", class: "btn link small", onclick: () => removeSource(s.citation) }, "Eliminați")))))
+    : el("div", { class: "empty" }, "Nu există încă legi. Adăugați legile citate de reguli (de exemplu Legea nr. 31/1990, Legea nr. 265/2022, OUG nr. 44/2008) pentru a vedea articolele lor lângă verificări."));
 }
 
 async function removeSource(citation) {
-  if (!confirm(`Remove "${citation}" and its passages?`)) return;
+  if (!confirm(`Eliminați „${citation}” și pasajele sale?`)) return;
   try { await api(`/knowledge/texts?citation=${encodeURIComponent(citation)}`, { method: "DELETE" }); await Promise.all([loadSources(), loadStats()]); }
   catch (error) { showBanner(error.message); }
 }
@@ -271,10 +278,10 @@ async function search(event) {
   try {
     const hits = await api(`/knowledge/search?q=${encodeURIComponent(q)}`);
     put($("hits"), hits.length ? hits.map((h) => el("div", { class: "hit" },
-      el("div", { class: "t" }, el("span", { class: `pill ${h.kind === "law" ? "accent" : ""}` }, h.kind === "law" ? "law" : h.kind), h.title,
+      el("div", { class: "t" }, el("span", { class: `pill ${h.kind === "law" ? "accent" : ""}` }, HIT_KINDS[h.kind] || h.kind), h.title,
         el("span", { class: "muted", style: "font-weight:400;font-size:13px" }, h.subtitle),
-        h.kind !== "law" ? el("button", { type: "button", class: "btn link small", onclick: () => showEntry(h.kind, h.ref) }, "Open") : null),
-      el("div", { class: "x" }, h.text))) : el("div", { class: "empty" }, "Nothing found. Feed the relevant law or add the knowledge."));
+        h.kind !== "law" ? el("button", { type: "button", class: "btn link small", onclick: () => showEntry(h.kind, h.ref) }, "Deschideți") : null),
+      el("div", { class: "x" }, h.text))) : el("div", { class: "empty" }, "Nu s-a găsit nimic. Adăugați legea relevantă sau cunoștințele necesare."));
   } catch (error) { showBanner(error.message); }
 }
 
@@ -295,7 +302,7 @@ async function feedLaw(event) {
   if ($("law-url").value.trim()) form.append("url", $("law-url").value.trim());
   try {
     const result = await api("/knowledge/texts", { method: "POST", body: form });
-    showBanner(`${result.citation}: ${result.passages} passages (${result.articles} articles) added.`, "info");
+    showBanner(`${result.citation}: s-au adăugat ${count(result.passages, "pasaj", "pasaje")} (${count(result.articles, "articol", "articole")}).`, "info");
     event.target.reset();
     await Promise.all([loadSources(), loadStats()]);
   } catch (error) { showBanner(error.message); }
@@ -304,13 +311,13 @@ async function feedLaw(event) {
 async function feedYaml(event) {
   event.preventDefault();
   const verified = $("yaml-verified").checked;
-  if (verified && !reviewer()) { showBanner("Write your name in \"Your name\" to save it as verified."); return; }
+  if (verified && !reviewer()) { showBanner("Scrieți-vă numele în câmpul „Numele dumneavoastră” pentru a salva conținutul ca verificat."); return; }
   try {
     const result = await postJSON("/knowledge/entries", { yaml: $("yaml").value, verified_by: verified ? reviewer() : null, actor: reviewer() || null });
     const changed = result.results.filter((r) => r.changed);
-    showBanner(`${changed.length} entr${changed.length === 1 ? "y" : "ies"} saved` +
-      (result.results.length > changed.length ? `, ${result.results.length - changed.length} unchanged` : "") +
-      (result.warnings.length ? `. Warnings: ${result.warnings.join("; ")}` : "."), "info");
+    showBanner(`Înregistrări salvate: ${changed.length}` +
+      (result.results.length > changed.length ? `, nemodificate: ${result.results.length - changed.length}` : "") +
+      (result.warnings.length ? `. Avertismente: ${result.warnings.join("; ")}` : "."), "info");
     await Promise.all([loadEntries(), loadStats()]);
   } catch (error) { showBanner(error.message); }
 }
@@ -321,7 +328,7 @@ async function teach(event) {
   for (const file of $("teach-files").files) form.append("files", file, file.name);
   try {
     const result = await api(`/knowledge/doctypes/${encodeURIComponent($("teach-type").value)}/examples`, { method: "POST", body: form });
-    showBanner(`${result.examples_added} example${result.examples_added === 1 ? "" : "s"} of ${result.doc_type} learned.`, "info");
+    showBanner(`Exemple învățate pentru ${result.doc_type}: ${result.examples_added}.`, "info");
     event.target.reset();
   } catch (error) { showBanner(error.message); }
 }
@@ -345,26 +352,30 @@ async function loadEntries() {
   } catch (error) { showBanner(error.message); return; }
   const rows = state.entries.filter((e) => !state.onlyDraft || e.status === "draft");
   put($("entries"), rows.length ? el("table", {},
-    el("tr", {}, el("th", {}, "Entry"), el("th", {}, "Status"), el("th", {}, "Version"), el("th", {}, "Verified"), el("th", {}, "")),
+    el("tr", {}, el("th", {}, "Înregistrare"), el("th", {}, "Stare"), el("th", {}, "Versiune"), el("th", {}, "Verificată de"), el("th", {}, "")),
     rows.map((e) => el("tr", {},
-      el("td", {}, el("strong", {}, e.title), el("div", {}, el("code", {}, e.key), e.origin === "local" ? el("span", { class: "muted", style: "font-size:12px" }, " · changed here") : null)),
+      el("td", {}, el("strong", {}, e.title), el("div", {}, el("code", {}, e.key), e.origin === "local" ? el("span", { class: "muted", style: "font-size:12px" }, " · modificată aici") : null)),
       el("td", {}, statusPill(e.status)),
       el("td", {}, `v${e.version}`),
       el("td", { class: "muted" }, e.verified_by ? `${e.verified_by}, ${e.verified_at.slice(0, 10)}` : "—"),
       el("td", {}, el("div", { class: "row" },
-        el("button", { type: "button", class: "btn link small", onclick: () => showEntry(e.kind, e.key) }, "View"),
-        e.status === "draft" ? el("button", { type: "button", class: "btn small", onclick: () => setStatus(e, "verify") }, "Verify") : null,
-        e.status !== "retired" ? el("button", { type: "button", class: "btn link small", onclick: () => setStatus(e, "retire") }, "Retire") : null)))))
-    : el("div", { class: "empty" }, state.onlyDraft ? "Everything here is verified." : "No entries. Load the bundled knowledge or add your own."));
+        el("button", { type: "button", class: "btn link small", onclick: () => showEntry(e.kind, e.key) }, "Vizualizați"),
+        e.status === "draft" ? el("button", { type: "button", class: "btn small", onclick: () => setStatus(e, "verify") }, "Verificați") : null,
+        e.status !== "retired" ? el("button", { type: "button", class: "btn link small", onclick: () => setStatus(e, "retire") }, "Retrageți") : null)))))
+    : el("div", { class: "empty" }, state.onlyDraft ? "Toate înregistrările de aici sunt verificate." : "Nu există înregistrări. Încărcați cunoștințele livrate sau adăugați-le pe ale dumneavoastră."));
 }
 
 async function setStatus(entry, action) {
-  if (!reviewer()) { showBanner(`Write your name in "Your name" to ${action} entries.`); $("reviewer").focus(); return; }
+  if (!reviewer()) {
+    showBanner(`Scrieți-vă numele în câmpul „Numele dumneavoastră” pentru a ${action === "retire" ? "retrage" : "verifica"} înregistrări.`);
+    $("reviewer").focus();
+    return;
+  }
   let note = "";
   if (action === "retire") {
-    note = prompt(`Why does "${entry.title}" no longer apply? (e.g. the law changed)`) || "";
+    note = prompt(`De ce nu se mai aplică „${entry.title}”? (de exemplu, legea s-a modificat)`) || "";
     if (!note) return;
-  } else if (!confirm(`Confirm that "${entry.title}" is correct and current, as ${reviewer()}?`)) return;
+  } else if (!confirm(`Confirmați că înregistrarea „${entry.title}” este corectă și actuală? Confirmarea se înregistrează pe numele ${reviewer()}.`)) return;
   try {
     await postJSON(`/knowledge/entries/${entry.kind}/${encodeURIComponent(entry.key)}/${action}`, { by: reviewer(), note });
     await Promise.all([loadEntries(), loadStats()]);
@@ -379,12 +390,12 @@ async function showEntry(kind, key) {
     put($("detail"), el("div", { class: "detail" },
       el("div", { class: "row" }, el("strong", {}, entry.title), statusPill(entry.status), el("code", {}, `${entry.kind}/${entry.key} v${entry.version}`),
         el("span", { style: "flex:1" }),
-        el("button", { type: "button", class: "btn small", onclick: () => editEntry(entry) }, "Edit"),
-        el("button", { type: "button", class: "btn link small", onclick: () => { state.detail = null; put($("detail")); } }, "Close")),
+        el("button", { type: "button", class: "btn small", onclick: () => editEntry(entry) }, "Modificați"),
+        el("button", { type: "button", class: "btn link small", onclick: () => { state.detail = null; put($("detail")); } }, "Închideți")),
       el("pre", {}, entry.yaml),
-      el("details", {}, el("summary", { class: "muted", style: "cursor:pointer;font-size:13px" }, `History (${entry.history.length} change${entry.history.length === 1 ? "" : "s"})`),
+      el("details", {}, el("summary", { class: "muted", style: "cursor:pointer;font-size:13px" }, `Istoric (${count(entry.history.length, "modificare", "modificări")})`),
         el("table", {}, entry.history.slice().reverse().map((h) => el("tr", {},
-          el("td", {}, `v${h.version}`), el("td", {}, h.action), el("td", {}, h.status), el("td", {}, h.actor || "—"),
+          el("td", {}, `v${h.version}`), el("td", {}, STATUSES[h.action] || h.action), el("td", {}, STATUSES[h.status] || h.status), el("td", {}, h.actor || "—"),
           el("td", { class: "muted" }, (h.at || "").slice(0, 16).replace("T", " ")), el("td", {}, h.note || "")))))));
     $("detail").scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (error) { showBanner(error.message); }
@@ -402,8 +413,8 @@ function editEntry(entry) {
 async function seed() {
   try {
     const results = await api("/knowledge/seed", { method: "POST" });
-    const count = (action) => results.filter((r) => r.action === action).length;
-    showBanner(`Bundled knowledge: ${count("created")} added, ${count("updated")} updated, ${count("kept-local")} kept as changed here, ${count("unchanged")} unchanged.`, "info");
+    const tally = (action) => results.filter((r) => r.action === action).length;
+    showBanner(`Cunoștințe livrate: adăugate ${tally("created")}, actualizate ${tally("updated")}, păstrate cu modificările făcute aici ${tally("kept-local")}, nemodificate ${tally("unchanged")}.`, "info");
     await Promise.all([loadEntries(), loadStats(), loadDocTypes()]);
   } catch (error) { showBanner(error.message); }
 }

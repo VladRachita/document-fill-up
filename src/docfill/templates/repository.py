@@ -45,7 +45,7 @@ class TemplateRepository:
     def get(self, name: str) -> StandardDocument:
         document = self.find(name)
         if document is None:
-            raise TemplateNotFoundError(f"Standard document '{name}' not found")
+            raise TemplateNotFoundError(f"Documentul standard „{name}” nu a fost găsit")
         return document
 
     def save(self, spec: StandardDocumentSpec) -> tuple[StandardDocument, bool]:

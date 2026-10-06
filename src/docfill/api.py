@@ -152,7 +152,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             try:
                 data["pdf_data"] = base64.b64decode(payload.pdf_base64, validate=True)
             except binascii.Error as exc:
-                raise HTTPException(422, "pdf_base64 is not valid base64") from exc
+                raise HTTPException(422, "pdf_base64 nu este un text base64 valid") from exc
         try:
             spec = StandardDocumentSpec.model_validate(data)
         except ValidationError as exc:
@@ -191,11 +191,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             overrides = json.loads(values or "{}")
         except json.JSONDecodeError as exc:
-            raise HTTPException(422, "values must be a JSON object") from exc
+            raise HTTPException(422, "values trebuie să fie un obiect JSON") from exc
         if not isinstance(overrides, dict) or not all(
             isinstance(k, str) and isinstance(v, str) for k, v in overrides.items()
         ):
-            raise HTTPException(422, "values must be a JSON object of strings")
+            raise HTTPException(422, "values trebuie să fie un obiect JSON cu valori de tip text")
         standard = repo.get(template)
         uploads = [read_upload(upload, settings.max_file_size) for upload in files or []]
         result, _ = docfill.process(uploads, standard, overrides, allow_missing)

@@ -161,9 +161,9 @@ def test_invalid_checks_are_refused(check):
 def test_invalid_knowledge_is_refused_with_a_readable_message():
     with pytest.raises(KnowledgeError, match="rules.0.severity"):
         load_text(rule_yaml().replace("severity: error", "severity: fatal"))
-    with pytest.raises(KnowledgeError, match="not valid YAML"):
+    with pytest.raises(KnowledgeError, match="YAML invalid"):
         load_text("rules: [unclosed")
-    with pytest.raises(KnowledgeError, match="at least 8 words"):
+    with pytest.raises(KnowledgeError, match="cel puțin 8 cuvinte"):
         load_text("doc_types:\n  - {key: scurt, title: Scurt, seeds: [prea scurt]}")
 
 
@@ -281,9 +281,9 @@ def test_seeding_never_overwrites_local_changes(kb, tmp_path):
 
 
 def test_references_are_checked(kb):
-    with pytest.raises(KnowledgeError, match="unknown legal form 'snc'"):
+    with pytest.raises(KnowledgeError, match="formă juridică necunoscută „snc”"):
         kb.save_all(load_text(rule_yaml(entities="[snc]")))
-    with pytest.raises(KnowledgeError, match="built-in document type"):
+    with pytest.raises(KnowledgeError, match="tip de document predefinit"):
         kb.save_all(
             load_text(
                 "doc_types:\n  - key: id_card\n    title: X\n"
@@ -300,7 +300,7 @@ procedures:
     documents: [{title: Doc, doc_type: nu_exista}]
     legal_basis: [{citation: Legea nr. 31/1990}]
 """
-    with pytest.raises(KnowledgeError, match="unknown document type 'nu_exista'"):
+    with pytest.raises(KnowledgeError, match="tip de document necunoscut „nu_exista”"):
         kb.save_all(load_text(procedure))
     errors, warnings = kb.check_references(load_text(procedure.replace("nu_exista", "id_card")))
     assert not errors
@@ -319,7 +319,10 @@ def test_entries_changed_outside_docfill_are_not_used(kb, context):
     assert not kb.find("sa-capital-minim", "rule")
     problems = kb.stats()["integrity_problems"]
     assert problems == [
-        {"entry": "rule/sa-capital-minim", "problem": "modified outside docfill (checksum)"}
+        {
+            "entry": "rule/sa-capital-minim",
+            "problem": "modificată în afara docfill (suma de control)",
+        }
     ]
 
 

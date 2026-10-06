@@ -239,10 +239,12 @@ def check_cnp(value: str) -> CNPInfo:
     """Validate a Romanian personal numeric code (format S AA LL ZZ JJ NNN C)."""
     cnp = re.sub(r"\s", "", value)
     if not re.fullmatch(r"\d{13}", cnp):
-        return CNPInfo(False, "a CNP has exactly 13 digits")
+        return CNPInfo(False, "un CNP are exact 13 cifre")
     control = sum(int(d) * int(w) for d, w in zip(cnp[:12], _CNP_WEIGHTS, strict=True)) % 11
     if (1 if control == 10 else control) != int(cnp[12]):
-        return CNPInfo(False, "control digit does not match (typing or OCR error?)")
+        return CNPInfo(
+            False, "cifra de control nu corespunde (greșeală de tastare sau de citire OCR?)"
+        )
     s = int(cnp[0])
     century = {1: 1900, 2: 1900, 3: 1800, 4: 1800, 5: 2000, 6: 2000}.get(s)
     if century is None:  # 7/8 residents, 9 foreigners: century not encoded
@@ -251,7 +253,7 @@ def check_cnp(value: str) -> CNPInfo:
     try:
         birth = date(century + int(cnp[1:3]), int(cnp[3:5]), int(cnp[5:7]))
     except ValueError:
-        return CNPInfo(False, "the birth date encoded in the CNP does not exist")
+        return CNPInfo(False, "data nașterii codificată în CNP nu există")
     sex = "M" if s in (1, 3, 5, 7) else "F" if s in (2, 4, 6, 8) else None
     return CNPInfo(True, sex=sex, birth_date=birth, county=CNP_COUNTIES.get(int(cnp[7:9])))
 
@@ -628,7 +630,11 @@ def _part_doubt(
     key = _fold(name).strip(" .")
     if key.startswith("bucuresti"):
         if birth and key == "bucuresti":
-            return "The sector of Bucharest is missing: check it against the card", [], False
+            return (
+                "Lipsește sectorul municipiului București: comparați cu cartea de identitate",
+                [],
+                False,
+            )
         return None
     letter = _KIND_OF_PREFIX.get(_fold(prefix).rstrip("."), "")
     register = gazetteer()
@@ -645,8 +651,8 @@ def _part_doubt(
     if county and elsewhere:
         others = sorted({COUNTY_CODES.get(item.county, item.county) for item in elsewhere})
         return (
-            f"Not a locality of {where} (there is one in {', '.join(others)}): "
-            "check the county and the place",
+            f"Nu este o localitate din {where} (există una cu acest nume în: "
+            f"{', '.join(others)}): verificați județul și localitatea",
             [],
             False,
         )
@@ -657,14 +663,26 @@ def _part_doubt(
     cut = next((found for k in kinds if (found := register.completions(name, county, k))), [])
     if cut:
         names = list(dict.fromkeys(item.name for item in cut))
-        return f"Looks cut off on the scan (… {names[0]}?): check it against the card", names, True
+        return (
+            f"Pare trunchiat pe scanare (… {names[0]}?): comparați cu cartea de identitate",
+            names,
+            True,
+        )
     near = next((found for k in kinds if (found := register.similar(name, county, k))), [])
     if near:
         names = list(dict.fromkeys(item.name for item in near))
-        scope = f"Not a locality of {where}" if where else "Not a known locality"
-        return f"{scope}: did you mean {names[0]}? Check it against the card", names, False
+        scope = f"Nu este o localitate din {where}" if where else "Nu este o localitate cunoscută"
+        return (
+            f"{scope}: ați vrut să scrieți {names[0]}? Comparați cu cartea de identitate",
+            names,
+            False,
+        )
     if letter == "M":  # the municipalities are a closed list that the register has in full
-        return "Not a known municipality: check the spelling against the card", [], False
+        return (
+            "Nu este un municipiu cunoscut: verificați scrierea pe cartea de identitate",
+            [],
+            False,
+        )
     return None
 
 
@@ -686,11 +704,16 @@ def office_doubt(office: str) -> PlaceDoubt | None:
         cut = register.completions(place, None, kinds)
         if cut:
             names = list(dict.fromkeys(item.name for item in cut))
-            problem = f"Looks cut off on the scan (… {names[0]}?): check it against the card"
+            problem = (
+                f"Pare trunchiat pe scanare (… {names[0]}?): comparați cu cartea de identitate"
+            )
             return PlaceDoubt(problem, tuple(f"{match['office']} {name}" for name in names), True)
     if near := register.similar(place, None, "MOC"):
         names = list(dict.fromkeys(item.name for item in near))
-        problem = f"Not a known locality: did you mean {names[0]}? Check it against the card"
+        problem = (
+            f"Nu este o localitate cunoscută: ați vrut să scrieți {names[0]}? Comparați cu "
+            "cartea de identitate"
+        )
         return PlaceDoubt(problem, tuple(f"{match['office']} {name}" for name in names))
     return None
 
@@ -769,3 +792,13 @@ def format_amount(value: float) -> str:
     elif text.endswith("0"):
         text = text[:-1]
     return text.replace(",", " ").replace(".", ",").replace(" ", ".")
+
+
+def counted(number: int, one: str, many: str) -> str:
+    """``1 pagină``, ``2 pagini``, ``20 de pagini``, ``101 pagini``: Romanian puts "de" after a
+    number whose last two digits make 20 or more, or are 00 (as :func:`format_amount` writes it)."""
+    if number == 1:
+        return f"1 {one}"
+    rest = number % 100
+    de = "de " if rest >= 20 or (rest == 0 and number >= 100) else ""
+    return f"{format_amount(number)} {de}{many}"

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="ro">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>docfill wizard</title>
+<title>docfill · asistent de completare</title>
 <link rel="icon" href="data:,">
 <style>
   :root {
@@ -244,90 +244,90 @@
 <body>
 <header>
   <div class="wrap">
-    <div class="brand">docfill<small>document fill-up wizard</small></div>
-    <a class="navlink" href="/knowledge" title="Legal knowledge: procedures, rules, laws">Knowledge base →</a>
-    <a class="navlink" href="/convert" title="Word to PDF, PDF to Word, with a score of how faithful the result is">Convert documents →</a>
+    <div class="brand">docfill<small>asistent pentru completarea documentelor</small></div>
+    <a class="navlink" href="/knowledge" title="Cunoștințe juridice: proceduri, reguli, acte normative">Baza de cunoștințe →</a>
+    <a class="navlink" href="/convert" title="Word în PDF și PDF în Word, cu un scor al fidelității rezultatului">Conversie documente →</a>
     <div class="health" id="health" aria-live="polite"></div>
   </div>
 </header>
 
 <main class="wrap">
-  <nav class="steps" id="steps" aria-label="Wizard steps"></nav>
+  <nav class="steps" id="steps" aria-label="Pașii asistentului"></nav>
   <div class="banner" id="banner" role="alert"></div>
 
   <!-- Step 1 -->
   <section class="step" data-step="1">
     <div class="card" id="case-card" style="margin-bottom:16px">
-      <h2>1. What are you doing?</h2>
-      <p class="hint">Choose the legal form and the operation: docfill proposes the documents of that procedure, lists the documents of the file (dosar) and checks the values against the legal rules. To fill a document on its own, skip this and pick it below.</p>
+      <h2>1. Ce operațiune efectuați?</h2>
+      <p class="hint">Alegeți forma juridică și operațiunea: docfill propune documentele procedurii respective, enumeră documentele dosarului și verifică datele completate în raport cu cerințele legale. Pentru a completa un singur document, săriți peste acest pas și alegeți documentul mai jos.</p>
       <div class="case-grid">
-        <div><p class="pick-label">Legal form</p><div id="entity-picker"></div></div>
-        <div><p class="pick-label">Operation</p><div class="picker" id="operation-picker"></div></div>
+        <div><p class="pick-label">Forma juridică</p><div id="entity-picker"></div></div>
+        <div><p class="pick-label">Operațiunea</p><div class="picker" id="operation-picker"></div></div>
       </div>
       <div id="procedure-panel"></div>
     </div>
     <div class="grid-2">
       <div class="card">
-        <h2>2. Which documents do you need?</h2>
-        <p class="hint" id="template-hint">Tick only the documents you need this time: one, a few or all of them. They are filled from the same data; the next steps ask only for what the ticked documents need.</p>
+        <h2>2. De ce documente aveți nevoie?</h2>
+        <p class="hint" id="template-hint">Bifați doar documentele de care aveți nevoie acum: unul, câteva sau toate. Toate se completează din aceleași date; pașii următori vă cer doar informațiile necesare documentelor bifate.</p>
         <div class="tpl-tools" id="template-tools"></div>
         <div class="tpl-list" id="template-list"></div>
       </div>
       <div class="card">
-        <h2>3. What to upload</h2>
+        <h2>3. Ce trebuie încărcat</h2>
         <div class="upload-hint" id="upload-hint"></div>
         <label class="drop" id="drop">
           <input type="file" id="file-input" multiple accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
-          <strong>Drop files here or click to choose</strong>
-          <span class="muted" style="font-size:13px">.pdf · .docx · .doc · .png · .jpg · .jpeg · photos and scans are read with OCR</span>
+          <strong>Trageți fișierele aici sau faceți clic pentru a le alege</strong>
+          <span class="muted" style="font-size:13px">.pdf · .docx · .doc · .png · .jpg · .jpeg · fotografiile și documentele scanate se citesc prin OCR</span>
         </label>
         <ul class="files" id="file-list"></ul>
         <div class="rep" id="roles-box" hidden>
-          <h3>Sole associate and administrator</h3>
-          <p class="hint">For the act constitutiv: the identity card of the sole associate (asociat unic, also the beneficial owner) and, when another person administers the company, the administrator's.</p>
+          <h3>Asociatul unic și administratorul</h3>
+          <p class="hint">Pentru actul constitutiv: cartea de identitate a asociatului unic (care este și beneficiarul real) și, dacă societatea este administrată de o altă persoană, cartea de identitate a administratorului.</p>
           <label class="drop small" id="assoc-drop">
             <input type="file" id="assoc-input" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
-            <strong>Identity card of the sole associate</strong>
-            <span class="muted" style="font-size:13px">photo, scan or PDF</span>
+            <strong>Cartea de identitate a asociatului unic</strong>
+            <span class="muted" style="font-size:13px">fotografie, scanare sau PDF</span>
           </label>
           <ul class="files" id="assoc-list"></ul>
-          <label class="same-person"><input type="checkbox" id="admin-same" checked> The sole associate is also the administrator</label>
+          <label class="same-person"><input type="checkbox" id="admin-same" checked> Asociatul unic este și administrator</label>
           <div id="admin-slot" hidden>
             <label class="drop small" id="admin-drop">
               <input type="file" id="admin-input" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
-              <strong>Identity card of the administrator</strong>
-              <span class="muted" style="font-size:13px">the administrator signs the requests (person 1)</span>
+              <strong>Cartea de identitate a administratorului</strong>
+              <span class="muted" style="font-size:13px">administratorul semnează cererile (persoana 1)</span>
             </label>
             <ul class="files" id="admin-list"></ul>
           </div>
         </div>
         <div class="rep" id="company-box" hidden>
-          <h3>Activities and share capital <span class="muted">(optional)</span></h3>
-          <p class="hint">A Word file with the CAEN activities (<code>Cod CAEN principal: CAEN 5911 (Principal): …</code>, then one <code>CAEN 7311 (Secundar): …</code> per line) and the share capital (<code>Capital social: 500 lei</code>, <code>Număr de părți sociale: 50</code>). They fill the object of activity and the capital; the notes in brackets are left out.</p>
+          <h3>Activitățile și capitalul social <span class="muted">(opțional)</span></h3>
+          <p class="hint">Un fișier Word cu activitățile CAEN (<code>Cod CAEN principal: CAEN 5911 (Principal): …</code>, apoi câte un rând <code>CAEN 7311 (Secundar): …</code> pentru fiecare activitate secundară) și cu capitalul social (<code>Capital social: 500 lei</code>, <code>Număr de părți sociale: 50</code>). Din acesta se completează obiectul de activitate și capitalul social; mențiunile dintre paranteze nu se preiau.</p>
           <label class="drop small" id="company-drop">
             <input type="file" id="company-input" accept=".docx,.doc,.pdf">
-            <strong>CAEN activities and share capital</strong>
-            <span class="muted" style="font-size:13px">Word (.docx, .doc) or PDF</span>
+            <strong>Activitățile CAEN și capitalul social</strong>
+            <span class="muted" style="font-size:13px">Word (.docx, .doc) sau PDF</span>
           </label>
           <ul class="files" id="company-list"></ul>
         </div>
         <div class="rep" id="rep-box">
-          <h3>Representative filing the request <span class="muted">(optional)</span></h3>
-          <p class="hint">A lawyer or a proxy who files the request for the company: their data is kept apart, in “Filed by” (XII) and the contact person (VII), never as a person of the company.</p>
+          <h3>Reprezentantul care depune cererea <span class="muted">(opțional)</span></h3>
+          <p class="hint">Avocatul sau împuternicitul care depune cererea pentru societate: datele sale se trec separat, la „Cererea se depune de către” (secțiunea XII) și la persoana pentru comunicare (secțiunea VII), niciodată ca persoană a societății.</p>
           <label class="drop small" id="rep-drop">
             <input type="file" id="rep-input" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
-            <strong>Their identity card</strong>
-            <span class="muted" style="font-size:13px">photo, scan or PDF</span>
+            <strong>Cartea sa de identitate</strong>
+            <span class="muted" style="font-size:13px">fotografie, scanare sau PDF</span>
           </label>
           <ul class="files" id="rep-list"></ul>
-          <p class="pick-label" style="margin-top:10px">The representative is</p>
-          <div class="picker" id="rep-type" role="group" aria-label="The representative is"></div>
+          <p class="pick-label" style="margin-top:10px">Reprezentantul este</p>
+          <div class="picker" id="rep-type" role="group" aria-label="Reprezentantul este"></div>
         </div>
       </div>
     </div>
     <div class="actions">
-      <button class="btn link" id="manual-btn" type="button">No documents? Fill in by hand</button>
-      <button class="btn primary" id="scan-btn" type="button" disabled>Scan documents →</button>
+      <button class="btn link" id="manual-btn" type="button">Nu aveți documente? Completați manual</button>
+      <button class="btn primary" id="scan-btn" type="button" disabled>Citiți documentele →</button>
     </div>
   </section>
 
@@ -340,23 +340,23 @@
       <div id="doc-warnings"></div>
       <div class="grid-2">
         <div>
-          <div class="panel-title">Read from the file <span class="status">as extracted (read-only)</span></div>
+          <div class="panel-title">Textul citit din fișier <span class="status">așa cum a fost extras (doar pentru citire)</span></div>
           <pre class="raw" id="raw-text"></pre>
         </div>
         <div>
-          <div class="panel-title"><label for="clean-text">Cleaned text: fix mistakes here</label> <span class="status" id="reextract-status"></span></div>
+          <div class="panel-title"><label for="clean-text">Textul curățat: corectați greșelile aici</label> <span class="status" id="reextract-status"></span></div>
           <textarea id="clean-text" spellcheck="false"></textarea>
         </div>
       </div>
       <div style="margin-top:14px">
-        <div class="panel-title">Found for the reference documents <span class="status">updates as you edit the text or the document type</span></div>
+        <div class="panel-title">Date găsite pentru documentele de completat <span class="status">se actualizează când modificați textul sau tipul documentului</span></div>
         <div class="chips" id="found-chips"></div>
       </div>
     </div>
     <div class="actions">
-      <button class="btn" type="button" data-go="1">← Back</button>
+      <button class="btn" type="button" data-go="1">← Înapoi</button>
       <span class="spacer"></span>
-      <button class="btn primary" type="button" data-go="3">Review fields →</button>
+      <button class="btn primary" type="button" data-go="3">Verificați câmpurile →</button>
     </div>
   </section>
 
@@ -367,28 +367,28 @@
         <div class="progress"><span id="progress-text"></span><div class="bar"><div id="progress-bar"></div></div></div>
         <div class="legal" id="legal-box"></div>
         <div class="toolbar">
-          <div class="seg" role="group" aria-label="Show fields">
-            <button type="button" data-filter="attention" aria-pressed="true">Needs attention</button>
-            <button type="button" data-filter="all" aria-pressed="false">All fields</button>
+          <div class="seg" role="group" aria-label="Câmpuri afișate">
+            <button type="button" data-filter="attention" aria-pressed="true">Necesită atenție</button>
+            <button type="button" data-filter="all" aria-pressed="false">Toate câmpurile</button>
           </div>
           <span class="muted" style="font-size:13px" id="filter-note"></span>
         </div>
         <div id="fields"></div>
         <details class="other" id="other-wrap">
-          <summary>Other data found in the documents (not used by these reference documents)</summary>
+          <summary>Alte date găsite în documente (nefolosite de documentele alese)</summary>
           <table class="kv" id="other-table"></table>
         </details>
       </div>
       <div class="sticky">
-        <div class="panel-title">Live preview <span class="status">click a value to edit it</span></div>
+        <div class="panel-title">Previzualizare <span class="status">faceți clic pe o valoare pentru a o modifica</span></div>
         <div class="tabs" id="preview-tabs"></div>
         <div class="paper" id="preview"></div>
       </div>
     </div>
     <div class="actions">
-      <button class="btn" type="button" data-go="2">← Back</button>
+      <button class="btn" type="button" data-go="2">← Înapoi</button>
       <span class="spacer"></span>
-      <button class="btn primary" type="button" data-go="4">Continue to save →</button>
+      <button class="btn primary" type="button" data-go="4">Continuați spre salvare →</button>
     </div>
   </section>
 
@@ -396,29 +396,29 @@
   <section class="step" data-step="4">
     <div class="grid-review">
       <div class="card">
-        <h2>Save the filled documents</h2>
+        <h2>Salvați documentele completate</h2>
         <p class="hint" id="save-summary"></p>
         <div id="save-missing"></div>
         <div id="save-legal"></div>
         <div id="dossier"></div>
-        <label for="filename" class="muted" style="font-size:13px">New file name</label>
+        <label for="filename" class="muted" style="font-size:13px">Numele noului fișier</label>
         <div class="filename"><input type="text" id="filename" autocomplete="off"><span id="filename-ext">.pdf</span></div>
         <p class="hint" style="margin-top:6px" id="filename-hint"></p>
         <div class="actions" style="margin:12px 0 0">
-          <button class="btn primary" type="button" id="export-btn">Create the document</button>
+          <button class="btn primary" type="button" id="export-btn">Creați documentul</button>
         </div>
         <div id="save-result"></div>
       </div>
       <div class="sticky">
-        <div class="panel-title">Final documents</div>
+        <div class="panel-title">Documentele finale</div>
         <div class="tabs" id="final-tabs"></div>
         <div class="paper" id="final-preview"></div>
       </div>
     </div>
     <div class="actions">
-      <button class="btn" type="button" data-go="3">← Back</button>
+      <button class="btn" type="button" data-go="3">← Înapoi</button>
       <span class="spacer"></span>
-      <button class="btn" type="button" id="restart-btn">Start a new document</button>
+      <button class="btn" type="button" id="restart-btn">Începeți un document nou</button>
     </div>
   </section>
 </main>
@@ -427,34 +427,34 @@
 "use strict";
 
 const STEPS = [
-  { title: "Documents", sub: "Procedure + sources" },
-  { title: "Scan & clean", sub: "Check text and type" },
-  { title: "Review fields", sub: "Correct values live" },
-  { title: "Save", sub: "Choose a file name" },
+  { title: "Documente", sub: "Procedura și sursele" },
+  { title: "Citire și curățare", sub: "Verificați textul și tipul" },
+  { title: "Verificarea câmpurilor", sub: "Corectați valorile pe loc" },
+  { title: "Salvare", sub: "Alegeți numele fișierului" },
 ];
 const SOURCE_LABELS = {
-  label: "Label", learned: "Learned label", pattern: "Pattern", mrz: "Machine-readable zone",
-  form: "Filled form", ner: "ML model", derived: "Derived", memory: "Remembered",
-  default: "Default", manual: "Set by you", system: "System",
+  label: "Etichetă", learned: "Etichetă învățată", pattern: "Tipar recunoscut", mrz: "Zona citibilă automat (MRZ)",
+  form: "Formular completat", ner: "Model de învățare automată", derived: "Dedus", memory: "Reținut",
+  default: "Valoare implicită", manual: "Introdus de dumneavoastră", system: "Sistem",
 };
 const GROUPS = [
-  ["person", "Person 1 (applicant)"], ["birth", "Person 1: birth"], ["domicile", "Person 1: domicile"],
-  ["id_card", "Person 1: identity card"], ["person2", "Person 2"], ["person3", "Person 3"],
-  ["roles", "Shareholders, management, beneficial owners"],
-  ["company", "Company"], ["capital", "Capitalul social, părțile sociale"],
-  ["articles", "Articles of incorporation (act constitutiv)"],
-  ["fiscal", "Tax registration (Anexa 1, vector fiscal)"], ["filing", "Request"],
-  ["changes", "Changes (mențiuni)"], ["closure", "Closure (radiere)"], ["contact", "Contact person"],
-  ["billing", "Billing"], ["filer", "Filed by"], ["parents", "Parents"], ["other", "Other"],
+  ["person", "Persoana 1 (solicitantul)"], ["birth", "Persoana 1: nașterea"], ["domicile", "Persoana 1: domiciliul"],
+  ["id_card", "Persoana 1: actul de identitate"], ["person2", "Persoana 2"], ["person3", "Persoana 3"],
+  ["roles", "Asociați / acționari, organe de conducere, beneficiari reali"],
+  ["company", "Societatea"], ["capital", "Capitalul social, părțile sociale"],
+  ["articles", "Actul constitutiv"],
+  ["fiscal", "Înregistrarea fiscală (Anexa 1, vectorul fiscal)"], ["filing", "Cererea"],
+  ["changes", "Înscriere de mențiuni"], ["closure", "Radiere"], ["contact", "Persoana pentru comunicare"],
+  ["billing", "Date de facturare"], ["filer", "Cererea se depune de către"], ["parents", "Părinții"], ["other", "Altele"],
 ];
 // Who the representative is (the options of the "representative_type" field): asked every time.
 const REPRESENTATIVE_TYPES = [
-  ["avocat (împuternicire avocațială)", "Lawyer", "împuternicire avocațială"],
-  ["împuternicit (procură specială autentică)", "Proxy", "procură specială autentică"],
-  ["împuternicit (procură generală autentică)", "Proxy", "procură generală autentică"],
+  ["avocat (împuternicire avocațială)", "Avocat", "împuternicire avocațială"],
+  ["împuternicit (procură specială autentică)", "Împuternicit", "procură specială autentică"],
+  ["împuternicit (procură generală autentică)", "Împuternicit", "procură generală autentică"],
 ];
-const PERSONS = [[1, "Person 1 (applicant)"], [2, "Person 2"], [3, "Person 3"],
-  [0, "Representative filing the request (avocat / împuternicit)"]];
+const PERSONS = [[1, "Persoana 1 (solicitantul)"], [2, "Persoana 2"], [3, "Persoana 3"],
+  [0, "Reprezentantul care depune cererea (avocat / împuternicit)"]];
 const LIST_HINTS = {
   caen_activities: "6201 Activități de realizare a soft-ului la comandă",
   control_members: "1. POPESCU ANA, CNP ..., domiciliată în ..., expert contabil",
@@ -464,7 +464,10 @@ const LIST_HINTS = {
   family_members: "POPESCU ION | 1871114321239",
   requested_changes: "Schimbarea sediului social",
 };
-const SEVERITY = { error: ["bad", "Error"], warning: ["warn", "Warning"], info: ["accent", "Info"] };
+const SEVERITY = { error: ["bad", "Eroare"], warning: ["warn", "Avertisment"], info: ["accent", "Informare"] };
+// What a saved review taught (learning outcomes) and the sensitive data removed from a document.
+const OUTCOMES = { accepted: "confirmate", corrected: "corectate", added: "adăugate", cleared: "golite" };
+const REDACTIONS = { iban: "IBAN", credit_card: "numere de card" };
 
 const state = {
   step: 1, maxStep: 1, templates: [], selected: [], docTypes: [],
@@ -541,9 +544,13 @@ function confidenceClass(confidence) {
 }
 
 const pct = (value) => `${Math.round(value * 100)}%`;
+// Romanian counts: "1 document", "2 documente", "20 de documente" ("de" from 20, but not after
+// 101-119, 201-219...).
+const de = (n) => (n >= 20 && (n % 100 === 0 || n % 100 >= 20)) ? "de " : "";
+const count = (n, one, many) => n === 1 ? `1 ${one}` : `${n} ${de(n)}${many}`;
 const sizeLabel = (bytes) => bytes < 1048576 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 const describeSource = (c) => SOURCE_LABELS[c.source] || c.source;
-const docTypeLabel = (name) => (state.docTypes.find((d) => d.name === name) || { label: name || "unknown" }).label;
+const docTypeLabel = (name) => (state.docTypes.find((d) => d.name === name) || { label: name || "necunoscut" }).label;
 // "one": the document is one person's; "named": it names the persons of the company (act
 // constitutiv); "none": it is about no person of the request (proof of the firm name / office).
 const docTypePersons = (name) => (state.docTypes.find((d) => d.name === name) || {}).persons || "one";
@@ -593,15 +600,15 @@ async function loadHealth() {
   const pills = [];
   try {
     const health = await (await api("/health")).json();
-    pills.push(el("span", { class: `pill ${health.ocr ? "ok" : "warn"}` }, health.ocr ? "OCR ready" : "OCR not installed"));
-    pills.push(el("span", { class: `pill ${health.ner ? "ok" : "warn"}` }, health.ner ? "ML model ready" : "ML model not installed"));
+    pills.push(el("span", { class: `pill ${health.ocr ? "ok" : "warn"}` }, health.ocr ? "OCR disponibil" : "OCR neinstalat"));
+    pills.push(el("span", { class: `pill ${health.ner ? "ok" : "warn"}` }, health.ner ? "Model de învățare automată disponibil" : "Model de învățare automată neinstalat"));
   } catch (_) { /* informative only */ }
   try {
     const stats = await (await api("/learning/stats")).json();
     const accuracy = stats.accuracy_last_10_reviews;
-    pills.push(el("span", { class: "pill accent", title: "Every saved review makes the next extraction better" },
-      stats.reviews ? `Learned from ${stats.reviews} review${stats.reviews === 1 ? "" : "s"}` +
-        (accuracy != null ? ` · ${pct(accuracy)} right lately` : "") : "Learning: no reviews yet"));
+    pills.push(el("span", { class: "pill accent", title: "Fiecare verificare salvată îmbunătățește extragerea următoare" },
+      stats.reviews ? `Învățat din ${count(stats.reviews, "verificare", "verificări")}` +
+        (accuracy != null ? ` · ${pct(accuracy)} corecte recent` : "") : "Învățare: nicio verificare salvată încă"));
   } catch (_) { /* optional */ }
   put($("health"), pills);
 }
@@ -617,9 +624,9 @@ async function loadTemplates() {
   state.docTypes = docTypes;
   if (cases) state.cases = cases;
   if (!templates.length) {
-    showBanner("No standard documents in the database yet. Run: docfill templates seed", "info");
+    showBanner("Baza de date nu conține încă documente standard. Rulați: docfill templates seed", "info");
   } else if (!hasProcedures()) {
-    showBanner("No procedures in the knowledge base yet. Run: docfill knowledge seed", "info");
+    showBanner("Baza de cunoștințe nu conține încă proceduri. Rulați: docfill knowledge seed", "info");
   }
   const remembered = (storage.get("docfill.templates") || []).filter((n) => templates.some((t) => t.name === n));
   state.selected = remembered;
@@ -672,7 +679,7 @@ function renderCases() {
     return el("button", {
       type: "button", class: "pick", "aria-pressed": String(state.operation === op.key), disabled: !exists,
       title: op.description, onclick: () => choose(state.entity, op.key),
-    }, el("strong", {}, op.title), el("span", {}, `${op.english} · ${op.description}`));
+    }, el("strong", {}, op.title), el("span", {}, op.description));
   }));
   renderProcedurePanel();
 }
@@ -682,45 +689,45 @@ function renderProcedurePanel() {
   const panel = $("procedure-panel");
   if (!procedure) {
     put(panel, el("p", { class: "muted", style: "margin:0" },
-      state.entity ? "No procedure for this operation in the knowledge base yet." : "Pick a legal form to start."));
+      state.entity ? "Baza de cunoștințe nu conține încă o procedură pentru această operațiune." : "Alegeți forma juridică pentru a începe."));
     return;
   }
   const unverified = procedure.unverified || [];
   const docs = procedure.documents;
   put(panel, el("div", { class: "proc" },
     el("h3", {}, procedure.title,
-      el("span", { class: "pill accent", title: "Where the file is submitted" }, `filed at ${procedure.authority || "ONRC"}`),
+      el("span", { class: "pill accent", title: "Autoritatea la care se depune dosarul" }, `se depune la ${procedure.authority || "ONRC"}`),
       unverified.length
-        ? el("span", { class: "pill warn", title: `Not yet verified by a legal professional:\n${unverified.join("\n")}` },
-            `${unverified.length} knowledge item${unverified.length === 1 ? "" : "s"} not verified yet`)
-        : el("span", { class: "pill ok" }, `verified by ${procedure.verified_by}`)),
+        ? el("span", { class: "pill warn", title: `Neverificate încă de un jurist:\n${unverified.join("\n")}` },
+            `${count(unverified.length, "înregistrare neverificată", "înregistrări neverificate")} încă`)
+        : el("span", { class: "pill ok" }, `verificată de ${procedure.verified_by}`)),
     procedure.description ? el("div", { class: "muted", style: "font-size:13.5px" }, procedure.description) : null,
     !procedure.templates.length
       ? el("div", { class: "warnbox", style: "margin-top:10px" },
-          "docfill cannot fill any form of this procedure yet. Download the official form (link below), add it to docfill (docfill forms inspect + docfill templates add), then reference it in the procedure on the Knowledge page.")
+          "docfill nu poate completa încă niciun formular al acestei proceduri. Descărcați formularul oficial (linkul de mai jos), adăugați-l în docfill (docfill forms inspect + docfill templates add), apoi indicați-l în procedură, pe pagina Baza de cunoștințe.")
       : null,
     el("details", { class: "proc-details" },
-      el("summary", {}, `Legal checks (${procedure.rules.length}) and documents of the file (${docs.length})`),
+      el("summary", {}, `Verificările legale (${procedure.rules.length}) și documentele dosarului (${docs.length})`),
       el("div", { class: "cols" },
       el("div", {},
-        el("h4", {}, `Legal checks (${procedure.rules.length})`),
+        el("h4", {}, `Verificări legale (${procedure.rules.length})`),
         el("ul", { class: "check" }, procedure.rules.map((r) => el("li", {},
           el("span", { class: `ic ${r.severity === "error" ? "no" : "opt"}` }, "⚖"),
-          el("div", {}, r.title, r.status !== "verified" ? el("small", {}, "not verified yet") : null))))),
+          el("div", {}, r.title, r.status !== "verified" ? el("small", {}, "neverificată încă") : null))))),
       el("div", {},
-        el("h4", {}, "Documents of the file (dosar)"),
+        el("h4", {}, "Documentele dosarului"),
         el("ul", { class: "check" }, docs.map((d) => el("li", {},
           el("span", { class: `ic ${d.required ? "no" : "opt"}` }, d.required ? "•" : "○"),
-          el("div", {}, d.title + (d.required ? "" : " (if applicable)"), d.note ? el("small", {}, d.note) : null)))),
-        el("h4", { style: "margin-top:12px" }, "Legal basis"),
+          el("div", {}, d.title + (d.required ? "" : " (dacă este cazul)"), d.note ? el("small", {}, d.note) : null)))),
+        el("h4", { style: "margin-top:12px" }, "Temei legal"),
         el("div", { class: "cite" }, procedure.legal_basis.map((ref) => el("div", {}, el("b", {}, ref.citation), ref.article ? `, ${ref.article}` : ""))),
-        (procedure.notes || []).map((note) => el("div", { class: "cite", style: "margin-top:6px" }, `Note: ${note}`)))))));
+        (procedure.notes || []).map((note) => el("div", { class: "cite", style: "margin-top:6px" }, `Notă: ${note}`)))))));
 }
 
 function fieldCount(t) {
   // a document made for each administrator asks the same fields of every person: count one
   const fields = (t.per_person || []).length ? t.fields.filter((f) => !/^p[23]_/.test(f)) : t.fields;
-  return `${fields.length} fields${(t.per_person || []).length ? " per person" : ""}`;
+  return count(fields.length, "câmp", "câmpuri") + ((t.per_person || []).length ? " pentru fiecare persoană" : "");
 }
 
 // A standard document to tick: the procedure's own title and note when it is one of its forms.
@@ -729,10 +736,10 @@ function templateCard(t, form) {
   const input = el("input", { type: "checkbox", id: `tpl-${t.name}`, checked: on,
     onchange: (event) => toggleTemplate(t.name, event.target.checked) });
   const badges = [
-    form ? el("span", { class: `pill ${form.required ? "accent" : ""}` }, form.required ? "required in the file" : "if applicable") : null,
-    (t.per_person || []).length ? el("span", { class: "pill accent", title: "One PDF for each person with this role" }, "one per administrator") : null,
-    t.output === "docx" ? el("span", { class: "pill", title: "Created as a Word document, to edit before signing" }, "Word (.docx)") : null,
-    el("span", { class: "pill", title: `${t.required_fields.length} required` }, fieldCount(t)),
+    form ? el("span", { class: `pill ${form.required ? "accent" : ""}` }, form.required ? "obligatoriu în dosar" : "dacă este cazul") : null,
+    (t.per_person || []).length ? el("span", { class: "pill accent", title: "Câte un PDF pentru fiecare persoană cu acest rol" }, "câte unul pentru fiecare administrator") : null,
+    t.output === "docx" ? el("span", { class: "pill", title: "Se creează ca document Word, pentru a putea fi modificat înainte de semnare" }, "Word (.docx)") : null,
+    el("span", { class: "pill", title: count(t.required_fields.length, "câmp obligatoriu", "câmpuri obligatorii") }, fieldCount(t)),
   ];
   return el("label", { class: `tpl ${on ? "on" : ""}`, for: `tpl-${t.name}` }, input,
     el("div", {}, el("div", { class: "t-title" }, form ? form.title : t.title),
@@ -758,25 +765,25 @@ function renderTemplates() {
   const chosen = state.selected.length;
 
   $("template-hint").textContent = procedure
-    ? `The documents of “${procedure.title}”. Tick only those you need this time: one, a few or all of them. They are filled from the same data; the next steps ask only for what the ticked documents need.`
-    : "No procedure chosen: tick the documents to fill (one or several). Choose what you are doing above to see the documents of a procedure and its legal checks.";
+    ? `Documentele procedurii „${procedure.title}”. Bifați doar documentele de care aveți nevoie acum: unul, câteva sau toate. Toate se completează din aceleași date; pașii următori vă cer doar informațiile necesare documentelor bifate.`
+    : "Nicio procedură aleasă: bifați documentele de completat (unul sau mai multe). Alegeți mai sus operațiunea pentru a vedea documentele procedurii și verificările legale ale acesteia.";
   put($("template-tools"),
-    el("span", { class: "count" }, chosen ? `${chosen} document${chosen === 1 ? "" : "s"} to fill` : "Nothing ticked yet"),
-    procedure ? el("button", { type: "button", class: "btn small", onclick: () => setSelection([...state.selected, ...offered]) }, "All") : null,
-    procedure ? el("button", { type: "button", class: "btn small", title: "The forms the file requires",
-      onclick: () => setSelection(procedure.templates) }, "Required only") : null,
-    el("button", { type: "button", class: "btn small", onclick: () => setSelection([]) }, "None"));
+    el("span", { class: "count" }, chosen ? count(chosen, "document de completat", "documente de completat") : "Niciun document bifat încă"),
+    procedure ? el("button", { type: "button", class: "btn small", onclick: () => setSelection([...state.selected, ...offered]) }, "Toate") : null,
+    procedure ? el("button", { type: "button", class: "btn small", title: "Formularele obligatorii ale dosarului",
+      onclick: () => setSelection(procedure.templates) }, "Doar cele obligatorii") : null,
+    el("button", { type: "button", class: "btn small", onclick: () => setSelection([]) }, "Niciunul"));
 
   const missing = procedure ? procedure.forms.filter((f) => !f.template || !byName[f.template]) : [];
   const moreOn = others.some((t) => state.selected.includes(t.name));
   put($("template-list"),
     procedure ? forms.map((f) => templateCard(byName[f.template], f)) : others.map((t) => templateCard(t)),
-    missing.length ? el("div", { class: "tpl-group" }, "To prepare separately (not in docfill yet)") : null,
+    missing.length ? el("div", { class: "tpl-group" }, "De pregătit separat (nu există încă în docfill)") : null,
     missing.map((f) => el("div", { class: "tpl off-docfill" }, el("span", { class: "ic" }, "○"),
       el("div", {}, el("div", { class: "t-title" }, f.title),
-        el("div", { class: "t-desc" }, f.note || "", f.url ? el("span", {}, " ", el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
+        el("div", { class: "t-desc" }, f.note || "", f.url ? el("span", {}, " ", el("a", { href: f.url, target: "_blank", rel: "noopener" }, "formularul oficial ↗")) : null)))),
     procedure && others.length ? el("details", { class: "more-tpl", open: moreOn },
-      el("summary", {}, `Other documents docfill can fill (${others.length})`),
+      el("summary", {}, `Alte documente pe care docfill le poate completa (${others.length})`),
       el("div", { class: "tpl-list" }, others.map((t) => templateCard(t)))) : null);
   renderUploadHint();
   updateScanButton();
@@ -788,28 +795,28 @@ function renderUploadHint() {
   const chosen = state.templates.filter((t) => state.selected.includes(t.name));
   if (!chosen.length) {
     put($("upload-hint"), el("p", { class: "muted", style: "margin:0" },
-      "Tick the documents you need first: what to upload follows your choice."));
+      "Bifați mai întâi documentele de care aveți nevoie: ce trebuie încărcat depinde de această alegere."));
     return;
   }
   const others = chosen.some((t) => t.fields.some((f) => /^p[23]_/.test(f)));
   const administrators = chosen.some((t) => (t.per_person || []).length);
   const roles = [administrators ? "administrator" : null,
-    chosen.some((t) => t.fields.includes("p2_beneficial_owner")) ? "beneficial owner" : null,
-    chosen.some((t) => t.fields.includes("p2_shares")) ? "founder" : null].filter(Boolean);
+    chosen.some((t) => t.fields.includes("p2_beneficial_owner")) ? "beneficiar real" : null,
+    chosen.some((t) => t.fields.includes("p2_shares")) ? "fondator" : null].filter(Boolean);
   put($("upload-hint"),
-    el("p", { class: "hint", style: "margin-bottom:4px" }, `For the ${chosen.length === 1 ? "document" : `${chosen.length} documents`} you ticked, upload:`),
+    el("p", { class: "hint", style: "margin-bottom:4px" }, `Pentru ${chosen.length === 1 ? "documentul bifat" : `cele ${count(chosen.length, "document", "documente")} bifate`}, încărcați:`),
     el("ul", {},
-      el("li", {}, el("strong", {}, "The identity card (CI) of the applicant"), ": the person signing the documents (person 1). A photo, a scan or a PDF. ",
-        "With the ", el("strong", {}, "act constitutiv"), " (Word or PDF), its administrator is the applicant and its associates, administrators and beneficial owners are persons 1-3: their data is read from the act."),
-      el("li", {}, "If a lawyer or a proxy files the request: ", el("strong", {}, "their identity card"),
-        " in the ", el("em", {}, "Representative"), " box below, and whether they are a lawyer or a proxy."),
-      others ? el("li", {}, el("strong", {}, "The identity card of every other person involved"),
-        roles.length ? ` (each ${roles.join(", ")})` : "",
-        ": one file per person, up to 3 people; they become persons 2 and 3 in the order you add them (you can change it in the next step).") : null,
-      el("li", {}, "Optional: an already filled form, a client sheet or any document identifying a person (PDF, Word): its data is read too."),
-      needsCompanySheet() ? el("li", {}, "Optional: the Word file with the company's ", el("strong", {}, "CAEN activities"), " and ",
-        el("strong", {}, "share capital"), ", in its own box below.") : null,
-      currentProcedure() ? el("li", {}, "Optional: the documents of the file (proof of the registered office…): they are ticked off on the final checklist.") : null));
+      el("li", {}, el("strong", {}, "Cartea de identitate (CI) a solicitantului"), ": persoana care semnează documentele (persoana 1). O fotografie, o scanare sau un PDF. ",
+        "Dacă încărcați ", el("strong", {}, "actul constitutiv"), " (Word sau PDF), administratorul din act este solicitantul, iar asociații, administratorii și beneficiarii reali sunt persoanele 1-3: datele lor se citesc din act."),
+      el("li", {}, "Dacă cererea este depusă de un avocat sau de un împuternicit: ", el("strong", {}, "cartea sa de identitate"),
+        " în caseta ", el("em", {}, "Reprezentantul care depune cererea"), " de mai jos, precum și calitatea sa (avocat sau împuternicit)."),
+      others ? el("li", {}, el("strong", {}, "Cartea de identitate a fiecărei alte persoane implicate"),
+        roles.length ? ` (fiecare ${roles.join(", ")})` : "",
+        ": câte un fișier pentru fiecare persoană, cel mult 3 persoane; acestea devin persoanele 2 și 3, în ordinea în care le adăugați (ordinea se poate schimba la pasul următor).") : null,
+      el("li", {}, "Opțional: un formular deja completat, o fișă a clientului sau orice document care identifică o persoană (PDF, Word): se citesc și datele din acesta."),
+      needsCompanySheet() ? el("li", {}, "Opțional: fișierul Word cu ", el("strong", {}, "activitățile CAEN"), " și ",
+        el("strong", {}, "capitalul social"), " ale societății, în caseta dedicată de mai jos.") : null,
+      currentProcedure() ? el("li", {}, "Opțional: documentele dosarului (dovada sediului social…): sunt bifate în lista de verificare finală.") : null));
 }
 
 function toggleTemplate(name, on) {
@@ -822,7 +829,7 @@ function updateScanButton() {
     !(state.adminFiles.length && !state.adminSame);
   $("scan-btn").disabled = nothing || noFiles;
   $("manual-btn").disabled = nothing;
-  $("scan-btn").title = nothing ? "Tick at least one document to fill" : noFiles ? "Add the files to read" : "";
+  $("scan-btn").title = nothing ? "Bifați cel puțin un document de completat" : noFiles ? "Adăugați fișierele de citit" : "";
 }
 
 function addFiles(fileList) {
@@ -838,8 +845,8 @@ function renderFiles() {
     el("li", {},
       el("span", { class: "name", title: file.name }, file.name),
       el("span", { class: "size" }, sizeLabel(file.size)),
-      el("button", { type: "button", class: "btn link small", "aria-label": `Remove ${file.name}`,
-                     onclick: () => { state.files.splice(index, 1); state.filesDirty = true; renderFiles(); } }, "Remove"))));
+      el("button", { type: "button", class: "btn link small", "aria-label": `Eliminați ${file.name}`,
+                     onclick: () => { state.files.splice(index, 1); state.filesDirty = true; renderFiles(); } }, "Eliminați"))));
   updateScanButton();
 }
 
@@ -858,8 +865,8 @@ function renderRepresentative() {
     el("li", {},
       el("span", { class: "name", title: file.name }, file.name),
       el("span", { class: "size" }, sizeLabel(file.size)),
-      el("button", { type: "button", class: "btn link small", "aria-label": `Remove ${file.name}`,
-                     onclick: () => { state.repFiles = []; state.filesDirty = true; renderRepresentative(); } }, "Remove"))));
+      el("button", { type: "button", class: "btn link small", "aria-label": `Eliminați ${file.name}`,
+                     onclick: () => { state.repFiles = []; state.filesDirty = true; renderRepresentative(); } }, "Eliminați"))));
   put($("rep-type"), REPRESENTATIVE_TYPES.map(([value, title, basis]) => el("button", {
     type: "button", class: "pick", "aria-pressed": String(state.repType === value), title: value,
     onclick: () => { state.repType = state.repType === value ? "" : value; state.filesDirty = true; renderRepresentative(); },
@@ -886,7 +893,7 @@ function fileItems(files, onRemove) {
     el("li", {},
       el("span", { class: "name", title: file.name }, file.name),
       el("span", { class: "size" }, sizeLabel(file.size)),
-      el("button", { type: "button", class: "btn link small", "aria-label": `Remove ${file.name}`, onclick: onRemove }, "Remove")));
+      el("button", { type: "button", class: "btn link small", "aria-label": `Eliminați ${file.name}`, onclick: onRemove }, "Eliminați")));
 }
 
 function renderRoles() {
@@ -919,7 +926,7 @@ async function scan() {
   showBanner("");
   const button = $("scan-btn");
   button.disabled = true;
-  button.textContent = "Scanning… (OCR can take a few seconds)";
+  button.textContent = "Se citesc documentele… (OCR poate dura câteva secunde)";
   try {
     if (state.filesDirty || !state.documents.length) {
       const form = new FormData();
@@ -949,7 +956,7 @@ async function scan() {
   } catch (error) {
     showBanner(error.message);
   } finally {
-    button.textContent = "Scan documents →";
+    button.textContent = "Citiți documentele →";
     updateScanButton();
   }
 }
@@ -998,7 +1005,7 @@ function documentsPayload() {
 let reextractSeq = 0;
 async function reextract() {
   const seq = ++reextractSeq;
-  $("reextract-status").textContent = "re-extracting…";
+  $("reextract-status").textContent = "se extrag din nou datele…";
   try {
     const result = await (await postJSON("/wizard/reextract", {
       templates: state.selected, procedure: state.procedure, documents: documentsPayload(),
@@ -1006,9 +1013,9 @@ async function reextract() {
     if (seq !== reextractSeq) return;  // a newer edit is in flight
     applyReview(result);
     renderFoundChips();
-    $("reextract-status").textContent = "fields updated ✓";
+    $("reextract-status").textContent = "câmpuri actualizate ✓";
   } catch (error) {
-    if (seq === reextractSeq) $("reextract-status").textContent = `error: ${error.message}`;
+    if (seq === reextractSeq) $("reextract-status").textContent = `eroare: ${error.message}`;
   }
 }
 const scheduleReextract = debounce(reextract, 500);
@@ -1023,42 +1030,42 @@ function renderDocuments() {
     el("button", { type: "button", role: "tab", "aria-selected": index === state.activeDoc ? "true" : "false",
                    onclick: () => { state.activeDoc = index; renderDocuments(); } }, d.source)));
 
-  const select = el("select", { id: "doc-type-select", "aria-label": "Document type",
+  const select = el("select", { id: "doc-type-select", "aria-label": "Tipul documentului",
     onchange: (event) => { doc.doc_type = event.target.value; renderDocuments(); scheduleReextract(); } },
     state.docTypes.map((t) => el("option", { value: t.name, selected: t.name === doc.doc_type }, t.label)));
   const corrected = doc.doc_type !== doc.detected_type;
   const persons = docTypePersons(doc.doc_type);
   const person = persons === "named"
-    ? el("span", { class: "pill accent", title: "The associates, administrators and beneficial owners it names become persons 1-3 (person 1: the administrator who signs); an identity card of anybody else is the representative filing the request" }, "names the persons of the company")
+    ? el("span", { class: "pill accent", title: "Asociații, administratorii și beneficiarii reali numiți în act devin persoanele 1-3 (persoana 1: administratorul care semnează); cartea de identitate a oricărei alte persoane este considerată a reprezentantului care depune cererea" }, "numește persoanele societății")
     : persons === "none"
-      ? el("span", { class: "pill", title: "The persons in this document (the owner of the premises…) are not persons of the request" }, "about the company only")
-      : el("select", { id: "doc-person-select", "aria-label": "Whose document",
-          title: "Each identity card (or personal statement) fills one person; documents with the same CNP go to the same person. The representative's card fills “Filed by” and the contact person",
+      ? el("span", { class: "pill", title: "Persoanele din acest document (proprietarul spațiului…) nu sunt persoane ale cererii" }, "privește doar societatea")
+      : el("select", { id: "doc-person-select", "aria-label": "Persoana căreia îi aparține documentul",
+          title: "Fiecare carte de identitate (sau declarație personală) completează datele unei singure persoane; documentele cu același CNP sunt atribuite aceleiași persoane. Cartea de identitate a reprezentantului completează rubrica „Cererea se depune de către” și persoana pentru comunicare",
           onchange: (event) => { doc.person = Number(event.target.value); scheduleReextract(); } },
           PERSONS.map(([value, label]) => el("option", { value, selected: value === (doc.person ?? 1) }, label)));
   put($("doc-type"),
-    el("label", { for: "doc-type-select", class: "muted", style: "font-size:13px" }, "Document type"),
+    el("label", { for: "doc-type-select", class: "muted", style: "font-size:13px" }, "Tipul documentului"),
     select,
-    persons === "one" ? el("label", { for: "doc-person-select", class: "muted", style: "font-size:13px" }, "Person") : null,
+    persons === "one" ? el("label", { for: "doc-person-select", class: "muted", style: "font-size:13px" }, "Persoana") : null,
     person,
     doc.type_method === "form fields"
-      ? el("span", { class: "pill ok", title: "The form's fields match a registered standard document" }, "recognised from its form fields")
+      ? el("span", { class: "pill ok", title: "Câmpurile formularului corespund unui document standard înregistrat" }, "recunoscut după câmpurile formularului")
       : doc.type_method === "title" && !corrected
-        ? el("span", { class: "pill ok", title: "The document's title says what it is" }, `recognised from its title: ${docTypeLabel(doc.detected_type)}`)
-        : el("span", { class: `pill ${confidenceClass(doc.type_confidence || 0)}`, title: "Detected by the document classifier (ML)" },
-            `detected: ${docTypeLabel(doc.detected_type)} · ${pct(doc.type_confidence || 0)}`),
-    corrected ? el("span", { class: "pill accent" }, "corrected by you: the classifier will learn it") : null);
+        ? el("span", { class: "pill ok", title: "Titlul documentului arată ce document este" }, `recunoscut după titlu: ${docTypeLabel(doc.detected_type)}`)
+        : el("span", { class: `pill ${confidenceClass(doc.type_confidence || 0)}`, title: "Detectat de clasificatorul automat de documente (învățare automată)" },
+            `detectat: ${docTypeLabel(doc.detected_type)} · ${pct(doc.type_confidence || 0)}`),
+    corrected ? el("span", { class: "pill accent" }, "corectat de dumneavoastră: clasificatorul va învăța corectura") : null);
 
-  const redactions = Object.entries(doc.redactions || {}).map(([kind, count]) => `${count} ${kind.replace("_", " ")}`);
+  const redactions = Object.entries(doc.redactions || {}).map(([kind, n]) => `${REDACTIONS[kind] || kind.replace("_", " ")}: ${n}`);
   put($("doc-badges"),
     el("span", { class: "pill accent" }, doc.type.toUpperCase()),
-    el("span", { class: "pill" }, `${doc.pages} page${doc.pages === 1 ? "" : "s"}`),
-    doc.ocr ? el("span", { class: "pill accent" }, "Read with OCR") : null,
-    doc.form_fields ? el("span", { class: "pill ok" }, `${doc.form_fields} form fields read`) : null,
-    doc.removed_lines ? el("span", { class: "pill" }, `${doc.removed_lines} noise line${doc.removed_lines === 1 ? "" : "s"} removed`) : null,
-    redactions.length ? el("span", { class: "pill warn", title: "Sensitive data not needed for filling was removed" }, `Redacted: ${redactions.join(", ")}`) : null);
+    el("span", { class: "pill" }, count(doc.pages, "pagină", "pagini")),
+    doc.ocr ? el("span", { class: "pill accent" }, "Citit prin OCR") : null,
+    doc.form_fields ? el("span", { class: "pill ok" }, count(doc.form_fields, "câmp de formular citit", "câmpuri de formular citite")) : null,
+    doc.removed_lines ? el("span", { class: "pill" }, count(doc.removed_lines, "rând irelevant eliminat", "rânduri irelevante eliminate")) : null,
+    redactions.length ? el("span", { class: "pill warn", title: "Datele sensibile care nu sunt necesare completării au fost eliminate" }, `Date eliminate: ${redactions.join(", ")}`) : null);
   put($("doc-warnings"), (doc.warnings || []).map((w) => el("div", { class: "warnbox" }, w)));
-  $("raw-text").textContent = doc.raw_text || "(no text found)";
+  $("raw-text").textContent = doc.raw_text || "(nu s-a găsit text)";
   const textarea = $("clean-text");
   if (textarea.value !== doc.text) textarea.value = doc.text;
   $("reextract-status").textContent = "";
@@ -1070,7 +1077,7 @@ function renderFoundChips() {
   put($("found-chips"), found.slice(0, 60).map((row) => {
     const value = valueOf(row.name);
     return el("span", { class: value ? "pill ok" : "pill bad", title: row.label },
-      `${row.label}: ${value ? value.split("\n")[0] : "not found"}`);
+      `${row.label}: ${value ? value.split("\n")[0] : "negăsit"}`);
   }));
 }
 
@@ -1113,13 +1120,13 @@ function legalItem(result) {
   const law = result.law_text ? el("blockquote", { hidden: true }, result.law_text) : null;
   return el("div", { class: `legal-item ${result.status === "failed" ? result.severity : ""}` },
     el("div", { class: "lh" },
-      el("span", { class: `pill ${result.status === "failed" ? cls : "ok"}` }, result.status === "failed" ? label : "OK"),
+      el("span", { class: `pill ${result.status === "failed" ? cls : "ok"}` }, result.status === "failed" ? label : "Îndeplinită"),
       result.title,
-      result.knowledge_status !== "verified" ? el("span", { class: "pill", title: "This rule has not been verified by a legal professional yet" }, "unverified rule") : null,
-      result.field ? el("button", { type: "button", class: "btn link small", onclick: () => focusField(result.field) }, "Go to field") : null),
+      result.knowledge_status !== "verified" ? el("span", { class: "pill", title: "Această regulă nu a fost încă verificată de un jurist" }, "regulă neverificată") : null,
+      result.field ? el("button", { type: "button", class: "btn link small", onclick: () => focusField(result.field) }, "Mergeți la câmp") : null),
     result.status === "failed" ? el("div", {}, result.message, result.detail ? el("span", { class: "muted" }, ` (${result.detail})`) : null) : null,
     el("div", { class: "cite" }, (result.legal_basis || []).map((ref) => el("span", {}, el("b", {}, citeText(ref)), ref.note ? ` · ${ref.note}` : "", " ")),
-      law ? el("button", { type: "button", class: "btn link small", onclick: () => { law.hidden = !law.hidden; } }, "Show the law text") : null),
+      law ? el("button", { type: "button", class: "btn link small", onclick: () => { law.hidden = !law.hidden; } }, "Afișați textul legii") : null),
     law);
 }
 
@@ -1128,12 +1135,12 @@ function renderLegal() {
   if (!state.procedure) { put(box); return; }
   const failed = legalFailed();
   const passed = state.legal.filter((r) => r.status === "passed");
-  put(box, el("div", { class: "panel-title" }, `Legal checks · ${(currentProcedure() || {}).title || ""}`,
-      el("span", { class: "status" }, "update as you type")),
+  put(box, el("div", { class: "panel-title" }, `Verificări legale · ${(currentProcedure() || {}).title || ""}`,
+      el("span", { class: "status" }, "se actualizează pe măsură ce completați")),
     failed.map(legalItem),
-    !failed.length && state.legal.length ? el("div", { class: "legal-ok" }, "✓ No legal problems found in the values filled in so far.") : null,
+    !failed.length && state.legal.length ? el("div", { class: "legal-ok" }, "✓ Nu s-a constatat nicio problemă legală în datele completate până acum.") : null,
     passed.length ? el("details", { style: "margin-top:4px" },
-      el("summary", { class: "muted", style: "cursor:pointer;font-size:13px" }, `${passed.length} check${passed.length === 1 ? "" : "s"} passed`),
+      el("summary", { class: "muted", style: "cursor:pointer;font-size:13px" }, count(passed.length, "verificare îndeplinită", "verificări îndeplinite")),
       passed.map(legalItem)) : null);
 }
 
@@ -1143,12 +1150,12 @@ function renderFields() {
   const visible = state.rows.filter((row) => state.filter === "all" || needsAttention(row));
   document.querySelectorAll("[data-filter]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === state.filter)));
   $("filter-note").textContent = state.filter === "attention"
-    ? `${visible.length} of ${state.rows.length} fields need a look · the rest were found with high confidence, remembered or are defaults`
+    ? `${visible.length} din ${count(state.rows.length, "câmp", "câmpuri")} necesită verificare · celelalte au fost găsite cu un grad ridicat de încredere, au fost reținute sau au valori implicite`
     : "";
   if (!state.rows.length) {
-    put(container, el("div", { class: "empty" }, "These reference documents have no fields."));
+    put(container, el("div", { class: "empty" }, "Documentele alese nu au câmpuri de completat."));
   } else if (!visible.length) {
-    put(container, el("div", { class: "empty" }, "Nothing needs attention. Switch to “All fields” to review everything."));
+    put(container, el("div", { class: "empty" }, "Niciun câmp nu necesită atenție. Alegeți „Toate câmpurile” pentru a le verifica pe toate."));
   } else {
     put(container, GROUPS.map(([key, title]) => {
       const rows = visible.filter((row) => (row.group || "other") === key);
@@ -1158,9 +1165,9 @@ function renderFields() {
       const problems = all.filter((row) => fieldIssues(row).length).length;
       return el("details", { class: "group", open: true, "data-group": key },
         el("summary", {}, title,
-          el("span", { class: "pill" }, `${all.filter((r) => valueOf(r.name)).length}/${all.length} filled`),
-          missing ? el("span", { class: "pill bad" }, `${missing} missing`) : null,
-          problems ? el("span", { class: "pill warn" }, `${problems} problem${problems === 1 ? "" : "s"}`) : null),
+          el("span", { class: "pill" }, `${all.filter((r) => valueOf(r.name)).length}/${all.length} completate`),
+          missing ? el("span", { class: "pill bad" }, `${missing} lipsă`) : null,
+          problems ? el("span", { class: "pill warn" }, count(problems, "problemă", "probleme")) : null),
         el("div", { class: "g-body" }, rows.map(renderField)));
     }));
   }
@@ -1174,7 +1181,7 @@ function inputFor(row) {
   const id = `f-${row.name}`;
   if (row.kind === "checkbox") {
     return el("span", {}, el("input", { type: "checkbox", id, checked: /^(x|da|yes|1|true|on)$/i.test(value) }),
-      el("span", { class: "muted", style: "margin-left:8px;font-size:13px" }, "ticked"));
+      el("span", { class: "muted", style: "margin-left:8px;font-size:13px" }, "bifat"));
   }
   if (row.choices && row.choices.length) {
     // a value that is not one of the choices (typed, read from a document) stays selectable
@@ -1183,12 +1190,12 @@ function inputFor(row) {
       choices.map((choice) => el("option", { value: choice, selected: choice === value }, choice)));
   }
   if (row.kind === "list") {
-    const area = el("textarea", { id, class: "list", placeholder: LIST_HINTS[row.name] || "one per line", spellcheck: "false" });
+    const area = el("textarea", { id, class: "list", placeholder: LIST_HINTS[row.name] || "câte unul pe rând", spellcheck: "false" });
     area.value = value;
     return area;
   }
   const input = el("input", { type: "text", id, autocomplete: "off",
-    placeholder: row.kind === "date" ? "dd.mm.yyyy" : isRequired(row) ? "Required, not found in the documents" : "Optional" });
+    placeholder: row.kind === "date" ? "zz.ll.aaaa" : isRequired(row) ? "Obligatoriu, negăsit în documente" : "Opțional" });
   input.value = value;
   return input;
 }
@@ -1204,31 +1211,31 @@ function renderField(row) {
 
   function paint() {
     const current = valueOf(row.name);
-    requiredTag.textContent = isRequired(row) ? "Required" : "Optional";
+    requiredTag.textContent = isRequired(row) ? "Obligatoriu" : "Opțional";
     const manual = !!state.manual[row.name];
     const derived = state.derivedFrom[row.name];
     const problems = fieldIssues(row);
     card.classList.toggle("missing", isRequired(row) && !current);
     card.classList.toggle("attention", !manual && needsAttention(row) && !(isRequired(row) && !current));
-    put(issues, isRequired(row) && !current ? el("div", {}, "Required: not found in the documents. Type it in or pick a candidate.") : null,
+    put(issues, isRequired(row) && !current ? el("div", {}, "Obligatoriu: nu a fost găsit în documente. Introduceți valoarea sau alegeți una dintre variantele propuse.") : null,
       problems.map((p) => el("div", {}, p)));
     const items = [];
     if (manual) {
-      items.push(el("span", { class: "pill accent" }, "Set by you"));
+      items.push(el("span", { class: "pill accent" }, "Introdus de dumneavoastră"));
       if (row.found) items.push(el("button", { type: "button", class: "btn link small",
-        onclick: () => setValue(row, row.found.value, false) }, `Undo (use “${row.found.value.split("\n")[0]}”)`));
+        onclick: () => setValue(row, row.found.value, false) }, `Anulați (folosiți „${row.found.value.split("\n")[0]}”)`));
     } else if (derived) {
-      items.push(el("span", { class: "pill warn" }, "Derived"), el("span", {}, derived));
+      items.push(el("span", { class: "pill warn" }, "Dedus"), el("span", {}, derived));
     } else if (row.found && current === (row.found.value || "").trim()) {
       const f = row.found;
       if (!["memory", "default", "system"].includes(f.source)) {
-        items.push(el("span", { class: `pill ${confidenceClass(f.confidence)}`, title: "Confidence" }, pct(f.confidence)));
+        items.push(el("span", { class: `pill ${confidenceClass(f.confidence)}`, title: "Grad de încredere" }, pct(f.confidence)));
       }
       items.push(el("span", { class: "pill" }, describeSource(f)));
-      if (f.document) items.push(el("span", {}, `from ${f.document}`));
+      if (f.document) items.push(el("span", {}, `din ${f.document}`));
       if (f.evidence && !["system"].includes(f.source)) items.push(el("button", { type: "button", class: "btn link small",
-        onclick: () => { evidence.hidden = !evidence.hidden; } }, "Show where"));
-      evidence.textContent = f.source === "derived" ? `Derived from: ${f.evidence}` : f.evidence || "";
+        onclick: () => { evidence.hidden = !evidence.hidden; } }, "Arătați sursa"));
+      evidence.textContent = f.source === "derived" ? `Dedus din: ${f.evidence}` : f.evidence || "";
     }
     put(meta, items);
   }
@@ -1244,7 +1251,7 @@ function renderField(row) {
   control.addEventListener(row.kind === "checkbox" || control.tagName === "SELECT" ? "change" : "input", onChange);
 
   const alternatives = (row.alternatives || []).filter((a) => a.value !== state.values[row.name]);
-  const altWrap = alternatives.length ? el("div", { class: "alts" }, "Other candidates:",
+  const altWrap = alternatives.length ? el("div", { class: "alts" }, "Alte variante:",
     alternatives.map((alt) => el("button", { type: "button",
       title: `${describeSource(alt)} · ${pct(alt.confidence)}${alt.document ? " · " + alt.document : ""}\n${alt.evidence || ""}${(alt.issues || []).length ? "\n⚠ " + alt.issues.join("; ") : ""}`,
       onclick: () => setValue(row, alt.value, true) },
@@ -1254,7 +1261,7 @@ function renderField(row) {
     el("div", { class: "head" },
       el("label", { for: `f-${row.name}` }, row.label),
       el("code", {}, row.name),
-      row.remember ? el("span", { class: "pill", title: "Your own details: remembered for next time" }, "remembered") : null,
+      row.remember ? el("span", { class: "pill", title: "Datele dumneavoastră: reținute pentru data viitoare" }, "reținut") : null,
       requiredTag),
     wrapper, issues, meta, evidence, altWrap);
   card.repaint = paint;
@@ -1288,7 +1295,7 @@ function renderOther() {
   const others = state.otherFields;
   $("other-wrap").style.display = others.length ? "" : "none";
   put($("other-table"),
-    el("tr", {}, el("th", {}, "Field"), el("th", {}, "Value"), el("th", {}, "Found by")),
+    el("tr", {}, el("th", {}, "Câmp"), el("th", {}, "Valoare"), el("th", {}, "Găsit prin")),
     others.map((o) => el("tr", {}, el("td", {}, o.label), el("td", {}, o.value),
       el("td", {}, `${describeSource(o)} ${pct(o.confidence)}`))));
 }
@@ -1303,10 +1310,10 @@ function renderProgress() {
   const missing = missingRequired().length;
   const problems = state.rows.filter((row) => fieldIssues(row).length).length;
   const legal = legalFailed().length;
-  $("progress-text").textContent = `${filled} of ${total} fields filled` +
-    (missing ? ` · ${missing} required missing` : "") + (problems ? ` · ${problems} with problems` : "") +
-    (legal ? ` · ${legal} legal check${legal === 1 ? "" : "s"} failed` : "") +
-    (!missing && !problems && !legal ? " · ready" : "");
+  $("progress-text").textContent = `${filled} din ${count(total, "câmp", "câmpuri")} completate` +
+    (missing ? ` · ${missing} obligatorii lipsă` : "") + (problems ? ` · ${problems} cu probleme` : "") +
+    (legal ? ` · ${count(legal, "verificare legală neîndeplinită", "verificări legale neîndeplinite")}` : "") +
+    (!missing && !problems && !legal ? " · gata" : "");
   $("progress-bar").style.width = total ? `${(filled / total) * 100}%` : "0";
 }
 
@@ -1378,7 +1385,7 @@ function renderPreviewTabs(tabsId, container) {
 }
 
 function renderPreview(container, preview) {
-  if (!preview) { put(container, el("div", { class: "empty" }, "Preview loading…")); return; }
+  if (!preview) { put(container, el("div", { class: "empty" }, "Se încarcă previzualizarea…")); return; }
   if (preview.kind === "text") {
     put(container, preview.lines.map((line) => {
       const segments = line.segments.map((seg) => seg.field
@@ -1401,16 +1408,16 @@ function renderPreview(container, preview) {
   const empty = rows.filter((r) => !r.value && !preview.missing.includes(r.field));
   const tableOf = (items) => el("table", {}, items.map((r) => el("tr", {
     class: `form-row ${!r.value && preview.missing.includes(r.field) ? "req-missing" : ""}`,
-    title: `PDF field “${r.pdf_field}”`, onclick: () => focusField(r.field) },
+    title: `Câmpul PDF „${r.pdf_field}”`, onclick: () => focusField(r.field) },
     el("td", {}, r.label), el("td", {}, r.value ? r.value.replace(/\n/g, " / ") : "—"))));
   put(container,
     el("h3", { class: "doc-h1" }, preview.title),
     el("p", { style: "font-family:system-ui;font-size:13px;color:#4b5563" },
-      "PDF form: the official layout is kept; these fields are filled (names in capitals, dates dd.mm.yyyy)."),
+      "Formular PDF: se păstrează formatul oficial; se completează aceste câmpuri (numele cu majuscule, datele în formatul zz.ll.aaaa)."),
     missing.length ? tableOf(missing) : null,
     tableOf(filled),
     empty.length ? el("details", { style: "margin-top:10px;font-family:system-ui" },
-      el("summary", { style: "cursor:pointer;color:#4b5563;font-size:13px" }, `${empty.length} empty optional fields`), tableOf(empty)) : null);
+      el("summary", { style: "cursor:pointer;color:#4b5563;font-size:13px" }, count(empty.length, "câmp opțional necompletat", "câmpuri opționale necompletate")), tableOf(empty)) : null);
 }
 
 // ------------------------------------------------------------------ step 4
@@ -1420,16 +1427,16 @@ function renderSave() {
   if (!previews.length) return;
   const filled = previews.reduce((a, p) => a + p.filled, 0);
   const total = previews.reduce((a, p) => a + p.total, 0);
-  $("save-summary").textContent = `${previews.map((p) => p.title).join(" + ")}: ${filled} of ${total} fields filled.`;
+  $("save-summary").textContent = `${previews.map((p) => p.title).join(" + ")}: ${filled} din ${count(total, "câmp", "câmpuri")} completate.`;
   const missing = [...new Set([...previews.flatMap((p) => p.missing), ...missingRequired().map((r) => r.name)])];
   const box = $("save-missing");
   if (missing.length) {
     const checkbox = el("input", { type: "checkbox", id: "allow-missing", checked: state.allowMissing,
       onchange: (event) => { state.allowMissing = event.target.checked; updateExportButton(); } });
     put(box, el("div", { class: "warnbox" },
-      `Still missing: ${missing.map(labelFor).join(", ")}. `,
-      el("button", { type: "button", class: "btn link small", onclick: () => focusField(missing[0]) }, "Go fill them in"),
-      el("div", { class: "check" }, checkbox, el("label", { for: "allow-missing" }, "Create anyway and leave them blank"))));
+      `Lipsesc încă: ${missing.map(labelFor).join(", ")}. `,
+      el("button", { type: "button", class: "btn link small", onclick: () => focusField(missing[0]) }, "Completați-le"),
+      el("div", { class: "check" }, checkbox, el("label", { for: "allow-missing" }, "Creați documentele oricum, lăsând aceste câmpuri necompletate"))));
   } else {
     put(box);
   }
@@ -1441,8 +1448,8 @@ function renderSave() {
   const names = previews.length > 1 ? previews.map((p) => `${state.filename || "document"}_${p.name}${ext(p)}`) : previews.map((p) => `${state.filename || "document"}${ext(p)}`);
   const exts = [...new Set(previews.map(ext))];
   $("filename-ext").textContent = exts.length === 1 ? exts[0] : "";
-  $("filename-hint").textContent = `Creates ${names.join(", ")} in the server's output folder and downloads ${names.length > 1 ? "them" : "it"}. Existing files are never overwritten.`;
-  $("export-btn").textContent = `Create ${documentsWord(previews.map((p) => p.output), previews.length)}`;
+  $("filename-hint").textContent = `Se creează ${names.join(", ")} în folderul de ieșire al serverului, apoi ${names.length > 1 ? "fișierele se descarcă" : "fișierul se descarcă"}. Fișierele existente nu sunt niciodată suprascrise.`;
+  $("export-btn").textContent = `Creați ${documentsWord(previews.map((p) => p.output), previews.length)}`;
   updateExportButton();
   renderPreviewTabs("final-tabs", $("final-preview"));
 }
@@ -1455,11 +1462,11 @@ function renderSaveLegal() {
   const checkbox = errors.length ? el("input", { type: "checkbox", id: "legal-ack", checked: state.legalAck,
     onchange: (event) => { state.legalAck = event.target.checked; updateExportButton(); } }) : null;
   put(box, el("div", { class: "warnbox" },
-    el("strong", {}, `${failed.length} legal check${failed.length === 1 ? "" : "s"} failed`),
+    el("strong", {}, count(failed.length, "verificare legală neîndeplinită", "verificări legale neîndeplinite")),
     el("ul", { style: "margin:6px 0 0;padding-left:18px" }, failed.map((r) => el("li", {},
       `${r.title}: ${r.message}`, el("span", { class: "cite" }, ` (${(r.legal_basis || []).map(citeText).join("; ")})`)))),
     errors.length ? el("div", { class: "check" }, checkbox, el("label", { for: "legal-ack" },
-      "I checked these and go on anyway (recorded, so rules that are often overridden get reviewed)")) : null));
+      "Am verificat aceste probleme și continui oricum (alegerea se înregistrează, pentru ca regulile ignorate des să fie revizuite)")) : null));
 }
 
 function renderDossier(container, result) {
@@ -1469,15 +1476,15 @@ function renderDossier(container, result) {
   const forms = result ? result.forms : procedure.forms.map((f) => ({ ...f, created: !!f.template && state.selected.includes(f.template) }));  // f.available comes from the procedure
   const docs = result ? result.documents : procedure.documents.map((d) => ({ ...d, provided: !!d.doc_type && provided.has(d.doc_type) }));
   put(container, el("div", { style: "margin-top:12px" },
-    el("div", { class: "panel-title" }, `File (dosar): ${procedure.title}`),
+    el("div", { class: "panel-title" }, `Dosarul: ${procedure.title}`),
     el("ul", { class: "check" },
       forms.filter((f) => f.created || f.required).map((f) => el("li", {}, el("span", { class: `ic ${f.created ? "ok" : "no"}` }, f.created ? "✓" : "✗"),
-        el("div", {}, f.title, el("small", {}, f.created ? "created by docfill"
-          : f.available ? "not ticked this time: prepare it separately or tick it in step 1" : "to prepare separately (not in docfill yet)",
-          !f.created && f.url ? el("span", {}, " · ", el("a", { href: f.url, target: "_blank", rel: "noopener" }, "official form ↗")) : null)))),
+        el("div", {}, f.title, el("small", {}, f.created ? "creat de docfill"
+          : f.available ? "nebifat de această dată: pregătiți-l separat sau bifați-l la pasul 1" : "de pregătit separat (nu există încă în docfill)",
+          !f.created && f.url ? el("span", {}, " · ", el("a", { href: f.url, target: "_blank", rel: "noopener" }, "formularul oficial ↗")) : null)))),
       docs.map((d) => el("li", {}, el("span", { class: `ic ${d.provided ? "ok" : d.required ? "no" : "opt"}` }, d.provided ? "✓" : d.required ? "□" : "○"),
-        el("div", {}, d.title + (d.required ? "" : " (if applicable)"),
-          el("small", {}, d.provided ? "uploaded and recognised" : d.required ? "to attach" : (d.note || "attach if it applies"))))))));
+        el("div", {}, d.title + (d.required ? "" : " (dacă este cazul)"),
+          el("small", {}, d.provided ? "încărcat și recunoscut" : d.required ? "de atașat" : (d.note || "se atașează dacă este cazul"))))))));
 }
 
 function updateExportButton() {
@@ -1486,12 +1493,24 @@ function updateExportButton() {
     (legalErrors().length > 0 && !state.legalAck);
 }
 
-// "PDF", "2 PDFs", "Word document", "3 documents": what the save step creates.
-function documentsWord(outputs, count, counted = false) {
+// What the save step creates, as a noun: [one, the one, many] ("PDF", "PDF-ul", "PDF-uri").
+function documentsNoun(outputs) {
   const kinds = new Set(outputs.map((output) => output || "pdf"));
-  const word = kinds.size === 1 && kinds.has("pdf") ? "PDF" : kinds.size === 1 ? "Word document" : "document";
-  if (count === 1) return counted ? `1 ${word}` : word === "PDF" ? "PDF" : `the ${word}`;
-  return `${count} ${word === "PDF" ? "PDFs" : `${word}s`}`;
+  if (kinds.size === 1 && kinds.has("pdf")) return ["PDF", "PDF-ul", "PDF-uri"];
+  if (kinds.size === 1) return ["document Word", "documentul Word", "documente Word"];
+  return ["document", "documentul", "documente"];
+}
+
+// "PDF-ul", "cele 2 PDF-uri", "documentul Word", "cele 3 documente": the button of the save step.
+function documentsWord(outputs, n) {
+  const [one, the, many] = documentsNoun(outputs);
+  return n === 1 ? the : `cele ${count(n, one, many)}`;
+}
+
+// "1 PDF creat", "2 PDF-uri create", "1 document Word creat": what the save step created.
+function documentsCreated(outputs, n) {
+  const [one, , many] = documentsNoun(outputs);
+  return `${count(n, one, many)} ${n === 1 ? "creat" : "create"}`;
 }
 
 async function exportPdf() {
@@ -1506,22 +1525,22 @@ async function exportPdf() {
     })).json();
     body.files.forEach((file, index) => setTimeout(() => download(file), index * 400));
     const learned = body.learned || {};
-    const outcomes = Object.entries(learned.outcomes || {}).map(([k, n]) => `${n} ${k}`).join(", ");
+    const outcomes = Object.entries(learned.outcomes || {}).map(([k, n]) => `${OUTCOMES[k] || k}: ${n}`).join(", ");
     put($("save-result"),
       el("div", { class: "success" },
-        el("strong", {}, `${documentsWord(body.files.map((file) => file.filename.split(".").pop()), body.files.length, true)} created ✓`),
+        el("strong", {}, `${documentsCreated(body.files.map((file) => file.filename.split(".").pop()), body.files.length)} ✓`),
         el("div", { class: "files-out" }, body.files.map((file) => el("div", {},
           el("a", { href: file.url, download: file.filename }, file.filename),
-          el("span", { class: "muted" }, ` · ${file.title} · saved as `), el("code", {}, file.saved_to))))),
+          el("span", { class: "muted" }, ` · ${file.title} · salvat ca `), el("code", {}, file.saved_to))))),
       el("div", { class: "learned" },
-        el("strong", {}, "Learned from this review: "),
-        outcomes || "nothing new",
-        (learned.new_labels || []).length ? el("div", {}, `New labels: ${learned.new_labels.join(", ")}`) : null,
-        learned.spelling_fixes ? el("div", {}, `Spelling fixes remembered: ${learned.spelling_fixes}`) : null,
-        learned.examples ? el("div", {}, `Document type examples added: ${learned.examples}`) : null,
-        learned.remembered ? el("div", {}, `Your details remembered for next time: ${learned.remembered} fields`) : null,
-        body.knowledge ? el("div", {}, `Legal checks run: ${body.knowledge.rules_checked}` +
-          (body.knowledge.overridden.length ? ` · overridden (recorded for review): ${body.knowledge.overridden.join(", ")}` : "")) : null));
+        el("strong", {}, "Învățat din această verificare: "),
+        outcomes ? `câmpuri ${outcomes}` : "nimic nou",
+        (learned.new_labels || []).length ? el("div", {}, `Etichete noi: ${learned.new_labels.join(", ")}`) : null,
+        learned.spelling_fixes ? el("div", {}, `Corecturi de scriere reținute: ${learned.spelling_fixes}`) : null,
+        learned.examples ? el("div", {}, `Exemple adăugate pentru tipurile de documente: ${learned.examples}`) : null,
+        learned.remembered ? el("div", {}, `Datele dumneavoastră reținute pentru data viitoare: ${count(learned.remembered, "câmp", "câmpuri")}`) : null,
+        body.knowledge ? el("div", {}, `Verificări legale efectuate: ${body.knowledge.rules_checked}` +
+          (body.knowledge.overridden.length ? ` · ignorate (înregistrate pentru revizuire): ${body.knowledge.overridden.join(", ")}` : "")) : null));
     if (body.dossier) renderDossier($("dossier"), body.dossier);
     loadHealth();
   } catch (error) {
@@ -1583,7 +1602,7 @@ function init() {
   $("manual-btn").addEventListener("click", fillManually);
   $("clean-text").addEventListener("input", (event) => {
     state.documents[state.activeDoc].text = event.target.value;
-    $("reextract-status").textContent = "editing…";
+    $("reextract-status").textContent = "în curs de modificare…";
     scheduleReextract();
   });
   $("filename").addEventListener("input", (event) => {
