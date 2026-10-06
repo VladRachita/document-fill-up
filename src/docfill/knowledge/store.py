@@ -302,13 +302,15 @@ class KnowledgeBase:
                     try:
                         entry = _entry_of(row)
                     except (ValidationError, ValueError) as exc:
-                        broken[(row.kind, row.key)] = f"invalid: {str(exc).splitlines()[0]}"
+                        broken[(row.kind, row.key)] = f"invalidă: {str(exc).splitlines()[0]}"
                         continue
                     if row.checksum not in (
                         spec_checksum(entry.spec),
                         _legacy_checksum(row.kind, row.data),
                     ):
-                        broken[(row.kind, row.key)] = "modified outside docfill (checksum)"
+                        broken[(row.kind, row.key)] = (
+                            "modificată în afara docfill (suma de control)"
+                        )
                         continue
                     entries[(row.kind, row.key)] = entry
                 sources = {s.id: s for s in session.scalars(select(LegalSource))}
@@ -360,20 +362,20 @@ class KnowledgeBase:
     def get(self, kind: str, key: str) -> Entry:
         entry = self._load().entries.get((kind, key))
         if entry is None:
-            raise KnowledgeNotFoundError(f"No {kind} '{key}' in the knowledge base")
+            raise KnowledgeNotFoundError(f"„{kind}/{key}” nu există în baza de cunoștințe")
         return entry
 
     def resolve(self, reference: str) -> Entry:
         """``procedure/srl.infiintare`` or just ``srl.infiintare`` when the key is unique."""
         kind, _, key = reference.rpartition("/")
         if kind and kind not in KINDS:
-            raise KnowledgeNotFoundError(f"Unknown kind '{kind}' (use one of {', '.join(KINDS)})")
+            raise KnowledgeNotFoundError(f"Tip necunoscut: „{kind}” (folosiți: {', '.join(KINDS)})")
         found = self.find(key, kind or None)
         if not found:
-            raise KnowledgeNotFoundError(f"Nothing called '{reference}' in the knowledge base")
+            raise KnowledgeNotFoundError(f"„{reference}” nu există în baza de cunoștințe")
         if len(found) > 1:
             kinds = ", ".join(f"{e.kind}/{e.key}" for e in found)
-            raise KnowledgeError(f"'{key}' is ambiguous: {kinds}")
+            raise KnowledgeError(f"„{key}” este ambiguu: {kinds}")
         return found[0]
 
     def doc_types(self) -> list[DocType]:
@@ -415,20 +417,20 @@ class KnowledgeBase:
         for spec in specs:
             where = f"{spec.kind}/{spec.key}"
             if spec.kind == "doc_type" and spec.key in DOC_TYPES:
-                errors.append(f"{where}: '{spec.key}' is a built-in document type")
+                errors.append(f"{where}: „{spec.key}” este un tip de document predefinit")
             for kind, names in spec.references().items():
                 for name in names:
                     if kind == "entity" and name not in entities:
-                        errors.append(f"{where}: unknown legal form '{name}'")
+                        errors.append(f"{where}: formă juridică necunoscută „{name}”")
                     elif kind == "doc_type" and name not in doc_types:
-                        errors.append(f"{where}: unknown document type '{name}'")
+                        errors.append(f"{where}: tip de document necunoscut „{name}”")
                     elif kind == "template" and name not in templates:
                         warnings.append(
-                            f"{where}: standard document '{name}' is not registered "
+                            f"{where}: documentul standard „{name}” nu este înregistrat "
                             "(docfill templates seed / add)"
                         )
                     elif kind == "field" and name not in FIELDS:
-                        warnings.append(f"{where}: '{name}' is not a known field (plain text)")
+                        warnings.append(f"{where}: „{name}” nu este un câmp cunoscut (text simplu)")
         return errors, list(dict.fromkeys(warnings))
 
     def save_all(
@@ -443,11 +445,11 @@ class KnowledgeBase:
         seen: set[tuple[str, str]] = set()
         for spec in specs:
             if (spec.kind, spec.key) in seen:
-                raise KnowledgeError(f"{spec.kind}/{spec.key} is defined twice")
+                raise KnowledgeError(f"{spec.kind}/{spec.key} este definit de două ori")
             seen.add((spec.kind, spec.key))
         errors, _ = self.check_references(specs)
         if errors:
-            raise KnowledgeError("Knowledge not saved:\n  " + "\n  ".join(errors))
+            raise KnowledgeError("Cunoștințele nu au fost salvate:\n  " + "\n  ".join(errors))
         results = []
         with self._sessions() as session:
             for spec in specs:
@@ -538,10 +540,12 @@ class KnowledgeBase:
                 select(KnowledgeEntry).where(KnowledgeEntry.kind == kind, KnowledgeEntry.key == key)
             )
             if row is None:
-                raise KnowledgeNotFoundError(f"No {kind} '{key}' in the knowledge base")
+                raise KnowledgeNotFoundError(f"„{kind}/{key}” nu există în baza de cunoștințe")
             if status == "verified":
                 if row.status == "retired":
-                    raise KnowledgeError(f"{kind}/{key} is retired; add it again to use it")
+                    raise KnowledgeError(
+                        f"{kind}/{key} este retrasă; adăugați-o din nou pentru a o folosi"
+                    )
                 row.verified_by, row.verified_at = actor, _utcnow()
             else:  # retiring is a local decision: bundled updates will not bring it back
                 row.origin = "local"
@@ -554,13 +558,13 @@ class KnowledgeBase:
     def verify(self, kind: str, key: str, by: str, note: str = "") -> Entry:
         """A person (lawyer, notary, expert) confirms the entry is correct and current."""
         if not by.strip():
-            raise KnowledgeError("say who verified it")
+            raise KnowledgeError("indicați numele persoanei care a verificat")
         return self._set_status(kind, key, "verified", by.strip(), note)
 
     def retire(self, kind: str, key: str, by: str, note: str = "") -> Entry:
         """No longer applies (e.g. the law changed). Kept in the history, not used."""
         if not by.strip():
-            raise KnowledgeError("say who retired it")
+            raise KnowledgeError("indicați numele persoanei care a retras înregistrarea")
         return self._set_status(kind, key, "retired", by.strip(), note)
 
     # ------------------------------------------------------------------ procedures
@@ -697,10 +701,10 @@ class KnowledgeBase:
         """Add (or replace, for the same citation) a legal text, split into articles."""
         citation = " ".join(citation.split())
         if len(citation) < 3:
-            raise KnowledgeError("give the act's citation, e.g. 'Legea nr. 31/1990'")
+            raise KnowledgeError("indicați citarea actului, de exemplu „Legea nr. 31/1990”")
         passages = split_passages(text)
         if not passages:
-            raise KnowledgeError(f"{filename or citation}: no text found")
+            raise KnowledgeError(f"{filename or citation}: nu s-a găsit text")
         checksum = hashlib.sha256(text.encode("utf-8")).hexdigest()
         with self._sessions() as session:
             source = session.scalar(select(LegalSource).where(LegalSource.citation == citation))
@@ -754,7 +758,7 @@ class KnowledgeBase:
         with self._sessions() as session:
             source = session.scalar(select(LegalSource).where(LegalSource.citation == citation))
             if source is None:
-                raise KnowledgeNotFoundError(f"No legal text '{citation}'")
+                raise KnowledgeNotFoundError(f"Nu există textul legal „{citation}”")
             session.execute(delete(LegalPassage).where(LegalPassage.source_id == source.id))
             session.delete(source)
             session.commit()

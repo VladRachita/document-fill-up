@@ -190,8 +190,8 @@ def test_derivations_and_checks_run_for_every_person():
     assert derived["p2_sex"][0] == "F"
     assert derived["date_of_birth"][0] == "14.11.1987"
     issues = validate_values({"p3_cnp": "1234567890123", "p2_id_expiry_date": "01.01.2020"})
-    assert "Invalid CNP" in issues["p3_cnp"][0]
-    assert issues["p2_id_expiry_date"] == ["The identity card has expired"]
+    assert "CNP invalid" in issues["p3_cnp"][0]
+    assert issues["p2_id_expiry_date"] == ["Cartea de identitate a expirat"]
     result = ExtractionResult()
     result.offer(
         ExtractedField(name="p2_cnp", value="1234567890123", confidence=0.9, source="label")

@@ -95,7 +95,9 @@ def scanned_pages(data: bytes, settings: Settings) -> list[bool]:
     app laid over them."""
     document = _open(data)
     if document is None:
-        raise DocumentReadError("the PDF cannot be opened: damaged, or protected by a password")
+        raise DocumentReadError(
+            "PDF-ul nu poate fi deschis: este deteriorat sau protejat cu parolă"
+        )
     try:
         scanned = []
         for index in range(len(document)):
@@ -122,10 +124,10 @@ def read_pdf(data: bytes, source: str, settings: Settings) -> RawDocument:
     try:
         reader = PdfReader(io.BytesIO(data))
         if reader.is_encrypted and not reader.decrypt(""):
-            raise DocumentReadError(f"{source}: PDF is password protected")
+            raise DocumentReadError(f"{source}: PDF-ul este protejat cu parolă")
         texts = [page.extract_text() or "" for page in reader.pages]
     except (PdfReadError, ValueError, KeyError, TypeError) as exc:
-        raise DocumentReadError(f"{source}: invalid PDF ({exc})") from exc
+        raise DocumentReadError(f"{source}: PDF invalid ({exc})") from exc
     texts = _spaced(texts, data)
 
     pages: list[Page] = []
@@ -154,15 +156,16 @@ def read_pdf(data: bytes, source: str, settings: Settings) -> RawDocument:
                     pages.append(Page(number=index + 1, text=ocr_text, ocr=True))
             except pdfium.PdfiumError as exc:
                 raise DocumentReadError(
-                    f"{source}: cannot render page {index + 1} ({exc})"
+                    f"{source}: pagina {index + 1} nu poate fi transformată în imagine ({exc})"
                 ) from exc
             except OCRUnavailableError as exc:
                 logger.warning("%s page %d: %s", source, index + 1, exc)
                 warnings.append(
-                    f"Page {index + 1} is a scan whose own text layer is used, as OCR is "
-                    f"unavailable: check the values read from it ({exc})"
+                    f"Pagina {index + 1} este scanată și, deoarece OCR nu este disponibil, se "
+                    "folosește textul adăugat de aplicația de scanare: verificați valorile citite "
+                    f"din ea ({exc})"
                     if scanner_text
-                    else f"Page {index + 1} looks scanned but OCR is unavailable: {exc}"
+                    else f"Pagina {index + 1} pare scanată, dar OCR nu este disponibil: {exc}"
                 )
                 pages.append(Page(number=index + 1, text=text))
     finally:

@@ -43,8 +43,13 @@ class MissingFieldsError(DocFillError):
     """Required fields of a standard document could not be filled."""
 
     def __init__(self, missing: list[str]):
+        from docfill.wizard import field_label  # the catalog of fields: imported when needed
+
         self.missing = missing
-        super().__init__("Missing values for required fields: " + ", ".join(missing))
+        super().__init__(  # the label to read, the name to give with --set or in the API
+            "Lipsesc valorile câmpurilor obligatorii: "
+            + ", ".join(f"{field_label(name)} [{name}]" for name in missing)
+        )
 
 
 class KnowledgeError(DocFillError):

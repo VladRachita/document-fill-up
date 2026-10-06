@@ -70,15 +70,16 @@ def document_kind(data: bytes, filename: str, settings: Settings | None = None) 
     """``docx``, ``doc`` or ``pdf``, from the content of the file; anything else is refused."""
     settings = settings or get_settings()
     if not data:
-        raise DocumentReadError(f"{filename}: file is empty")
+        raise DocumentReadError(f"{filename}: fișierul este gol")
     if len(data) > settings.max_file_size:
         raise DocumentReadError(
-            f"{filename}: file is larger than the {settings.max_file_size} bytes limit"
+            f"{filename}: fișierul depășește dimensiunea maximă permisă "
+            f"({settings.max_file_size} octeți)"
         )
     kind = detect_type(data, filename)
     if kind is DocumentType.IMAGE:
         raise UnsupportedDocumentError(
-            f"{filename}: only Word (.docx, .doc) and PDF documents can be converted"
+            f"{filename}: se pot converti doar documente Word (.docx, .doc) și PDF"
         )
     return kind.value
 
@@ -107,9 +108,9 @@ def convert(
     kind = document_kind(data, filename, settings)
     target = target or target_of(kind)
     if target not in MEDIA_TYPES:
-        raise ConversionError(f"cannot convert to '{target}': choose pdf or docx")
+        raise ConversionError(f"nu se poate converti în „{target}”: alegeți pdf sau docx")
     if target != target_of(kind):
-        raise ConversionError(f"{filename} is already a {NAMES[kind]} document")
+        raise ConversionError(f"{filename} este deja un document {NAMES[kind]}")
     notes: list[str] = []
     if kind == PDF:
         engine, notes = _for_scans(data, engine, settings)
@@ -140,15 +141,20 @@ def _for_scans(data: bytes, engine: str, settings: Settings) -> tuple[str, list[
     if engine == "auto" and mostly and ocr_ready:
         return "ocr", []
     if mostly:
-        how = "the OCR engine reads their text" if ocr_ready else f"OCR needs: {ocr_missing()}"
+        how = (
+            "motorul OCR le citește textul"
+            if ocr_ready
+            else f"pentru OCR este necesar: {ocr_missing()}"
+        )
         return engine, [
-            f"This PDF is a scan: without OCR the Word document shows its pages as pictures, "
-            f"the words cannot be edited ({how})"
+            f"Acest PDF este scanat: fără OCR, documentul Word afișează paginile ca imagini, iar "
+            f"cuvintele nu pot fi modificate ({how})"
         ]
     return engine, [
-        f"Page{'s' if len(pages) > 1 else ''} {', '.join(pages)} "
-        f"{'are scans' if len(pages) > 1 else 'is a scan'}: kept as pictures (the OCR engine "
-        "reads the text of every page)"
+        f"{'Paginile' if len(pages) > 1 else 'Pagina'} {', '.join(pages)} "
+        f"{'sunt scanate' if len(pages) > 1 else 'este scanată'}: "
+        f"{'păstrate' if len(pages) > 1 else 'păstrată'} ca imagini (motorul OCR citește textul "
+        "fiecărei pagini)"
     ]
 
 
@@ -169,8 +175,8 @@ def convert_and_score(
     conversion = convert(data, filename, target, engine, settings)
     if reference and target_of(reference_kind) == conversion.target:
         raise ConversionError(
-            f"{reference[0]}: the real document to compare with must be a "
-            f"{NAMES[conversion.target]} document, like the converted one"
+            f"{reference[0]}: documentul de referință trebuie să fie un document "
+            f"{NAMES[conversion.target]}, la fel ca documentul convertit"
         )
     # A Word document is not laid out to be compared with the PDF LibreOffice made of it: it
     # would be compared with itself.
@@ -187,7 +193,7 @@ def convert_and_score(
         report.warnings = [w for w in report.warnings if w not in original.warnings]
     if reference and reference_kind:
         expected = rendition(reference[1], reference_kind, settings)
-        expected.pages_source = "in the real document"
+        expected.pages_source = "în documentul de referință"
         conversion.reference = compare(expected, converted, "reference", previews)
     return conversion
 
@@ -204,7 +210,7 @@ def compare_files(
     sides = []
     for name, data in (expected, actual):
         sides.append(rendition(data, document_kind(data, name, settings), settings))
-    sides[0].pages_source = "in the real document"
+    sides[0].pages_source = "în documentul de referință"
     return compare(sides[0], sides[1], "reference", previews)
 
 

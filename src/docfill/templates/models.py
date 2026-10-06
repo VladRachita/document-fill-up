@@ -410,8 +410,9 @@ class StandardDocument(Base):
         """Refuse to use a standard document modified outside docfill (e.g. directly in SQL)."""
         if self.current_checksum() != self.checksum:
             raise TemplateIntegrityError(
-                f"Standard document '{self.name}' v{self.version} failed its integrity check; "
-                "it was modified outside docfill. Re-register it to accept the change."
+                f"Documentul standard „{self.name}” v{self.version} nu a trecut verificarea de "
+                "integritate: a fost modificat în afara docfill. Înregistrați-l din nou pentru a "
+                "accepta modificarea."
             )
 
     def summary(self) -> dict[str, Any]:

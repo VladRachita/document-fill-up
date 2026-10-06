@@ -59,7 +59,7 @@ def read_docx(data: bytes, source: str) -> RawDocument:
     try:
         document = Document(io.BytesIO(data))
     except (zipfile.BadZipFile, KeyError, ValueError) as exc:
-        raise DocumentReadError(f"{source}: invalid Word document ({exc})") from exc
+        raise DocumentReadError(f"{source}: document Word invalid ({exc})") from exc
 
     lines: list[str] = []
     for block in document.iter_inner_content():

@@ -340,7 +340,9 @@ class LearningStore:
         corrected = self._load().fixes.get((candidate.name, _spelling_key(candidate.value)))
         if corrected and corrected != candidate.value:
             candidate.value = corrected
-            candidate.evidence = f"{candidate.evidence or ''} (spelling learned from reviews)"
+            candidate.evidence = (
+                f"{candidate.evidence or ''} (scriere învățată din verificări anterioare)"
+            )
         return candidate
 
     def doc_examples(self) -> list[tuple[str, str]]:

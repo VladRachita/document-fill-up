@@ -293,11 +293,11 @@ def _tesseract(image: Image.Image, settings: Settings, timeout: int) -> list[dic
                 env={**os.environ, "OMP_THREAD_LIMIT": "1"},
             )
         except subprocess.TimeoutExpired as exc:
-            raise ConversionError(f"OCR did not finish within {timeout} s") from exc
+            raise ConversionError(f"OCR nu a terminat în {timeout} s") from exc
         except OSError as exc:
-            raise ConversionError(f"Tesseract could not be started ({exc})") from exc
+            raise ConversionError(f"Tesseract nu a putut fi pornit ({exc})") from exc
     if completed.returncode != 0:
-        raise ConversionError(f"Tesseract could not read the page ({completed.stderr[-300:]})")
+        raise ConversionError(f"Tesseract nu a putut citi pagina ({completed.stderr[-300:]})")
     rows = csv.DictReader(io.StringIO(completed.stdout), delimiter="\t", quoting=csv.QUOTE_NONE)
     return [row for row in rows if row.get("level") == "5" and (row.get("text") or "").strip()]
 
@@ -729,7 +729,7 @@ def read_pages(
         document = pdfium.PdfDocument(data)
     except pdfium.PdfiumError as exc:
         raise DocumentReadError(
-            f"the PDF cannot be opened: damaged, or protected by a password ({exc})"
+            f"PDF-ul nu poate fi deschis: este deteriorat sau protejat cu parolă ({exc})"
         ) from exc
     workers = workers or max(1, min(4, os.cpu_count() or 1))
     pages: list[Page] = []
@@ -1279,7 +1279,7 @@ def _float(paragraph: object, mark: Mark, number: int) -> None:
 
 def ocr_missing(settings: Settings) -> str | None:
     if not tesseract_available(settings.tesseract_cmd):
-        return "Tesseract OCR is not installed (apt install tesseract-ocr tesseract-ocr-ron)"
+        return "Tesseract OCR nu este instalat (apt install tesseract-ocr tesseract-ocr-ron)"
     return None
 
 
@@ -1288,7 +1288,7 @@ def scan_to_word(data: bytes, settings: Settings) -> OcrResult:
     pages = read_pages(data, settings, settings.convert_timeout)
     paragraphs, page = layout(pages)
     if not paragraphs:
-        raise ConversionError("no text was found on the pages, even with OCR")
+        raise ConversionError("nu s-a găsit text pe pagini, nici prin OCR")
     title = next((p.lines[0].text for p in paragraphs if p.alignment == "center"), "")
     words = [word for paragraph in paragraphs for line in paragraph.lines for word in line.words]
     letters = sum(max(word.letters, 1) for word in words)

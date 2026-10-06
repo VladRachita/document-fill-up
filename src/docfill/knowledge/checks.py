@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Any
 
+from docfill.extraction.fields import FIELDS
 from docfill.knowledge.specs import Check, RuleSpec
 from docfill.ro import check_cnp, format_amount, parse_amount, parse_date
 
@@ -26,6 +27,11 @@ def words(text: str) -> str:
 
 def lines(text: str) -> list[str]:
     return [line.strip() for line in (text or "").splitlines() if line.strip()]
+
+
+def labels(names: Iterable[str | None]) -> str:
+    """The fields as a person reads them: ``share_capital`` -> ``Capitalul social (lei)``."""
+    return ", ".join(FIELDS[name].label if name in FIELDS else str(name) for name in names)
 
 
 def age_on(birth: date, today: date) -> int:
@@ -54,37 +60,37 @@ def run_check(check: Check, values: Mapping[str, str], today: date | None = None
         return (values.get(name or "") or "").strip()
 
     if check.when and not any(get(name) for name in check.when):
-        return Outcome("skipped", "not applicable: " + ", ".join(check.when) + " empty")
+        return Outcome("skipped", "nu se aplică: necompletat " + labels(check.when))
 
     if check.type == "required":
         missing = [name for name in (check.fields or [check.field or ""]) if not get(name)]
         if missing:
-            return Outcome("failed", "missing: " + ", ".join(missing))
+            return Outcome("failed", "lipsesc: " + labels(missing))
         return Outcome("passed")
 
     if check.type == "required_any":
         names = check.fields or [check.field or ""]
         if any(get(name) for name in names):
             return Outcome("passed")
-        return Outcome("failed", "none of: " + ", ".join(names))
+        return Outcome("failed", "niciunul completat dintre: " + labels(names))
 
     value = get(check.field)
     if not value:
-        return Outcome("skipped", f"{check.field} is empty")
+        return Outcome("skipped", f"{labels([check.field])}: necompletat")
     limit = check.value if check.value is not None else 0.0
 
     if check.type in ("min_amount", "max_amount"):
         amount = parse_amount(value)
         if amount is None:
-            return Outcome("failed", f"not an amount: {value}")
+            return Outcome("failed", f"nu este o sumă: {value}")
         ok = amount >= limit if check.type == "min_amount" else amount <= limit
         return Outcome(
-            "passed" if ok else "failed", f"{format_amount(amount)} (limit {format_amount(limit)})"
+            "passed" if ok else "failed", f"{format_amount(amount)} (limita {format_amount(limit)})"
         )
     if check.type in ("min_count", "max_count"):
         count = len(lines(value))
         ok = count >= limit if check.type == "min_count" else count <= limit
-        return Outcome("passed" if ok else "failed", f"{count} (limit {format_amount(limit)})")
+        return Outcome("passed" if ok else "failed", f"{count} (limita {format_amount(limit)})")
     if check.type == "contains_any":
         text = f" {words(value)} "
         ok = any(f" {words(phrase)} " in text for phrase in check.any_of if words(phrase))
@@ -92,15 +98,15 @@ def run_check(check: Check, values: Mapping[str, str], today: date | None = None
     if check.type == "contains_field":
         other = get(check.other)
         if not other:
-            return Outcome("skipped", f"{check.other} is empty")
+            return Outcome("skipped", f"{labels([check.other])}: necompletat")
         ok = f" {words(other)} " in f" {words(value)} "
         return Outcome("passed" if ok else "failed", f"{value} / {other}")
     if check.type == "min_age":
         birth = _birth_date(value)
         if birth is None:
-            return Outcome("skipped", "no valid date of birth")
+            return Outcome("skipped", "nicio dată a nașterii validă")
         age = age_on(birth, today)
-        return Outcome("passed" if age >= limit else "failed", f"{age} years")
+        return Outcome("passed" if age >= limit else "failed", f"{age} ani")
     if check.type == "pattern":
         ok = re.fullmatch(check.pattern or "", value) is not None
         return Outcome("passed" if ok else "failed", value)
@@ -110,7 +116,7 @@ def run_check(check: Check, values: Mapping[str, str], today: date | None = None
     if check.type == "one_of":
         ok = words(value) in {words(option) for option in check.any_of}
         return Outcome("passed" if ok else "failed", value)
-    return Outcome("skipped", f"unknown check {check.type}")  # pragma: no cover
+    return Outcome("skipped", f"verificare necunoscută: {check.type}")  # pragma: no cover
 
 
 @dataclass

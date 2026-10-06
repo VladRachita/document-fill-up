@@ -54,7 +54,7 @@ def _open(pdf_data: bytes) -> PdfReader:
     try:
         return PdfReader(io.BytesIO(pdf_data))
     except PdfReadError as exc:
-        raise TemplateError(f"Invalid PDF form: {exc}") from exc
+        raise TemplateError(f"Formular PDF invalid: {exc}") from exc
 
 
 def _qualified_name(annotation: DictionaryObject) -> str:

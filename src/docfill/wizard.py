@@ -32,7 +32,7 @@ from docfill.templates.placeholders import apply, preview_lines, render_body
 from docfill.validation import validate_values
 
 MAX_ALTERNATIVES = 4
-SPECIAL_LABELS = {"today": "Date (today)"}
+SPECIAL_LABELS = {"today": "Data (ziua de azi)"}
 
 # The request each operation files: its box on the forms (înmatriculare / modificare - înscriere
 # mențiuni / radiere), e.g. II. of the beneficial owner declaration.
@@ -148,13 +148,13 @@ def field_rows(
             row.value, row.found = best.value, Candidate.of(best)
         elif name in remember and memory.get(name):
             row.value = memory[name]
-            row.found = Candidate(row.value, 1.0, "memory", "remembered from your last document")
+            row.found = Candidate(row.value, 1.0, "memory", "reținut din ultimul document salvat")
         elif name == "today":
             row.value = date.today().strftime("%d.%m.%Y")
             row.found = Candidate(value=row.value, confidence=1.0, source="system")
         elif name in defaults:
             row.value = defaults[name]
-            row.found = Candidate(row.value, 1.0, "default", "default of the reference document")
+            row.found = Candidate(row.value, 1.0, "default", "valoarea implicită a documentului")
         row.alternatives = [
             Candidate.of(candidate)
             for candidate in extraction.candidates.get(name, [])
@@ -183,7 +183,7 @@ def with_operation(
             value="x",
             confidence=0.99,
             source="default",
-            evidence=f"the operation chosen in step 1: {title}",
+            evidence=f"operațiunea aleasă la pasul 1: {title}",
         )
     )
     return extraction
@@ -219,7 +219,7 @@ def build_preview(template: StandardDocument, values: Mapping[str, str]) -> dict
     )
     preview["persons"] = persons
     if len(persons) > 1:
-        preview["title"] = f"{template.title} (× {len(persons)}: one for each person)"
+        preview["title"] = f"{template.title} (× {len(persons)}: câte unul pentru fiecare persoană)"
     return preview
 
 

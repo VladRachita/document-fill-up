@@ -57,9 +57,9 @@ def extract_text(data: bytes, filename: str, settings: Settings) -> str:
     """The text of a file: plain text and HTML directly, anything else through the document
     readers (text layer, Word body, OCR of scans and photos)."""
     if not data:
-        raise DocumentReadError(f"{filename}: file is empty")
+        raise DocumentReadError(f"{filename}: fișierul este gol")
     if len(data) > settings.max_file_size:
-        raise DocumentReadError(f"{filename}: file is larger than the upload limit")
+        raise DocumentReadError(f"{filename}: fișierul depășește dimensiunea maximă permisă")
     suffix = Path(filename).suffix.lower()
     if suffix in TEXT_SUFFIXES:
         return _decode(data)

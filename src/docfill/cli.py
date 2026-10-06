@@ -75,7 +75,7 @@ def _repository(ctx: typer.Context) -> Iterator[TemplateRepository]:
 
 
 def _fail(message: str) -> None:
-    err_console.print(f"[bold red]Error:[/] {message}")
+    err_console.print(f"[bold red]Error:[/] {escape(message)}")  # plain text, never markup
     raise typer.Exit(code=1)
 
 

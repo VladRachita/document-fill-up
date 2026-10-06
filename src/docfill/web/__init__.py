@@ -67,7 +67,7 @@ class _Templates(BaseModel):
         if self.template and self.template not in self.templates:
             self.templates.insert(0, self.template)
         if not self.templates:
-            raise ValueError("choose at least one reference document")
+            raise ValueError("alegeți cel puțin un document de completat")
         return self
 
 
@@ -123,7 +123,7 @@ def read_upload(upload: UploadFile, limit: int) -> tuple[str, bytes]:
     data = upload.file.read(limit + 1)
     name = upload.filename or "upload"
     if len(data) > limit:
-        raise HTTPException(413, f"{name} is too large")
+        raise HTTPException(413, f"{name}: fișierul este prea mare")
     return name, data
 
 
@@ -131,10 +131,10 @@ def saved_file(directory: Path, filename: str) -> FileResponse:
     """A document docfill saved in ``directory`` (PDF or Word), asked for by its bare name."""
     match = re.fullmatch(r"[\w.-]+\.(pdf|docx)", filename)
     if not match or filename != safe_filename(filename, f".{match[1]}"):
-        raise HTTPException(404, "not found")
+        raise HTTPException(404, "fișierul nu a fost găsit")
     path = directory / filename
     if not path.is_file():
-        raise HTTPException(404, "not found")
+        raise HTTPException(404, "fișierul nu a fost găsit")
     return FileResponse(path, media_type=MEDIA_TYPES[match[1]], filename=filename)
 
 
@@ -303,11 +303,13 @@ def register_wizard(
         (read as such whatever its wording)."""
         names = [n for n in [template, *(templates or [])] if n]
         if not names:
-            raise HTTPException(422, "choose at least one reference document")
+            raise HTTPException(422, "alegeți cel puțin un document de completat")
         if not any((files, representative, associate, administrator, company)):
-            raise HTTPException(422, "add at least one file to read")
+            raise HTTPException(422, "adăugați cel puțin un fișier de citit")
         if representative_type and representative_type not in REPRESENTATIVE_TYPES:
-            raise HTTPException(422, f"representative_type: one of {list(REPRESENTATIVE_TYPES)}")
+            raise HTTPException(
+                422, f"representative_type: una dintre {list(REPRESENTATIVE_TYPES)}"
+            )
         chosen = load(repo, list(dict.fromkeys(names)))
         spec = procedure_of(procedure)
         uploads = [read_upload(upload, settings.max_file_size) for upload in files or []]
@@ -338,7 +340,7 @@ def register_wizard(
                         value=value,
                         confidence=1.0,
                         source="manual",
-                        evidence="given in step 1 with the identity card",
+                        evidence="indicat la pasul 1, împreună cu cartea de identitate",
                         document=name,
                     )
                 )
@@ -352,7 +354,7 @@ def register_wizard(
                     value=representative_type,
                     confidence=1.0,
                     source="manual",
-                    evidence="chosen with the representative's identity card",
+                    evidence="ales împreună cu cartea de identitate a reprezentantului",
                 )
             )
             extraction = merge_extractions([extraction, chosen_type])
@@ -404,7 +406,7 @@ def register_wizard(
                 raise MissingFieldsError(missing)
         if failed_errors(legal) and not payload.legal_acknowledged:
             problems = "; ".join(f"{r.title}: {r.message}" for r in failed_errors(legal))
-            raise HTTPException(422, f"Legal checks failed: {problems}")
+            raise HTTPException(422, f"Verificări legale neîndeplinite: {problems}")
         results = []
         for template in chosen:  # fail before saving anything if a document is incomplete
             for person, result in docfill.fill_each(

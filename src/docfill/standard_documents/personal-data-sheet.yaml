@@ -1,28 +1,28 @@
 name: personal-data-sheet
-title: Personal Data Sheet
+title: Fișă cu datele personale
 description: >
-  Summary sheet with a person's identity and home/place details.
+  Fișă rezumat cu datele de identitate ale unei persoane și adresa de domiciliu.
 kind: text
 optional_fields:
   - place_of_birth
   - region
 body: |
-  # PERSONAL DATA SHEET
+  # FIȘĂ CU DATELE PERSONALE
 
-  ## Identity
+  ## Identitate
 
-  First name: {{ first_name }}
-  Last name: {{ last_name | upper }}
-  Place of birth: {{ place_of_birth }}
+  Nume: {{ last_name | upper }}
+  Prenume: {{ first_name }}
+  Locul nașterii: {{ place_of_birth }}
 
-  ## Home address
+  ## Adresa de domiciliu
 
   {{ full_address }}
 
-  City: {{ city }}
-  County / State: {{ region }}
-  Country: {{ country }}
+  Localitatea: {{ city }}
+  Județul / sectorul: {{ region }}
+  Țara: {{ country }}
 
   ---
 
-  Generated on {{ today }}.
+  Generată la data de {{ today }}.

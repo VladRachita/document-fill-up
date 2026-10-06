@@ -37,9 +37,10 @@ from typing import Any
 
 from docfill.config import Settings, get_settings
 from docfill.errors import ConversionError, ConverterUnavailableError
+from docfill.ro import counted
 
 PDF, WORD = "pdf", "docx"  # the two targets
-INSTALL_LIBREOFFICE = "apt install libreoffice-writer-nogui, or brew install --cask libreoffice"
+INSTALL_LIBREOFFICE = "apt install libreoffice-writer-nogui sau brew install --cask libreoffice"
 
 
 def libreoffice() -> str | None:
@@ -54,17 +55,17 @@ def libreoffice_missing() -> str | None:
     """Why LibreOffice cannot convert Word documents here, or ``None`` when it can."""
     tool = libreoffice()
     if tool is None:
-        return f"LibreOffice is not installed ({INSTALL_LIBREOFFICE})"
+        return f"LibreOffice nu este instalat ({INSTALL_LIBREOFFICE})"
     program = Path(os.path.realpath(tool)).parent
     # Distributions split LibreOffice in packages: the core alone cannot open a Word document.
     if (program / "soffice.bin").exists() and not any(program.glob("*swlo*")):
-        return "LibreOffice Writer is not installed (apt install libreoffice-writer-nogui)"
+        return "LibreOffice Writer nu este instalat (apt install libreoffice-writer-nogui)"
     return None
 
 
 def pdf2docx_missing() -> str | None:
     if importlib.util.find_spec("pdf2docx") is None:
-        return 'pdf2docx is not installed (pip install "docfill[convert]")'
+        return 'pdf2docx nu este instalat (pip install "docfill[convert]")'
     return None
 
 
@@ -110,13 +111,13 @@ def run_libreoffice(
                 env={**os.environ, "HOME": folder},
             )
         except subprocess.TimeoutExpired as exc:
-            raise ConversionError(f"LibreOffice did not finish within {timeout} s") from exc
+            raise ConversionError(f"LibreOffice nu a terminat în {timeout} s") from exc
         except OSError as exc:
-            raise ConversionError(f"LibreOffice could not be started ({exc})") from exc
+            raise ConversionError(f"LibreOffice nu a putut fi pornit ({exc})") from exc
         produced = sorted((work / "out").glob("document.*"))
         if not produced:
             output = completed.stderr + completed.stdout
-            raise ConversionError(f"LibreOffice could not convert the file ({_message(output)})")
+            raise ConversionError(f"LibreOffice nu a putut converti fișierul ({_message(output)})")
         return produced[0].read_bytes()
 
 
@@ -156,10 +157,10 @@ def _pdf2docx(data: bytes, suffix: str, settings: Settings) -> Produced:
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired as exc:
-            raise ConversionError(f"pdf2docx did not finish within {timeout} s") from exc
+            raise ConversionError(f"pdf2docx nu a terminat în {timeout} s") from exc
         if completed.returncode != 0 or not target.is_file():
             raise ConversionError(
-                f"pdf2docx could not convert the file ({_message(completed.stderr)})"
+                f"pdf2docx nu a putut converti fișierul ({_message(completed.stderr)})"
             )
         # A page pdf2docx cannot rebuild is left out, and only logged: say so.
         warnings = [
@@ -183,8 +184,8 @@ def _pdf_import(data: bytes, suffix: str, settings: Settings) -> Produced:
     return Produced(
         output,
         [
-            "LibreOffice puts every line of the PDF in a frame of its own: the text is "
-            "where the PDF prints it, but it is hard to edit"
+            "LibreOffice pune fiecare rând al PDF-ului într-un cadru separat: textul se află "
+            "acolo unde îl tipărește PDF-ul, dar este greu de modificat"
         ],
     )
 
@@ -196,17 +197,22 @@ def _ocr(data: bytes, suffix: str, settings: Settings) -> Produced:
     warnings = []
     if result.uncertain:
         warnings.append(
-            f"{len(result.uncertain)} word{'s were' if len(result.uncertain) != 1 else ' was'} "
-            "read with little confidence: check them in the Word document (listed with the "
-            "text score)"
+            f"{counted(len(result.uncertain), 'cuvânt citit', 'cuvinte citite')} cu un grad "
+            "redus de încredere: verificați-le în documentul Word (sunt enumerate la scorul "
+            "textului)"
         )
     if result.marks:
+        kept = counted(
+            result.marks,
+            "ștampilă, semnătură sau notă de mână păstrată",
+            "ștampile, semnături sau note de mână păstrate",
+        )
         warnings.append(
-            f"{result.marks} stamp{'s' if result.marks != 1 else ''}, signatures or handwritten "
-            "notes kept as pictures where they are on the page (handwriting is not read as text)"
+            f"{kept} ca imagini, în locul în care apar pe pagină (scrisul de mână nu este citit "
+            "ca text)"
         )
     elif not settings.ocr_keep_marks:
-        warnings.append("Stamps, signatures and handwriting were left out (a clean copy)")
+        warnings.append("Ștampilele, semnăturile și scrisul de mână au fost omise (o copie curată)")
     stats = {
         "words": result.words,
         "confidence": round(result.confidence, 1),
@@ -251,7 +257,7 @@ ENGINES: dict[str, list[Engine]] = {
             "libreoffice",
             PDF,
             "LibreOffice",
-            "Lays the Word document out like Word and exports it with its fonts embedded.",
+            "Paginează documentul Word la fel ca Word și îl exportă cu fonturile încorporate.",
             libreoffice_missing,
             _word_to_pdf,
         ),
@@ -261,24 +267,26 @@ ENGINES: dict[str, list[Engine]] = {
             "pdf2docx",
             WORD,
             "pdf2docx",
-            "Rebuilds paragraphs, tables and images: a Word document you can edit.",
+            "Reconstruiește paragrafele, tabelele și imaginile: un document Word care poate fi "
+            "modificat.",
             pdf2docx_missing,
             _pdf2docx,
         ),
         Engine(
             "ocr",
             WORD,
-            "OCR (scans)",
-            "Reads the text of scanned pages and writes it as paragraphs, titles and lists: "
-            "a Word document you can edit. Chosen by Auto for a scan.",
+            "OCR (documente scanate)",
+            "Citește textul paginilor scanate și îl scrie ca paragrafe, titluri și liste: un "
+            "document Word care poate fi modificat. Ales automat pentru un document scanat.",
             ocr_missing,
             _ocr,
         ),
         Engine(
             "libreoffice",
             WORD,
-            "LibreOffice (PDF import)",
-            "Every line in a frame where the PDF prints it: the text is all there, hard to edit.",
+            "LibreOffice (import PDF)",
+            "Fiecare rând într-un cadru, acolo unde îl tipărește PDF-ul: textul este complet, dar "
+            "greu de modificat.",
             libreoffice_missing,
             _pdf_import,
         ),
@@ -290,7 +298,7 @@ def engines_for(target: str | None = None) -> list[Engine]:
     if target is None:
         return [engine for found in ENGINES.values() for engine in found]
     if target not in ENGINES:
-        raise ConversionError(f"cannot convert to '{target}': choose one of {list(ENGINES)}")
+        raise ConversionError(f"nu se poate converti în „{target}”: alegeți dintre {list(ENGINES)}")
     return ENGINES[target]
 
 
@@ -301,9 +309,11 @@ def choose_engine(target: str, name: str = "auto") -> Engine:
         candidates = [engine for engine in candidates if engine.name == name]
         if not candidates:
             names = ", ".join(["auto", *(engine.name for engine in engines_for(target))])
-            raise ConversionError(f"no engine '{name}' converts to {target}: choose {names}")
+            raise ConversionError(
+                f"niciun motor „{name}” nu convertește în {target}: alegeți {names}"
+            )
     for engine in candidates:
         if engine.missing() is None:
             return engine
     reasons = "; ".join(f"{engine.name}: {engine.missing()}" for engine in candidates)
-    raise ConverterUnavailableError(f"no engine can convert to {target} here ({reasons})")
+    raise ConverterUnavailableError(f"niciun motor nu poate converti în {target} aici ({reasons})")

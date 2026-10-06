@@ -111,8 +111,8 @@ def _run(image: Image.Image, languages: str, psm: int) -> tuple[str, float, int]
 def ocr_image(image: Image.Image, languages: str = "auto", tesseract_cmd: str | None = None) -> str:
     if not tesseract_available(tesseract_cmd):
         raise OCRUnavailableError(
-            "Tesseract OCR is not installed. Install it (e.g. `apt install tesseract-ocr`) "
-            "or set DOCFILL_TESSERACT_CMD to its path."
+            "Tesseract OCR nu este instalat. Instalați-l (de exemplu, `apt install tesseract-ocr`) "
+            "sau indicați calea către acesta în DOCFILL_TESSERACT_CMD."
         )
     languages = resolve_languages(languages)
     gray = _flatten(image)

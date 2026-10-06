@@ -70,7 +70,7 @@ def test_fill(db, source, tmp_path):
     )
     assert result.exit_code == 0, result.output
     text = PdfReader(output).pages[0].extract_text()
-    assert "Ion POPESCU" in text
+    assert "POPESCU Ion" in text  # Romanian acts: family name first
     assert "Cluj-Napoca" in text
 
 

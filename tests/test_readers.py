@@ -91,7 +91,7 @@ def test_invalid_pdf_raises(settings):
 def test_scanned_pdf_without_ocr_warns(settings, monkeypatch):
     monkeypatch.setattr("docfill.readers.ocr.tesseract_available", lambda *_: False)
     document = read_bytes(make_scanned_pdf(["Surname: SMITH"]), "scan.pdf", settings)
-    assert document.warnings and "OCR is unavailable" in document.warnings[0]
+    assert document.warnings and "OCR nu este disponibil" in document.warnings[0]
 
 
 @requires_tesseract
@@ -140,7 +140,7 @@ def test_the_scanner_apps_text_is_used_without_ocr(settings, monkeypatch):
     data = make_scanner_app_pdf(SCANNED_COMODAT, SCANNER_APP_TEXT)
     document = read_bytes(data, "comodat.pdf", settings)
     assert "judeftil Bra~ov." in document.text
-    assert "own text layer is used" in document.warnings[0]
+    assert "textul adăugat de aplicația de scanare" in document.warnings[0]
 
 
 def test_a_pdf_with_its_own_text_is_not_ocr_read(settings, monkeypatch):

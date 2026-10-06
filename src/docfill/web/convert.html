@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="ro">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>docfill convert</title>
+<title>docfill · conversie documente</title>
 <link rel="icon" href="data:,">
 <style>
   :root {
@@ -145,9 +145,9 @@
 <body>
 <header>
   <div class="wrap">
-    <div class="brand">docfill<small>convert documents · Word ⇄ PDF</small></div>
-    <a class="navlink" href="/wizard">← Wizard</a>
-    <a class="navlink" href="/knowledge">Knowledge base</a>
+    <div class="brand">docfill<small>conversie documente · Word ⇄ PDF</small></div>
+    <a class="navlink" href="/wizard">← Asistent</a>
+    <a class="navlink" href="/knowledge">Baza de cunoștințe</a>
     <div class="pills" id="pills" aria-live="polite"></div>
   </div>
 </header>
@@ -159,55 +159,55 @@
   <section data-mode="convert">
     <div class="grid-2">
       <div class="card">
-        <h2>1. The document to convert</h2>
-        <p class="hint">A Word document (.docx, .doc) becomes a PDF; a PDF becomes a Word document (.docx). The result is scored against the original: how close to 1:1 it is, and where it differs.</p>
+        <h2>1. Documentul de convertit</h2>
+        <p class="hint">Un document Word (.docx, .doc) devine PDF; un PDF devine document Word (.docx). Rezultatul primește un scor în raport cu originalul: cât de aproape este de o copie identică (1:1) și unde diferă.</p>
         <label class="drop" id="source-drop">
           <input type="file" id="source-input" accept=".docx,.doc,.pdf">
-          <strong>Drop a file here or click to choose</strong>
+          <strong>Trageți un fișier aici sau faceți clic pentru a-l alege</strong>
           <span class="muted" style="font-size:13px">.docx · .doc · .pdf</span>
         </label>
         <div id="source-file"></div>
-        <p class="pick-label">Engine</p>
-        <div class="picker" id="engine-picker" role="group" aria-label="Engine"></div>
-        <label class="check" id="marks-row" hidden><input type="checkbox" id="marks-input" checked><span>Keep stamps, signatures and handwriting <span class="muted">(a scan: as pictures where they are on the page; unticked, a clean copy)</span></span></label>
-        <label class="f" for="out-name">Name of the converted file (optional)</label>
-        <div class="filename"><input type="text" id="out-name" placeholder="same as the original" autocomplete="off"><span id="out-suffix">.pdf</span></div>
+        <p class="pick-label">Motorul de conversie</p>
+        <div class="picker" id="engine-picker" role="group" aria-label="Motorul de conversie"></div>
+        <label class="check" id="marks-row" hidden><input type="checkbox" id="marks-input" checked><span>Păstrați ștampilele, semnăturile și scrisul de mână <span class="muted">(la un document scanat: ca imagini, în locul în care apar pe pagină; nebifat: o copie curată)</span></span></label>
+        <label class="f" for="out-name">Numele fișierului convertit (opțional)</label>
+        <div class="filename"><input type="text" id="out-name" placeholder="la fel ca originalul" autocomplete="off"><span id="out-suffix">.pdf</span></div>
       </div>
       <div class="card">
-        <h2>2. The real document <span class="muted">(optional)</span></h2>
+        <h2>2. Documentul de referință <span class="muted">(opțional)</span></h2>
         <p class="hint" id="reference-hint"></p>
         <label class="drop small" id="reference-drop">
           <input type="file" id="reference-input" accept=".pdf,.docx,.doc">
-          <strong>The real document</strong>
-          <span class="muted" style="font-size:13px" id="reference-kind">PDF or Word</span>
+          <strong>Documentul de referință</strong>
+          <span class="muted" style="font-size:13px" id="reference-kind">PDF sau Word</span>
         </label>
         <div id="reference-file"></div>
       </div>
     </div>
     <div class="actions">
       <span class="busy" id="convert-busy" aria-live="polite"></span>
-      <button class="btn primary" id="convert-btn" type="button" disabled>Convert</button>
+      <button class="btn primary" id="convert-btn" type="button" disabled>Convertiți</button>
     </div>
   </section>
 
   <section data-mode="compare" hidden>
     <div class="grid-2">
       <div class="card">
-        <h2>The real document</h2>
-        <p class="hint">What the converted document should look like: the PDF Word saves, or the Word document a PDF was made from.</p>
+        <h2>Documentul de referință</h2>
+        <p class="hint">Cum ar trebui să arate documentul convertit: PDF-ul salvat de Word sau documentul Word din care a fost creat PDF-ul.</p>
         <label class="drop" id="real-drop">
           <input type="file" id="real-input" accept=".pdf,.docx,.doc">
-          <strong>Drop the real document here</strong>
+          <strong>Trageți aici documentul de referință</strong>
           <span class="muted" style="font-size:13px">.pdf · .docx · .doc</span>
         </label>
         <div id="real-file"></div>
       </div>
       <div class="card">
-        <h2>The converted document</h2>
-        <p class="hint">Made by any program (Word, Adobe, an online converter, docfill…). Word documents are laid out by LibreOffice to compare their pages.</p>
+        <h2>Documentul convertit</h2>
+        <p class="hint">Creat cu orice program (Word, Adobe, un convertor online, docfill…). Documentele Word sunt paginate cu LibreOffice pentru a le putea compara paginile.</p>
         <label class="drop" id="converted-drop">
           <input type="file" id="converted-input" accept=".pdf,.docx,.doc">
-          <strong>Drop the converted document here</strong>
+          <strong>Trageți aici documentul convertit</strong>
           <span class="muted" style="font-size:13px">.pdf · .docx · .doc</span>
         </label>
         <div id="converted-file"></div>
@@ -215,22 +215,22 @@
     </div>
     <div class="actions">
       <span class="busy" id="compare-busy" aria-live="polite"></span>
-      <button class="btn primary" id="compare-btn" type="button" disabled>Compare</button>
+      <button class="btn primary" id="compare-btn" type="button" disabled>Comparați</button>
     </div>
   </section>
 
   <div id="results"></div>
 
   <div class="card">
-    <h2>How the scores work</h2>
-    <p class="hint">Each check gives 0–100; the score is their weighted mean, over the checks that could be made. 97 and more: 1:1, practically identical; 90: very close; 75: close; under 75: different.</p>
+    <h2>Cum se calculează scorurile</h2>
+    <p class="hint">Fiecare verificare acordă între 0 și 100 de puncte; scorul final este media ponderată a verificărilor care au putut fi efectuate. 97 sau peste: 1:1, practic identic; 90: foarte apropiat; 75: apropiat; sub 75: diferit.</p>
     <div class="explain">
-      <div><b>Layout, page by page · 50</b>Both documents are drawn page by page; the share of the ink (text, lines, pictures) found at the same place in both, within 0.7 mm. A missing or extra page counts 0. A Word document is laid out by LibreOffice to be compared.</div>
-      <div><b>Text · 30</b>Every word, in its order. From Word to PDF: the words of the document found in the PDF (page headers and numbers printed on every page are not held against it).</div>
-      <div><b>Pages · 8</b>The number of pages: of the original PDF, of the real document, or the number Word saved with the document when it last saved it (used when it is up to date).</div>
-      <div><b>Fonts · 8</b>The fonts of the text: the same font (100), a font of the same widths such as Liberation Serif for Times New Roman (90: the lines break at the same place), or another font (0).</div>
-      <div><b>Pictures · 4</b>The number of pictures kept.</div>
-      <div><b>Against the real document</b>Without it, a Word document converted to PDF is not compared page by page (LibreOffice would be compared with itself): add the PDF Word saves for the true 1:1 score.</div>
+      <div><b>Aranjarea în pagină, pagină cu pagină · 50</b>Ambele documente sunt desenate pagină cu pagină; se măsoară proporția din conținutul tipărit (text, linii, imagini) aflat în același loc în ambele, cu o toleranță de 0,7 mm. O pagină lipsă sau în plus primește 0. Un document Word este paginat cu LibreOffice pentru a fi comparat.</div>
+      <div><b>Text · 30</b>Fiecare cuvânt, în ordinea sa. Din Word în PDF: cuvintele documentului regăsite în PDF (antetele și numerele de pagină tipărite pe fiecare pagină nu scad scorul).</div>
+      <div><b>Pagini · 8</b>Numărul de pagini: al PDF-ului original, al documentului de referință sau numărul salvat de Word împreună cu documentul la ultima salvare (folosit dacă este actualizat).</div>
+      <div><b>Fonturi · 8</b>Fonturile textului: același font (100), un font cu aceleași lățimi ale caracterelor, cum este Liberation Serif pentru Times New Roman (90: rândurile se termină în același loc), sau alt font (0).</div>
+      <div><b>Imagini · 4</b>Numărul de imagini păstrate.</div>
+      <div><b>Față de documentul de referință</b>Fără acesta, un document Word convertit în PDF nu este comparat pagină cu pagină (LibreOffice ar fi comparat cu el însuși): adăugați PDF-ul salvat de Word pentru a obține scorul 1:1 real.</div>
     </div>
   </div>
 </main>
@@ -238,8 +238,8 @@
 <script>
 "use strict";
 
-const MODES = [["convert", "Convert"], ["compare", "Compare two documents"]];
-const VIEWS = [["diff", "Differences"], ["original", "Original"], ["converted", "Converted"]];
+const MODES = [["convert", "Conversie"], ["compare", "Comparați două documente"]];
+const VIEWS = [["diff", "Diferențe"], ["original", "Original"], ["converted", "Convertit"]];
 const TARGETS = { pdf: "PDF", docx: "Word" };
 const state = { mode: "convert", engines: { pdf: [], docx: [] }, engine: "auto", source: null, reference: null, real: null, converted: null, view: "diff", busy: false };
 
@@ -283,6 +283,9 @@ async function api(path, options = {}) {
   }
   return response.json();
 }
+// Romanian counts: "1 cuvânt", "2 cuvinte", "20 de cuvinte".
+const de = (n) => (n >= 20 && (n % 100 === 0 || n % 100 >= 20)) ? "de " : "";
+const count = (n, one, many) => n === 1 ? `1 ${one}` : `${n} ${de(n)}${many}`;
 const size = (bytes) => bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 const kindOf = (file) => /\.pdf$/i.test(file.name) ? "pdf" : /\.docx?$/i.test(file.name) ? "word" : null;
 const targetOf = (file) => kindOf(file) === "pdf" ? "docx" : "pdf";
@@ -306,11 +309,11 @@ function fileRow(file, onRemove, ...extra) {
   return el("div", { class: "file" },
     el("span", { class: "name", title: file.name }, file.name), ...extra,
     el("span", { class: "size" }, size(file.size)),
-    el("button", { type: "button", class: "btn link small", onclick: onRemove, "aria-label": `Remove ${file.name}` }, "Remove"));
+    el("button", { type: "button", class: "btn link small", onclick: onRemove, "aria-label": `Eliminați ${file.name}` }, "Eliminați"));
 }
 
 function setSource(file) {
-  if (file && !kindOf(file)) { showBanner(`${file.name}: choose a Word (.docx, .doc) or PDF document.`); return; }
+  if (file && !kindOf(file)) { showBanner(`${file.name}: alegeți un document Word (.docx, .doc) sau PDF.`); return; }
   showBanner("");
   state.source = file;
   if (file && state.reference && kindOf(state.reference) !== (targetOf(file) === "pdf" ? "pdf" : "word")) state.reference = null;
@@ -319,9 +322,9 @@ function setSource(file) {
 }
 
 function setReference(file) {
-  if (file && !kindOf(file)) { showBanner(`${file.name}: choose a Word (.docx, .doc) or PDF document.`); return; }
+  if (file && !kindOf(file)) { showBanner(`${file.name}: alegeți un document Word (.docx, .doc) sau PDF.`); return; }
   if (file && state.source && kindOf(file) !== (targetOf(state.source) === "pdf" ? "pdf" : "word")) {
-    showBanner(`The real document must be a ${TARGETS[targetOf(state.source)]} document, like the converted one.`);
+    showBanner(`Documentul de referință trebuie să fie un document ${TARGETS[targetOf(state.source)]}, la fel ca documentul convertit.`);
     return;
   }
   showBanner("");
@@ -335,28 +338,28 @@ function renderConvert() {
     el("span", { class: "pill accent" }, `${TARGETS[target === "pdf" ? "docx" : "pdf"]} → ${TARGETS[target]}`)) : null);
   put($("reference-file"), state.reference ? fileRow(state.reference, () => setReference(null)) : null);
   $("out-suffix").textContent = `.${target || "pdf"}`;
-  $("reference-kind").textContent = target === "pdf" ? "PDF (.pdf)" : target === "docx" ? "Word (.docx, .doc)" : "PDF or Word";
+  $("reference-kind").textContent = target === "pdf" ? "PDF (.pdf)" : target === "docx" ? "Word (.docx, .doc)" : "PDF sau Word";
   $("reference-input").accept = target === "pdf" ? ".pdf" : target === "docx" ? ".docx,.doc" : ".pdf,.docx,.doc";
   $("reference-hint").textContent = target === "pdf"
-    ? "The PDF Word makes of this same document (File › Save As › PDF). The converted PDF is compared with it page by page: the true 1:1 score."
+    ? "PDF-ul pe care Word îl creează din același document (Fișier › Salvare ca › PDF). PDF-ul convertit este comparat cu acesta pagină cu pagină: scorul 1:1 real."
     : target === "docx"
-      ? "The Word document this PDF was made from. Both Word documents are laid out the same way and compared page by page."
-      : "Choose the document to convert first. With the real document (the PDF Word saves, or the Word document a PDF was made from), the converted one is compared with it page by page.";
+      ? "Documentul Word din care a fost creat acest PDF. Ambele documente Word sunt paginate în același mod și comparate pagină cu pagină."
+      : "Alegeți mai întâi documentul de convertit. Dacă adăugați documentul de referință (PDF-ul salvat de Word sau documentul Word din care a fost creat PDF-ul), documentul convertit este comparat cu acesta pagină cu pagină.";
   const engines = target ? state.engines[target] : [];
   const ready = engines.filter((e) => e.available);
   put($("engine-picker"), target ? [
     el("button", { type: "button", class: "pick", "aria-pressed": String(state.engine === "auto"), disabled: !ready.length,
       onclick: () => { state.engine = "auto"; renderConvert(); } },
-      el("strong", {}, "Auto"), el("span", {}, !ready.length ? "no engine installed"
-        : target === "docx" && ready.some((e) => e.name === "ocr") ? `${ready[0].title}; a scan is read with OCR`
-        : `the best installed: ${ready[0].title}`)),
+      el("strong", {}, "Automat"), el("span", {}, !ready.length ? "niciun motor instalat"
+        : target === "docx" && ready.some((e) => e.name === "ocr") ? `${ready[0].title}; un document scanat se citește prin OCR`
+        : `cel mai bun dintre cele instalate: ${ready[0].title}`)),
     engines.map((e) => el("button", { type: "button", class: "pick", "aria-pressed": String(state.engine === e.name), disabled: !e.available,
       title: e.missing || e.description, onclick: () => { state.engine = e.name; renderConvert(); } },
       el("strong", {}, e.title), el("span", {}, e.available ? e.description : e.missing))),
-  ] : el("span", { class: "muted", style: "font-size:13.5px" }, "Choose a document first."));
+  ] : el("span", { class: "muted", style: "font-size:13.5px" }, "Alegeți mai întâi un document."));
   $("marks-row").hidden = !(target === "docx" && ["auto", "ocr"].includes(state.engine) && ready.some((e) => e.name === "ocr"));
   $("convert-btn").disabled = state.busy || !state.source || !ready.length;
-  $("convert-btn").textContent = target ? `Convert to ${TARGETS[target]}` : "Convert";
+  $("convert-btn").textContent = target ? `Convertiți în ${TARGETS[target]}` : "Convertiți";
 }
 
 function renderCompare() {
@@ -388,7 +391,7 @@ async function convert() {
   if ($("out-name").value.trim()) form.append("filename", $("out-name").value.trim());
   if (!$("marks-row").hidden) form.append("marks", String($("marks-input").checked));
   showBanner("");
-  busy(true, "convert", `Converting ${state.source.name} and comparing it… (a few seconds per page)`);
+  busy(true, "convert", `Se convertește ${state.source.name} și se compară cu originalul… (câteva secunde pentru fiecare pagină)`);
   try {
     const result = await api("/convert", { method: "POST", body: form });
     renderResults(result);
@@ -401,7 +404,7 @@ async function compare() {
   form.append("real", state.real, state.real.name);
   form.append("converted", state.converted, state.converted.name);
   showBanner("");
-  busy(true, "compare", "Comparing…");
+  busy(true, "compare", "Se compară…");
   try {
     const report = await api("/convert/compare", { method: "POST", body: form });
     renderResults(null, report);
@@ -412,20 +415,20 @@ async function compare() {
 // ------------------------------------------------------------------ results
 
 function gauge(score) {
-  return el("div", { class: "gauge", style: `--p:${score ?? 0};--c:${colour(score)}`, role: "img", "aria-label": score == null ? "no score" : `score ${score} of 100` },
+  return el("div", { class: "gauge", style: `--p:${score ?? 0};--c:${colour(score)}`, role: "img", "aria-label": score == null ? "fără scor" : `scor ${score} din 100` },
     el("span", {}, score == null ? "–" : score >= 99.95 ? "100" : score.toFixed(1)));
 }
 
 function statusPill(check) {
-  if (check.status === "na") return el("span", { class: "pill" }, "not measured");
-  return el("span", { class: `pill ${check.status}` }, { ok: "1:1", warn: "small differences", bad: "different" }[check.status]);
+  if (check.status === "na") return el("span", { class: "pill" }, "nemăsurat");
+  return el("span", { class: `pill ${check.status}` }, { ok: "1:1", warn: "diferențe mici", bad: "diferit" }[check.status]);
 }
 
 function checksTable(report) {
   return el("table", { class: "checks" },
-    el("tr", {}, el("th", {}, "Check"), el("th", {}, "Score"), el("th", {}, ""), el("th", {}, "What was found")),
+    el("tr", {}, el("th", {}, "Verificare"), el("th", {}, "Scor"), el("th", {}, ""), el("th", {}, "Ce s-a constatat")),
     report.checks.map((check) => el("tr", {},
-      el("td", {}, el("strong", {}, check.title), el("div", { class: "w" }, `weight ${check.weight}`)),
+      el("td", {}, el("strong", {}, check.title), el("div", { class: "w" }, `pondere ${check.weight}`)),
       el("td", { class: "score" }, check.score == null ? el("span", { class: "muted" }, "–") : [
         el("span", { class: "bar" }, el("i", { style: `width:${check.score}%;background:${colour(check.score)}` })),
         `${check.score}`]),
@@ -437,7 +440,7 @@ function uncertainWords(report) {
   const text = report.checks.find((c) => c.key === "text");
   if (!text || !text.uncertain || !text.uncertain.length) return null;
   return el("details", { class: "more" },
-    el("summary", {}, `Words to check (${text.uncertain.length}): read with little confidence`),
+    el("summary", {}, `Cuvinte de verificat (${text.uncertain.length}): citite cu un grad redus de încredere`),
     el("div", { class: "uncertain" }, text.uncertain.map((word) => el("span", {}, word))));
 }
 
@@ -446,23 +449,23 @@ function textDifferences(report) {
   if (!text || !text.differences || !text.differences.length) return null;
   const more = text.differences_total - text.differences.length;
   return el("details", { class: "more" },
-    el("summary", {}, `Text differences (${text.differences_total})`),
+    el("summary", {}, `Diferențe de text (${text.differences_total})`),
     text.differences.map((d) => el("div", { class: "diff-item" },
       d.before ? el("span", { class: "muted" }, `…${d.before} `) : null,
-      d.missing ? el("del", { title: "missing in the converted document" }, d.missing) : null,
+      d.missing ? el("del", { title: "lipsește din documentul convertit" }, d.missing) : null,
       d.missing && d.added ? " " : null,
-      d.added ? el("ins", { title: "added in the converted document" }, d.added) : null)),
-    more > 0 ? el("div", { class: "muted", style: "font-size:13px;padding-top:6px" }, `and ${more} more`) : null);
+      d.added ? el("ins", { title: "adăugat în documentul convertit" }, d.added) : null)),
+    more > 0 ? el("div", { class: "muted", style: "font-size:13px;padding-top:6px" }, `și încă ${more}`) : null);
 }
 
 function fontsTable(report) {
   const fonts = report.checks.find((c) => c.key === "fonts");
   if (!fonts || !fonts.fonts || !fonts.fonts.length) return null;
-  const how = { same: ["ok", "same font"], metric: ["warn", "same widths"], replaced: ["bad", "replaced"] };
+  const how = { same: ["ok", "același font"], metric: ["warn", "aceleași lățimi"], replaced: ["bad", "înlocuit"] };
   return el("details", { class: "more" },
-    el("summary", {}, `Fonts (${fonts.fonts.length})`),
+    el("summary", {}, `Fonturi (${fonts.fonts.length})`),
     el("table", {},
-      el("tr", {}, el("th", {}, "Font of the original"), el("th", {}, "Share of the text"), el("th", {}, "In the converted document"), el("th", {}, "")),
+      el("tr", {}, el("th", {}, "Fontul originalului"), el("th", {}, "Proporția din text"), el("th", {}, "În documentul convertit"), el("th", {}, "")),
       fonts.fonts.map((f) => el("tr", {},
         el("td", {}, f.font), el("td", {}, `${Math.round(f.share * 100)}%`), el("td", {}, f.used || "—"),
         el("td", {}, el("span", { class: `pill ${how[f.match][0]}` }, how[f.match][1]))))));
@@ -492,29 +495,29 @@ function paint(canvas, image, view) {
 function pagesGrid(report) {
   if (!report.pages.length) return null;
   const tiles = report.pages.map((page) => {
-    const caption = el("figcaption", {}, el("span", {}, `Page ${page.number}`),
+    const caption = el("figcaption", {}, el("span", {}, `Pagina ${page.number}`),
       el("strong", { style: `color:${colour(page.score)}` }, `${Math.round(page.score)}%`));
-    if (!page.diff) return el("figure", { class: "page noimg" }, el("div", { class: "blank" }, "no preview"), caption);
-    const canvas = el("canvas", { role: "img", "aria-label": `Page ${page.number}, ${page.score}% alike` });
+    if (!page.diff) return el("figure", { class: "page noimg" }, el("div", { class: "blank" }, "fără previzualizare"), caption);
+    const canvas = el("canvas", { role: "img", "aria-label": `Pagina ${page.number}, asemănare ${page.score}%` });
     const image = new Image();
     image.onload = () => paint(canvas, image, state.view);
     image.src = page.diff;
-    const figure = el("figure", { class: "page", title: "Click to enlarge", onclick: () => figure.classList.toggle("zoom") }, canvas, caption);
+    const figure = el("figure", { class: "page", title: "Faceți clic pentru a mări", onclick: () => figure.classList.toggle("zoom") }, canvas, caption);
     figure.redraw = () => { if (image.complete) paint(canvas, image, state.view); };
     return figure;
   });
   const shown = report.pages.filter((p) => p.diff).length;
-  const views = el("div", { class: "seg", role: "group", "aria-label": "Show" },
+  const views = el("div", { class: "seg", role: "group", "aria-label": "Afișare" },
     VIEWS.map(([key, title]) => el("button", { type: "button", "aria-pressed": String(state.view === key), "data-view": key,
       onclick: () => setView(key) }, title)));
   return el("div", {},
     el("div", { class: "pages-head" },
-      el("h3", {}, "Pages"), views,
+      el("h3", {}, "Pagini"), views,
       el("div", { class: "legend" },
-        el("span", {}, el("i", { style: "background:#6e6e6e" }), "in both"),
-        el("span", {}, el("i", { style: "background:#d62828" }), "only in the original (missing or moved)"),
-        el("span", {}, el("i", { style: "background:#2563eb" }), "only in the converted (added or moved)"))),
-    shown < report.pages.length ? el("p", { class: "hint" }, `Pictures of the first ${shown} pages; every page is scored.`) : null,
+        el("span", {}, el("i", { style: "background:#6e6e6e" }), "în ambele"),
+        el("span", {}, el("i", { style: "background:#d62828" }), "doar în original (lipsă sau mutat)"),
+        el("span", {}, el("i", { style: "background:#2563eb" }), "doar în documentul convertit (adăugat sau mutat)"))),
+    shown < report.pages.length ? el("p", { class: "hint" }, `Imagini ale primelor ${count(shown, "pagină", "pagini")}; toate paginile primesc scor.`) : null,
     el("div", { class: "pages" }, tiles));
 }
 
@@ -540,14 +543,14 @@ function renderResults(result, comparison = null) {
     cards.push(el("div", { class: "card" },
       el("div", { class: "result-head" },
         el("div", {}, el("h2", {}, `${direction}: ${result.filename}`),
-          el("div", { class: "meta" }, `${result.source} · engine ${result.engine} · ${result.seconds} s · ${size(result.size)} · saved as ${result.saved_to}`),
-          result.ocr ? el("div", { class: "meta" }, `Scanned: the text of its pages was read with OCR (${result.ocr.words} words, ${Math.round(result.ocr.confidence)}% confidence) and written as paragraphs you can edit.`) : null),
-        el("a", { class: "btn primary", href: result.url, download: result.filename }, `Download ${result.filename}`)),
+          el("div", { class: "meta" }, `${result.source} · motor ${result.engine} · ${result.seconds} s · ${size(result.size)} · salvat ca ${result.saved_to}`),
+          result.ocr ? el("div", { class: "meta" }, `Document scanat: textul paginilor a fost citit prin OCR (${count(result.ocr.words, "cuvânt", "cuvinte")}, încredere ${Math.round(result.ocr.confidence)}%) și scris ca paragrafe care pot fi modificate.`) : null),
+        el("a", { class: "btn primary", href: result.url, download: result.filename }, `Descărcați ${result.filename}`)),
       result.warnings.length ? el("div", { class: "warnbox" }, result.warnings.map((w) => el("div", {}, w))) : null));
-    if (result.reference) cards.push(reportCard(result.reference, "Against the real document"));
-    cards.push(reportCard(result.fidelity, `Against the original (${result.source})`));
+    if (result.reference) cards.push(reportCard(result.reference, "Față de documentul de referință"));
+    cards.push(reportCard(result.fidelity, `Față de original (${result.source})`));
   } else {
-    cards.push(reportCard(comparison, `${state.converted.name} against ${state.real.name}`));
+    cards.push(reportCard(comparison, `${state.converted.name} față de ${state.real.name}`));
   }
   put($("results"), cards);
   $("results").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -560,7 +563,7 @@ async function loadEngines() {
   const pill = (target, title) => {
     const ready = state.engines[target].filter((e) => e.available);
     return el("span", { class: `pill ${ready.length ? "ok" : "warn"}`, title: ready.length ? ready.map((e) => e.title).join(", ") : state.engines[target].map((e) => e.missing).join("\n") },
-      `${title}: ${ready.length ? "ready" : "not installed"}`);
+      `${title}: ${ready.length ? "disponibil" : "neinstalat"}`);
   };
   put($("pills"), pill("pdf", "Word → PDF"), pill("docx", "PDF → Word"));
   renderConvert();

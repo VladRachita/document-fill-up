@@ -144,7 +144,8 @@ def test_wizard_page_is_served(client):
     assert client.get("/", follow_redirects=False).headers["location"] == "/wizard"
     page = client.get("/wizard")
     assert page.status_code == 200
-    assert "docfill wizard" in page.text
+    assert "<title>docfill · asistent de completare</title>" in page.text
+    assert '<html lang="ro">' in page.text  # the page is in Romanian
 
 
 def test_wizard_analyze_shows_text_and_rows(client):
@@ -194,12 +195,12 @@ def test_wizard_preview_reports_issues_and_derivations(client):
             "values": {"cnp": "1871114321239", "date_of_birth": "01.01.1990"},
         },
     ).json()
-    assert body["issues"]["date_of_birth"] == ["Differs from the date of birth in the CNP"]
+    assert body["issues"]["date_of_birth"] == ["Diferă de data nașterii din CNP"]
     assert body["derived"]["sex"]["value"] == "M"
     bad = client.post(
         "/wizard/preview", json={"template": "hello", "values": {"cnp": "1871114321230"}}
     )
-    assert "Invalid CNP" in bad.json()["issues"]["cnp"][0]
+    assert "CNP invalid" in bad.json()["issues"]["cnp"][0]
 
 
 def test_wizard_export_saves_under_new_name_and_learns(client, tmp_path):

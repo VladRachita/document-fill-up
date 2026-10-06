@@ -274,7 +274,7 @@ def _person_computed(prefix: str, person: str) -> list[Computed]:
     words = [
         Computed(
             f"{prefix}{name}_word",
-            f"{person}: “{word}” agreeing with the sex",
+            f"{person}: „{word}”, acordat cu sexul persoanei",
             (prefix + "cnp",),
             (),
             _agreeing(word, prefix),
@@ -289,21 +289,21 @@ def _person_computed(prefix: str, person: str) -> list[Computed]:
         *words,
         Computed(
             prefix + "domicile_line",
-            f"{person}: domicile (composed)",
+            f"{person}: domiciliul (compus)",
             address,
             (prefix + "city",),
             lambda values: address_line(values, prefix),
         ),
         Computed(
             prefix + "shares_value",
-            f"{person}: value of the shares (lei)",
+            f"{person}: valoarea părților sociale (lei)",
             (prefix + "shares", "share_capital", "share_count"),
             (prefix + "shares", "share_capital", "share_count"),
             shares_value,
         ),
         Computed(
             prefix + "shares_percent",
-            f"{person}: share of the capital (%)",
+            f"{person}: cota din capitalul social (%)",
             (prefix + "shares", "share_count"),
             (prefix + "shares", "share_count"),
             shares_percent,
@@ -333,74 +333,74 @@ _SPECS: list[Computed] = [
     *(
         computed
         for index, prefix in enumerate(PERSON_PREFIXES, start=1)
-        for computed in _person_computed(prefix, f"Person {index}")
+        for computed in _person_computed(prefix, f"Persoana {index}")
     ),
     Computed(
         "company_seat_line",
-        "Registered office (composed)",
+        "Sediul social (compus)",
         _COMPANY_ADDRESS,
         ("company_city", "company_street", "company_street_number", "company_county"),
         _company_seat,
     ),
     Computed(
         "share_capital_amount",
-        "Share capital (amount)",
+        "Capitalul social (suma)",
         ("share_capital",),
         ("share_capital",),
         lambda values: format_amount(v) if (v := _number(values, "share_capital")) else None,
     ),
     Computed(
         "share_value",
-        "Nominal value of a share (lei)",
+        "Valoarea nominală a unei părți sociale (lei)",
         ("share_capital", "share_count"),
         ("share_capital", "share_count"),
         lambda values: format_amount(v) if (v := share_value(values)) else None,
     ),
     Computed(
         "main_activity",
-        "Main activity (first CAEN line)",
+        "Activitatea principală (primul rând CAEN)",
         ("caen_activities",),
         ("caen_activities",),
         lambda values: _caen_line(rows[0]) if (rows := _caen_rows(values)) else None,
     ),
     Computed(
         "main_caen_group",
-        "CAEN group of the main activity",
+        "Grupa CAEN a activității principale",
         ("caen_activities",),
         ("caen_activities",),
         _main_group,
     ),
     Computed(
         "main_caen_class",
-        "CAEN class of the main activity",
+        "Clasa CAEN a activității principale",
         ("caen_activities",),
         ("caen_activities",),
         _main_class,
     ),
     Computed(
         "main_activity_name",
-        "Name of the main activity (first CAEN line)",
+        "Denumirea activității principale (primul rând CAEN)",
         ("caen_activities",),
         ("caen_activities",),
         _main_activity_name,
     ),
     Computed(
         "secondary_activity_lines",
-        "Secondary activities, one per line (act constitutiv SRL)",
+        "Activitățile secundare, câte una pe rând (actul constitutiv SRL)",
         ("caen_activities",),
         (),
         _secondary_activity_lines,
     ),
     Computed(
         "share_count_de",
-        "Number of shares, with “de” when Romanian needs it (50 de părți sociale)",
+        "Numărul de părți sociale, cu „de” când este necesar (50 de părți sociale)",
         ("share_count",),
         ("share_count",),
         lambda values: with_de(v) if (v := _number(values, "share_count")) else None,
     ),
     Computed(
         "associate_identification",
-        "The sole associate (asociat unic), identified",
+        "Asociatul unic, cu datele de identificare",
         _ROLE_INPUTS,
         # person 1 is the associate, or the administrator when the associate is another person
         ("last_name", "first_name", "cnp"),
@@ -408,21 +408,21 @@ _SPECS: list[Computed] = [
     ),
     Computed(
         "associate_name",
-        "The sole associate's name",
+        "Numele asociatului unic",
         _ROLE_INPUTS,
         (),
         _of(associate_prefix, lambda values, prefix: person_name(values, prefix) or None),
     ),
     Computed(
         "administrator_identification",
-        "The administrator, identified",
+        "Administratorul, cu datele de identificare",
         _ROLE_INPUTS,
         (),
         _of(administrator_prefix, identification),
     ),
     Computed(
         "caen_at_office",
-        "Anexa 4, 3.1: activities at the registered office",
+        "Anexa 4, pct. 3.1: activitățile desfășurate la sediul social",
         ("caen_activities", "activities_at_office"),
         (),
         _activities_at_office,
@@ -430,7 +430,7 @@ _SPECS: list[Computed] = [
     ),
     Computed(
         "caen_at_third_parties",
-        "Anexa 4, 3.2: activities at third parties",
+        "Anexa 4, pct. 3.2: activitățile desfășurate la terți",
         ("caen_activities", "activities_at_office", "caen_third_party"),
         (),
         _activities_at_third_parties,
@@ -438,7 +438,7 @@ _SPECS: list[Computed] = [
     ),
     Computed(
         "secondary_activities",
-        "Secondary activities (other CAEN lines)",
+        "Activitățile secundare (celelalte rânduri CAEN)",
         ("caen_activities",),
         (),
         lambda values: (

@@ -332,7 +332,7 @@ def test_auto_reads_a_scan_with_ocr(settings):
     scan = make_scanned_pdf(["IDENTITY CARD"])
     assert _for_scans(scan, "auto", settings) == ("ocr", [])
     engine, notes = _for_scans(scan, "pdf2docx", settings)
-    assert engine == "pdf2docx" and "This PDF is a scan" in notes[0]
+    assert engine == "pdf2docx" and "Acest PDF este scanat" in notes[0]
     assert _for_scans(make_text_pdf([TEXT]), "auto", settings) == ("auto", [])
 
 
@@ -433,7 +433,7 @@ def test_a_scan_becomes_a_word_document_to_edit(scanned_act, settings):
     report = conversion.fidelity
     assert report.check("pages").score == 100
     assert report.check("text").score >= 85  # the confidence of the reading
-    assert "Read with OCR" in report.check("text").detail
+    assert "Citit prin OCR" in report.check("text").detail
     assert report.check("layout").score >= 75
     assert conversion.ocr["words"] >= len(expected) * 0.9
 
@@ -451,7 +451,7 @@ def test_the_page_converts_a_scan_with_ocr(scanned_act, settings):
     assert result["engine"] == "ocr" and result["filename"] == "scan.docx"
     assert result["ocr"]["words"] > 50 and result["ocr"]["confidence"] > 85
     text = next(c for c in result["fidelity"]["checks"] if c["key"] == "text")
-    assert text["detail"].startswith("Read with OCR")
+    assert text["detail"].startswith("Citit prin OCR")
 
 
 @pytest.fixture(scope="module")
@@ -479,16 +479,16 @@ def test_stamps_and_signatures_are_kept_as_pictures(stamped_act, settings):
     files = {"file": ("act.pdf", stamped_act)}
     kept = client.post("/convert", files=files, data={"previews": "0"}).json()
     assert kept["ocr"]["marks"] == 2
-    assert any("2 stamps, signatures or handwritten notes kept" in w for w in kept["warnings"])
+    assert any("2 ștampile, semnături sau note de mână păstrate" in w for w in kept["warnings"])
     document = Document(io.BytesIO(client.get(kept["url"]).content))
     xml = document.element.body.xml
     assert xml.count("<wp:anchor ") == 2 and not document.inline_shapes
     assert document.paragraphs[0].text == "ACT CONSTITUTIV"  # the text stays text
     layout_check = next(c for c in kept["fidelity"]["checks"] if c["key"] == "layout")
-    assert "stamps and signatures as pictures" in layout_check["detail"]
+    assert "ștampilele și semnăturile păstrate ca imagini" in layout_check["detail"]
     clean = client.post("/convert", files=files, data={"previews": "0", "marks": "false"}).json()
     assert clean["ocr"]["marks"] == 0
-    assert any("left out (a clean copy)" in w for w in clean["warnings"])
+    assert any("omise (o copie curată)" in w for w in clean["warnings"])
     document = Document(io.BytesIO(client.get(clean["url"]).content))
     assert "<wp:anchor " not in document.element.body.xml
 

@@ -271,7 +271,7 @@ def test_a_misread_cnp_is_offered_for_correction_not_filled(settings):
     result = read(settings, card_text(ALBA, cnp=wrong, mrz=[]))
     assert result.fields["cnp"].value == wrong
     assert held_back(result, "cnp", settings)
-    assert "Invalid CNP" in result.fields["cnp"].issues[0]
+    assert "CNP invalid" in result.fields["cnp"].issues[0]
 
 
 def test_the_zone_corrects_a_misread_printed_cnp(settings):
@@ -296,7 +296,7 @@ def test_printed_cnp_and_zone_that_disagree_are_both_held_back(settings):
     assert other.cnp != ALBA.cnp and other.cnp[:7] == ALBA.cnp[:7]
     result = read(settings, card_text(ALBA, cnp=other.cnp))
     assert held_back(result, "cnp", settings)
-    assert "Differs from the CNP in the machine readable zone" in result.fields["cnp"].issues[0]
+    assert "Diferă de CNP-ul din zona citibilă automat" in result.fields["cnp"].issues[0]
 
 
 # --------------------------------------------------------------------------- the zone
@@ -331,7 +331,7 @@ def test_a_name_cut_off_by_glare_is_finished_from_the_zone(settings):
     result = read(settings, card_text(ALBA, first_name="IOANA-IUL"))
     name = result.fields["first_name"]
     assert name.value == "Ioana-Iulia" and name.source == "derived"
-    assert any("Cut off on the scan" in issue for issue in name.issues)
+    assert any("Trunchiat pe scanare" in issue for issue in name.issues)
 
 
 def test_a_name_finished_by_the_zone_keeps_no_note_about_being_unknown(settings):
@@ -339,14 +339,14 @@ def test_a_name_finished_by_the_zone_keeps_no_note_about_being_unknown(settings)
     person = replace(ALBA, first_name="ION-ANDREI")
     name = read(settings, card_text(person, first_name="ION-ANDRE")).fields["first_name"]
     assert name.value == "Ion-Andrei" and name.confidence >= 0.8
-    assert not any("Not a known" in issue for issue in name.issues)
+    assert not any("Nu este un nume românesc cunoscut" in issue for issue in name.issues)
 
 
 def test_without_the_zone_a_name_that_may_be_cut_off_is_offered_not_filled(settings):
     person = replace(ALBA, first_name="ION-ANDREI")
     result = read(settings, card_text(person, first_name="ION-ANDRE", mrz=[]))
     assert held_back(result, "first_name", settings)
-    assert "did you mean Ion-Andrei" in result.fields["first_name"].issues[0]
+    assert "ați vrut să scrieți Ion-Andrei" in result.fields["first_name"].issues[0]
     assert "Ion-Andrei" in {c.value for c in result.candidates["first_name"]}
 
 
@@ -363,7 +363,7 @@ def test_two_readings_that_are_both_romanian_names_are_left_to_a_person(settings
     zone = zone_with_names(ALBA, "TOMA<<IULIA")
     result = read(settings, card_text(ALBA, first_name="JULIA", mrz=zone))
     assert held_back(result, "first_name", settings)
-    assert "Differs from the machine readable zone" in result.fields["first_name"].issues[0]
+    assert "Diferă de zona citibilă automat" in result.fields["first_name"].issues[0]
     assert [c.confidence < 0.5 for c in result.candidates["first_name"]] == [True, True]
 
 
@@ -372,14 +372,14 @@ def test_a_misread_zone_does_not_overrule_a_printed_romanian_name(settings):
     zone = zone_with_names(ALBA, "TOMA<<IOQANA<IULIA")
     name = read(settings, card_text(ALBA, mrz=zone)).fields["first_name"]
     assert name.value == "Ioana-Iulia" and 0.5 <= name.confidence <= 0.8
-    assert "not a Romanian name" in name.issues[0]
+    assert "nu este un nume românesc" in name.issues[0]
 
 
 def test_without_the_zone_a_misread_first_name_is_corrected_with_a_note(settings):
     result = read(settings, card_text(ALBA, first_name="JOANA-IULIA", mrz=[]))
     name = result.fields["first_name"]
     assert name.value == "Ioana-Iulia" and 0.5 <= name.confidence < 0.9
-    assert name.issues[0].startswith("Read as 'Joana-Iulia'") and name.original == "Joana-Iulia"
+    assert name.issues[0].startswith("Citit ca „Joana-Iulia”") and name.original == "Joana-Iulia"
     # what was read stays one click away
     assert "Joana-Iulia" in {c.value for c in result.candidates["first_name"]}
 
@@ -452,9 +452,9 @@ def test_a_first_name_that_does_not_fit_the_sex_is_flagged(settings):
     # IOANA-IULIA on a card of a man: the name or the CNP was misread, or cut ("IOAN")
     person = replace(ALBA, sex="M")
     name = read(settings, card_text(person)).fields["first_name"]
-    assert any("usually a woman's name" in issue for issue in name.issues)
+    assert any("este de obicei prenume de femeie" in issue for issue in name.issues)
     assert not any(
-        "usually" in i for i in read(settings, card_text(ALBA)).fields["first_name"].issues
+        "de obicei" in i for i in read(settings, card_text(ALBA)).fields["first_name"].issues
     )
 
 
@@ -478,7 +478,7 @@ def test_a_place_in_the_wrong_county_is_shown_not_filled(settings):
     person = replace(ALBA, county_code="AB", locality="Mun.Cluj-Napoca")
     result = read(settings, card_text(person, mrz=[]))
     assert held_back(result, "city", settings)
-    assert "județul Alba (there is one in Cluj)" in result.fields["city"].issues[-1]
+    assert "județul Alba (există una cu acest nume în: Cluj)" in result.fields["city"].issues[-1]
 
 
 def test_a_town_cut_off_by_glare_is_proposed_not_filled(settings):
@@ -566,10 +566,10 @@ def test_the_generic_parser_does_not_take_a_street_for_the_locality(settings):
 @pytest.mark.parametrize(
     ("birth", "problem"),
     [
-        ("Jud.SB Mun.Sib", "Looks cut off"),
-        ("Jud.CJ Mun.Cluj", "Looks cut off"),
-        ("Jud.AB Mun.Set", "did you mean Sebeș"),  # glare took the end, a letter was misread
-        ("Mun.București", "sector of Bucharest"),
+        ("Jud.SB Mun.Sib", "Pare trunchiat"),
+        ("Jud.CJ Mun.Cluj", "Pare trunchiat"),
+        ("Jud.AB Mun.Set", "ați vrut să scrieți Sebeș"),  # glare took the end, a letter was misread
+        ("Mun.București", "sectorul municipiului București"),
     ],
 )
 def test_a_place_cut_off_or_unknown_is_shown_not_filled(settings, birth, problem):

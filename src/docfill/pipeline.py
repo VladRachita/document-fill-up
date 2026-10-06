@@ -454,8 +454,9 @@ class DocFill:
             free = next((p for p in range(1, MAX_PERSONS + 1) if p not in taken), None)
             if free is None:
                 analysis.raw.warnings.append(
-                    f"docfill fills at most {MAX_PERSONS} persons: this identity card was "
-                    "counted as person 1; choose its person in the wizard."
+                    f"docfill completează datele a cel mult {MAX_PERSONS} persoane: această carte "
+                    "de identitate a fost atribuită persoanei 1; alegeți persoana corectă în "
+                    "asistent."
                 )
                 continue
             analysis.person = free
@@ -574,7 +575,7 @@ class DocFill:
             values=used,
             sources={name: sources[name] for name in used},
             missing=missing,
-            warnings=[f"No value for '{name}', left blank" for name in missing],
+            warnings=[f"Nicio valoare pentru „{name}”: câmp lăsat necompletat" for name in missing],
         )
 
     def fill_each(

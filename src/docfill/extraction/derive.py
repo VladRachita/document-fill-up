@@ -190,7 +190,7 @@ def _derive_person(result: ExtractionResult) -> None:
                 )
             )
         elif not place:  # "Jud.IS" and a smudge: that is not a place of birth to write in a form
-            problem = "The locality could not be read: check the place of birth"
+            problem = "Localitatea nu a putut fi citită: verificați locul nașterii"
             suspect = {"confidence": min(birth.confidence, SUSPECT_CONFIDENCE)}
             result.replace(birth.model_copy(update={**suspect, "issues": [*birth.issues, problem]}))
         offer_all(birth, parts)
@@ -338,7 +338,7 @@ def _derive_company(result: ExtractionResult) -> None:
                     "attached_pages_total",
                     str(sum(int(p) for p in pages)),
                     documents.confidence,
-                    "sum of the pages column",
+                    "suma coloanei cu numărul de pagini",
                     documents.document,
                 )
             )
@@ -352,7 +352,7 @@ def _derive_company(result: ExtractionResult) -> None:
                 "activity_object",
                 main["name"].strip(" -–;."),
                 activities.confidence * DERIVED_FACTOR,
-                "the main CAEN activity",
+                "activitatea CAEN principală",
                 activities.document,
             )
         )
@@ -391,7 +391,7 @@ def _derive_roles(result: ExtractionResult) -> None:
                 associates[0] + "shares",
                 format_amount(count),
                 sole.confidence * DERIVED_FACTOR,
-                "the sole associate holds every share",
+                "asociatul unic deține toate părțile sociale",
                 sole.document,
             )
         )
@@ -403,7 +403,7 @@ def _derive_roles(result: ExtractionResult) -> None:
     if value("board_role"):
         words.append("administrator")
     if words:
-        result.offer(_derived("capacity", " și ".join(words), 0.85, "the roles of person 1", None))
+        result.offer(_derived("capacity", " și ".join(words), 0.85, "rolurile persoanei 1", None))
 
     # associates: "NAME | CNP | shares", one line per person holding shares (părți sociale of a
     # limited liability company, acțiuni otherwise)
@@ -423,7 +423,9 @@ def _derive_roles(result: ExtractionResult) -> None:
     if rows:
         confidence = min(source.confidence for source in sources) * DERIVED_FACTOR
         result.offer(
-            _derived("associates", "\n".join(rows), confidence, "the shares of each person", None)
+            _derived(
+                "associates", "\n".join(rows), confidence, "participațiile fiecărei persoane", None
+            )
         )
 
     # a sole administrator or a board of directors
@@ -433,7 +435,11 @@ def _derive_roles(result: ExtractionResult) -> None:
         administration = (
             "administrator unic" if roles == ["administrator unic"] else "consiliu de administrație"
         )
-        result.offer(_derived("administration", administration, 0.9, "the board roles", None))
+        result.offer(
+            _derived(
+                "administration", administration, 0.9, "funcțiile din conducerea societății", None
+            )
+        )
 
     # who the representative filing the request is: "prin avocat, conform împuternicirii
     # avocațiale" (IV), "în calitate de avocat, conform ..." (XII)
@@ -449,7 +455,7 @@ def _derive_roles(result: ExtractionResult) -> None:
         filed_by = _derived("bo_filed_by", "împuternicit", 0.9, filer.value, filer.document)
     elif any(value(prefix + "beneficial_owner") for prefix in PERSON_PREFIXES):
         filed_by = _derived(
-            "bo_filed_by", "reprezentantul legal", 0.9, "no proxy (filer) given", None
+            "bo_filed_by", "reprezentantul legal", 0.9, "nu a fost indicat un împuternicit", None
         )
     current = fields.get("bo_filed_by")
     if filed_by and (current is None or current.source == "derived"):
@@ -489,7 +495,7 @@ def complete_values(values: dict[str, str]) -> dict[str, tuple[str, str]]:
     suggestions: dict[str, tuple[str, str]] = {}
     for name, field in result.fields.items():
         if not values.get(name) and field.source == "derived":
-            suggestions[name] = (field.value, f"derived from {field.evidence}")
+            suggestions[name] = (field.value, f"dedus din {field.evidence}")
     return suggestions
 
 

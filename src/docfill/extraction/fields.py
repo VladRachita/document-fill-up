@@ -40,25 +40,25 @@ FieldKind = Literal[
 ]
 
 GROUPS = {
-    "person": "Person",
-    "birth": "Birth",
-    "domicile": "Domicile",
-    "id_card": "Identity card",
-    "parents": "Parents",
-    "company": "Company",
+    "person": "Persoana",
+    "birth": "Nașterea",
+    "domicile": "Domiciliul",
+    "id_card": "Actul de identitate",
+    "parents": "Părinții",
+    "company": "Societatea",
     "capital": "Capitalul social, părțile sociale",
-    "filing": "Request",
-    "changes": "Changes (mențiuni)",
-    "closure": "Closure (radiere)",
-    "contact": "Contact person",
-    "billing": "Billing",
-    "filer": "Filed by",
-    "roles": "Shareholders, management, beneficial owners",
-    "person2": "Person 2",
-    "person3": "Person 3",
-    "articles": "Articles of incorporation (act constitutiv)",
-    "fiscal": "Tax registration (Anexa 1, vector fiscal)",
-    "other": "Other",
+    "filing": "Cererea",
+    "changes": "Înscriere de mențiuni",
+    "closure": "Radiere",
+    "contact": "Persoana pentru comunicare",
+    "billing": "Date de facturare",
+    "filer": "Cererea se depune de către",
+    "roles": "Asociați / acționari, organe de conducere, beneficiari reali",
+    "person2": "Persoana 2",
+    "person3": "Persoana 3",
+    "articles": "Actul constitutiv",
+    "fiscal": "Înregistrarea fiscală (Anexa 1, vectorul fiscal)",
+    "other": "Altele",
 }
 
 
@@ -91,7 +91,7 @@ _SPECS = [
     # ---------------------------------------------------------------- person
     _f(
         "last_name",
-        "Last name (Nume)",
+        "Nume (de familie)",
         "name",
         "person",
         (
@@ -108,7 +108,7 @@ _SPECS = [
     ),
     _f(
         "first_name",
-        "First name (Prenume)",
+        "Prenume",
         "name",
         "person",
         (
@@ -127,7 +127,7 @@ _SPECS = [
     ),
     _f(
         "full_name",
-        "Full name",
+        "Nume și prenume",
         "name",
         "person",
         (
@@ -164,7 +164,7 @@ _SPECS = [
     _f("sex", "Sex", "sex", "person", ("sex", "sexul", "sexe", "gender"), 12),
     _f(
         "citizenship",
-        "Citizenship (Cetățenia)",
+        "Cetățenia",
         "text",
         "person",
         (
@@ -179,7 +179,7 @@ _SPECS = [
     # ---------------------------------------------------------------- birth
     _f(
         "date_of_birth",
-        "Date of birth",
+        "Data nașterii",
         "date",
         "birth",
         (
@@ -194,7 +194,7 @@ _SPECS = [
     ),
     _f(
         "place_of_birth",
-        "Place of birth",
+        "Locul nașterii",
         "place",
         "birth",
         (
@@ -212,7 +212,7 @@ _SPECS = [
     ),
     _f(
         "birth_county",
-        "County of birth",
+        "Județul nașterii",
         "place",
         "birth",
         (
@@ -223,7 +223,7 @@ _SPECS = [
     ),
     _f(
         "birth_country",
-        "Country of birth",
+        "Țara nașterii",
         "country",
         "birth",
         (
@@ -235,7 +235,7 @@ _SPECS = [
     # ---------------------------------------------------------------- parents
     _f(
         "father_last_name",
-        "Father's last name",
+        "Numele de familie al tatălui",
         "name",
         "parents",
         (
@@ -246,7 +246,7 @@ _SPECS = [
     ),
     _f(
         "father_first_name",
-        "Father's first name",
+        "Prenumele tatălui",
         "name",
         "parents",
         (
@@ -257,7 +257,7 @@ _SPECS = [
     ),
     _f(
         "mother_last_name",
-        "Mother's last name",
+        "Numele de familie al mamei",
         "name",
         "parents",
         (
@@ -268,7 +268,7 @@ _SPECS = [
     ),
     _f(
         "mother_first_name",
-        "Mother's first name",
+        "Prenumele mamei",
         "name",
         "parents",
         (
@@ -280,7 +280,7 @@ _SPECS = [
     # ---------------------------------------------------------------- domicile
     _f(
         "full_address",
-        "Address",
+        "Adresa de domiciliu",
         "address",
         "domicile",
         (
@@ -305,7 +305,7 @@ _SPECS = [
     ),
     _f(
         "street_address",
-        "Street line",
+        "Adresa (strada și numărul)",
         "address",
         "domicile",
         (
@@ -315,10 +315,10 @@ _SPECS = [
         ),
         150,
     ),
-    _f("street", "Street (Strada)", "place", "domicile", ("street", "strada"), 100),
+    _f("street", "Strada", "place", "domicile", ("street", "strada"), 100),
     _f(
         "street_number",
-        "Number (Nr.)",
+        "Numărul (nr.)",
         "short",
         "domicile",
         (
@@ -328,12 +328,12 @@ _SPECS = [
         ),
         12,
     ),
-    _f("building", "Block (Bloc)", "short", "domicile", ("bloc", "building", "block"), 12),
-    _f("entrance", "Staircase (Scara)", "short", "domicile", ("scara", "staircase"), 12),
-    _f("floor", "Floor (Etaj)", "short", "domicile", ("etaj", "floor"), 12),
+    _f("building", "Blocul", "short", "domicile", ("bloc", "building", "block"), 12),
+    _f("entrance", "Scara", "short", "domicile", ("scara", "staircase"), 12),
+    _f("floor", "Etajul", "short", "domicile", ("etaj", "floor"), 12),
     _f(
         "apartment",
-        "Apartment (Ap.)",
+        "Apartamentul (ap.)",
         "short",
         "domicile",
         (
@@ -345,7 +345,7 @@ _SPECS = [
     ),
     _f(
         "city",
-        "City / locality",
+        "Localitatea",
         "place",
         "domicile",
         (
@@ -368,7 +368,7 @@ _SPECS = [
     ),
     _f(
         "postal_code",
-        "Postal code",
+        "Codul poștal",
         "postal_code",
         "domicile",
         (
@@ -384,7 +384,7 @@ _SPECS = [
     ),
     _f(
         "region",
-        "County / sector (Județ)",
+        "Județul / sectorul",
         "place",
         "domicile",
         (
@@ -402,7 +402,7 @@ _SPECS = [
     ),
     _f(
         "country",
-        "Country (Țara)",
+        "Țara",
         "country",
         "domicile",
         (
@@ -416,7 +416,7 @@ _SPECS = [
     # ---------------------------------------------------------------- identity card
     _f(
         "id_type",
-        "ID document type",
+        "Tipul actului de identitate",
         "short",
         "id_card",
         (
@@ -428,10 +428,17 @@ _SPECS = [
         ),
         20,
     ),
-    _f("id_series", "ID series (Seria)", "id_series", "id_card", ("seria", "serie", "series"), 4),
+    _f(
+        "id_series",
+        "Seria actului de identitate",
+        "id_series",
+        "id_card",
+        ("seria", "serie", "series"),
+        4,
+    ),
     _f(
         "id_number",
-        "ID number (Nr.)",
+        "Numărul actului de identitate",
         "id_number",
         "id_card",
         (
@@ -444,7 +451,7 @@ _SPECS = [
     ),
     _f(
         "id_issued_by",
-        "ID issued by",
+        "Actul de identitate emis de",
         "text",
         "id_card",
         (
@@ -461,7 +468,7 @@ _SPECS = [
     ),
     _f(
         "id_issue_date",
-        "ID issue date",
+        "Data eliberării actului de identitate",
         "date",
         "id_card",
         (
@@ -475,7 +482,7 @@ _SPECS = [
     ),
     _f(
         "id_expiry_date",
-        "ID valid until",
+        "Actul de identitate valabil până la",
         "date",
         "id_card",
         (
@@ -489,7 +496,7 @@ _SPECS = [
     # ---------------------------------------------------------------- company
     _f(
         "company_name",
-        "Company name",
+        "Denumirea firmei",
         "text",
         "company",
         (
@@ -502,7 +509,7 @@ _SPECS = [
     ),
     _f(
         "company_address",
-        "Registered office (full)",
+        "Sediul social (adresa completă)",
         "address",
         "company",
         (
@@ -513,21 +520,28 @@ _SPECS = [
         ),
         250,
     ),
-    _f("company_city", "Registered office: locality", "place", "company", (), 80),
-    _f("company_street", "Registered office: street", "place", "company", (), 100),
-    _f("company_street_number", "Registered office: number", "short", "company", (), 12),
-    _f("company_building", "Registered office: block", "short", "company", (), 12),
-    _f("company_entrance", "Registered office: staircase", "short", "company", (), 12),
-    _f("company_floor", "Registered office: floor", "short", "company", (), 12),
-    _f("company_apartment", "Registered office: apartment / room", "short", "company", (), 20),
-    _f("company_county", "Registered office: county / sector", "place", "company", (), 60),
-    _f("company_email", "Company e-mail", "email", "company", (), 120),
-    _f("company_euid", "EUID (European unique identifier)", "short", "company", ("euid",), 40),
-    _f("company_phone", "Company phone", "phone", "company", (), 30),
-    _f("company_website", "Company website", "text", "company", (), 120),
+    _f("company_city", "Sediul social: localitatea", "place", "company", (), 80),
+    _f("company_street", "Sediul social: strada", "place", "company", (), 100),
+    _f("company_street_number", "Sediul social: numărul", "short", "company", (), 12),
+    _f("company_building", "Sediul social: blocul", "short", "company", (), 12),
+    _f("company_entrance", "Sediul social: scara", "short", "company", (), 12),
+    _f("company_floor", "Sediul social: etajul", "short", "company", (), 12),
+    _f("company_apartment", "Sediul social: apartamentul / camera", "short", "company", (), 20),
+    _f("company_county", "Sediul social: județul / sectorul", "place", "company", (), 60),
+    _f("company_email", "E-mailul societății", "email", "company", (), 120),
+    _f(
+        "company_euid",
+        "EUID (identificatorul unic la nivel european)",
+        "short",
+        "company",
+        ("euid",),
+        40,
+    ),
+    _f("company_phone", "Telefonul societății", "phone", "company", (), 30),
+    _f("company_website", "Pagina de internet a societății", "text", "company", (), 120),
     _f(
         "company_registration_number",
-        "Trade register number",
+        "Numărul de ordine în registrul comerțului",
         "short",
         "company",
         (
@@ -539,7 +553,7 @@ _SPECS = [
     ),
     _f(
         "company_cui",
-        "CUI (fiscal code)",
+        "CUI (codul unic de înregistrare)",
         "short",
         "company",
         (
@@ -555,7 +569,8 @@ _SPECS = [
     # parties (3.2), or at the registered office (3.1) when they are carried out there.
     _f(
         "caen_activities",
-        "CAEN activities of the company (one per line: code name, the main one first)",
+        "Activitățile CAEN ale societății (câte una pe rând: codul și denumirea, întâi "
+        "activitatea principală)",
         "list",
         "company",
         (),
@@ -563,14 +578,14 @@ _SPECS = [
     ),
     _f(
         "activities_at_office",
-        "The activities are carried out at the registered office: Anexa 4 lists them under 3.1 "
-        "(unticked: under 3.2, activități desfășurate la terți)",
+        "Activitățile se desfășoară la sediul social: Anexa 4 le trece la pct. 3.1 "
+        "(nebifat: la pct. 3.2, activități desfășurate la terți)",
         "checkbox",
         "company",
     ),
     _f(
         "caen_third_party",
-        "Other CAEN activities at third parties (one per line: code name)",
+        "Alte activități CAEN desfășurate la terți (câte una pe rând: codul și denumirea)",
         "list",
         "company",
         (),
@@ -579,7 +594,7 @@ _SPECS = [
     # Used by the legal checks of the procedures (see docfill.knowledge).
     _f(
         "share_capital",
-        "Share capital (capital social, lei)",
+        "Capitalul social (lei)",
         "short",
         "capital",
         ("capital social", "capitalul social", "capital social subscris"),
@@ -587,7 +602,7 @@ _SPECS = [
     ),
     _f(
         "associates",
-        "Associates / shareholders (one per line: name | CNP/CUI | share)",
+        "Asociați / acționari (câte unul pe rând: nume | CNP/CUI | cotă de participare)",
         "list",
         "company",
         (),
@@ -595,7 +610,7 @@ _SPECS = [
     ),
     _f(
         "family_members",
-        "Family members of the IF (one per line: name | CNP)",
+        "Membrii întreprinderii familiale (câte unul pe rând: nume | CNP)",
         "list",
         "company",
         (),
@@ -604,20 +619,20 @@ _SPECS = [
     # ---------------------------------------------------------------- request / filing
     _f(
         "orc_office",
-        "Trade register office (tribunal)",
+        "Oficiul registrului comerțului de pe lângă tribunalul",
         "place",
         "filing",
         ("oficiul registrului comertului de pe langa tribunalul",),
         60,
     ),
-    _f("request_registration", "Request: înmatriculare (registration)", "checkbox", "filing"),
-    _f("request_mentions", "Request: înscriere mențiuni (changes)", "checkbox", "filing"),
-    _f("request_closure", "Request: radiere (closing)", "checkbox", "filing"),
-    _f("request_object", "Subject of the request", "text", "filing", ("obiectul cererii",), 150),
-    _f("request_communication", "Request: communication of the documents", "checkbox", "filing"),
+    _f("request_registration", "Cerere: înmatriculare", "checkbox", "filing"),
+    _f("request_mentions", "Cerere: înscriere de mențiuni", "checkbox", "filing"),
+    _f("request_closure", "Cerere: radiere", "checkbox", "filing"),
+    _f("request_object", "Obiectul cererii", "text", "filing", ("obiectul cererii",), 150),
+    _f("request_communication", "Cerere: comunicarea documentelor", "checkbox", "filing"),
     _f(
         "communication_method",
-        "Communication by (poștă / curier / mijloace electronice / sediul O.R.C.T.)",
+        "Comunicarea prin (poștă / curier / mijloace electronice / la sediul O.R.C.T.)",
         "text",
         "filing",
         (),
@@ -625,7 +640,7 @@ _SPECS = [
     ),
     _f(
         "capacity",
-        "Signs in the capacity of",
+        "Semnează în calitate de",
         "text",
         "filing",
         (
@@ -634,11 +649,11 @@ _SPECS = [
         ),
         120,
     ),
-    _f("represented_by", "Represented by (prin)", "text", "filing", (), 120),
-    _f("representation_basis", "Based on (conform)", "text", "filing", (), 150),
+    _f("represented_by", "Prin (reprezentantul)", "text", "filing", (), 120),
+    _f("representation_basis", "Conform (temeiul reprezentării)", "text", "filing", (), 150),
     _f(
         "marital_regime",
-        "Marital regime",
+        "Regimul matrimonial",
         "text",
         "filing",
         (
@@ -649,36 +664,42 @@ _SPECS = [
     ),
     _f(
         "request_operating_declaration",
-        "Request 4.3: sworn statement on operating conditions (Anexa 4)",
+        "Cerere 4.3: declarație pe propria răspundere privind îndeplinirea condițiilor de "
+        "funcționare (Anexa 4)",
         "checkbox",
         "filing",
     ),
-    _f("annex_numbers", "Annexes that are part of the request (e.g. 4)", "short", "filing", (), 30),
+    _f(
+        "annex_numbers",
+        "Anexele care fac parte integrantă din cerere (de exemplu, 4)",
+        "short",
+        "filing",
+        (),
+        30,
+    ),
     _f(
         "attached_documents",
-        "Documents submitted (one per line: name | number/date | pages)",
+        "Documentele depuse (câte unul pe rând: denumirea | numărul/data | numărul de pagini)",
         "list",
         "filing",
         (),
         4000,
     ),
-    _f("attached_pages_total", "Total pages submitted", "short", "filing", (), 10),
+    _f("attached_pages_total", "Numărul total de pagini depuse", "short", "filing", (), 10),
     _f(
         "requested_changes",
-        "Requested changes (mențiuni, one per line)",
+        "Mențiunile solicitate (câte una pe rând)",
         "list",
         "changes",
         (),
         4000,
     ),
-    _f(
-        "closure_basis", "Legal basis of the closure (temeiul radierii)", "text", "closure", (), 200
-    ),
+    _f("closure_basis", "Temeiul radierii", "text", "closure", (), 200),
     # ---------------------------------------------------------------- changes (Anexa 2a, 4.1-4.2)
     _f("change_name", "Modificare denumire firmă", "checkbox", "changes"),
     _f("change_legal_form", "Schimbare formă juridică", "checkbox", "changes"),
     _f("change_seat_county", "Schimbare sediu social în alt județ", "checkbox", "changes"),
-    _f("new_seat_county", "New county of the registered office", "place", "changes", (), 60),
+    _f("new_seat_county", "Noul județ al sediului social", "place", "changes", (), 60),
     _f(
         "change_seat",
         "Sediu social (prelungire / modificare act de spațiu)",
@@ -696,17 +717,31 @@ _SPECS = [
     _f("resume_activity", "Reluare activitate", "checkbox", "changes"),
     _f("change_activity", "Modificare obiect de activitate", "checkbox", "changes"),
     _f("transfer_shares", "Transmitere părți sociale / acțiuni", "checkbox", "changes"),
-    _f("incoming_associates", "Number of associates joining", "short", "changes", (), 6),
+    _f(
+        "incoming_associates",
+        "Numărul asociaților care intră în societate",
+        "short",
+        "changes",
+        (),
+        6,
+    ),
     _f(
         "change_management",
         "Schimbare membri organe de conducere / administrare / control",
         "checkbox",
         "changes",
     ),
-    _f("management_persons", "Number of persons appointed", "short", "changes", (), 6),
+    _f("management_persons", "Numărul persoanelor numite", "short", "changes", (), 6),
     _f("associate_exit", "Asociat / acționar: excludere / retragere", "checkbox", "changes"),
     _f("change_capital", "Capital social (majorare / reducere)", "checkbox", "changes"),
-    _f("capital_change", "Capital change (majorare / reducere)", "text", "changes", (), 20),
+    _f(
+        "capital_change",
+        "Modificarea capitalului social (majorare / reducere)",
+        "text",
+        "changes",
+        (),
+        20,
+    ),
     _f(
         "change_identification",
         "Modificare date de identificare ale profesionistului",
@@ -720,7 +755,7 @@ _SPECS = [
     _f("certificate_exchange", "Preschimbare certificat de înregistrare", "checkbox", "changes"),
     _f("updated_constitutive_act", "Depunere act constitutiv actualizat", "checkbox", "changes"),
     _f("other_mentions", "Alte mențiuni", "checkbox", "changes"),
-    _f("other_mentions_text", "Other changes (text)", "text", "changes", (), 200),
+    _f("other_mentions_text", "Alte mențiuni (text)", "text", "changes", (), 200),
     _f("filed_capital_proof", "Depunere: dovadă vărsământ capital social", "checkbox", "changes"),
     _f(
         "filed_gm_decision",
@@ -729,7 +764,7 @@ _SPECS = [
         "changes",
     ),
     _f("filed_other", "Depunere: alte înscrisuri", "checkbox", "changes"),
-    _f("filed_other_text", "Other documents filed (text)", "text", "changes", (), 200),
+    _f("filed_other_text", "Alte înscrisuri depuse (text)", "text", "changes", (), 200),
     # ---------------------------------------------------------------- closure (Anexa 2a, 6)
     _f("closure_legal_person", "Radiere: persoană juridică", "checkbox", "closure"),
     _f("closure_by_will", "Motiv: voința profesionistului", "checkbox", "closure"),
@@ -752,57 +787,92 @@ _SPECS = [
     # decides "prin ... conform ..." of IV and "în calitate de ... conform ..." of XII).
     _f(
         "representative_type",
-        "Representative filing the request is",
+        "Reprezentantul care depune cererea este",
         "text",
         "filer",
         (),
         80,
         REPRESENTATIVE_TYPES,
     ),
-    _f("filer_last_name", "Filed by: last name", "name", "filer", (), 80),
-    _f("filer_first_name", "Filed by: first name", "name", "filer", (), 80),
-    _f("filer_id_type", "Filed by: ID document type", "short", "filer", (), 20),
-    _f("filer_id_series", "Filed by: ID series", "id_series", "filer", (), 4),
-    _f("filer_id_number", "Filed by: ID number", "id_number", "filer", (), 12),
-    _f("filer_cnp", "Filed by: CNP", "cnp", "filer", (), 20),
-    _f("filer_capacity", "Filed by: capacity (e.g. avocat)", "text", "filer", (), 80),
-    _f("filer_basis", "Filed by: based on (conform)", "text", "filer", (), 120),
-    _f("filer_basis_number", "Filed by: document number", "short", "filer", (), 30),
-    _f("filer_basis_date", "Filed by: document date", "date", "filer", (), 30),
+    _f("filer_last_name", "Depune cererea: numele", "name", "filer", (), 80),
+    _f("filer_first_name", "Depune cererea: prenumele", "name", "filer", (), 80),
+    _f("filer_id_type", "Depune cererea: tipul actului de identitate", "short", "filer", (), 20),
+    _f(
+        "filer_id_series",
+        "Depune cererea: seria actului de identitate",
+        "id_series",
+        "filer",
+        (),
+        4,
+    ),
+    _f(
+        "filer_id_number",
+        "Depune cererea: numărul actului de identitate",
+        "id_number",
+        "filer",
+        (),
+        12,
+    ),
+    _f("filer_cnp", "Depune cererea: CNP", "cnp", "filer", (), 20),
+    _f(
+        "filer_capacity",
+        "Depune cererea: în calitate de (de exemplu, avocat)",
+        "text",
+        "filer",
+        (),
+        80,
+    ),
+    _f("filer_basis", "Depune cererea: conform (temeiul)", "text", "filer", (), 120),
+    _f("filer_basis_number", "Depune cererea: numărul documentului", "short", "filer", (), 30),
+    _f("filer_basis_date", "Depune cererea: data documentului", "date", "filer", (), 30),
     # ---------------------------------------------------------------- contact person (VII)
-    _f("contact_last_name", "Contact: last name", "name", "contact", (), 80),
-    _f("contact_first_name", "Contact: first name", "name", "contact", (), 80),
-    _f("contact_city", "Contact: locality", "place", "contact", (), 80),
-    _f("contact_street", "Contact: street", "place", "contact", (), 100),
-    _f("contact_street_number", "Contact: number", "short", "contact", (), 12),
-    _f("contact_building", "Contact: block", "short", "contact", (), 12),
-    _f("contact_entrance", "Contact: staircase", "short", "contact", (), 12),
-    _f("contact_floor", "Contact: floor", "short", "contact", (), 12),
-    _f("contact_apartment", "Contact: apartment", "short", "contact", (), 12),
-    _f("contact_county", "Contact: county / sector", "place", "contact", (), 60),
-    _f("contact_postal_code", "Contact: postal code", "postal_code", "contact", (), 12),
-    _f("contact_phone", "Contact: phone", "phone", "contact", (), 30),
-    _f("contact_email", "Contact: e-mail", "email", "contact", (), 120),
+    _f("contact_last_name", "Persoana pentru comunicare: numele", "name", "contact", (), 80),
+    _f("contact_first_name", "Persoana pentru comunicare: prenumele", "name", "contact", (), 80),
+    _f("contact_city", "Persoana pentru comunicare: localitatea", "place", "contact", (), 80),
+    _f("contact_street", "Persoana pentru comunicare: strada", "place", "contact", (), 100),
+    _f("contact_street_number", "Persoana pentru comunicare: numărul", "short", "contact", (), 12),
+    _f("contact_building", "Persoana pentru comunicare: blocul", "short", "contact", (), 12),
+    _f("contact_entrance", "Persoana pentru comunicare: scara", "short", "contact", (), 12),
+    _f("contact_floor", "Persoana pentru comunicare: etajul", "short", "contact", (), 12),
+    _f("contact_apartment", "Persoana pentru comunicare: apartamentul", "short", "contact", (), 12),
+    _f(
+        "contact_county",
+        "Persoana pentru comunicare: județul / sectorul",
+        "place",
+        "contact",
+        (),
+        60,
+    ),
+    _f(
+        "contact_postal_code",
+        "Persoana pentru comunicare: codul poștal",
+        "postal_code",
+        "contact",
+        (),
+        12,
+    ),
+    _f("contact_phone", "Persoana pentru comunicare: telefonul", "phone", "contact", (), 30),
+    _f("contact_email", "Persoana pentru comunicare: e-mailul", "email", "contact", (), 120),
     # ---------------------------------------------------------------- billing (VIII)
-    _f("billing_name", "Billing: name / company", "text", "billing", (), 150),
-    _f("billing_code", "Billing: CNP / CUI", "short", "billing", (), 20),
-    _f("billing_email", "Billing: e-mail", "email", "billing", (), 120),
-    _f("billing_bank", "Billing: bank", "text", "billing", (), 80),
-    _f("billing_iban", "Billing: IBAN", "iban", "billing", (), 40),
-    _f("billing_address", "Billing: registered office / address", "address", "billing", (), 250),
+    _f("billing_name", "Facturare: numele / denumirea", "text", "billing", (), 150),
+    _f("billing_code", "Facturare: CNP / CUI", "short", "billing", (), 20),
+    _f("billing_email", "Facturare: e-mailul", "email", "billing", (), 120),
+    _f("billing_bank", "Facturare: banca", "text", "billing", (), 80),
+    _f("billing_iban", "Facturare: IBAN", "iban", "billing", (), 40),
+    _f("billing_address", "Facturare: sediul / adresa", "address", "billing", (), 250),
     # ---------------------------------------------------------------- general contact
     _f("email", "E-mail", "email", "person", ("e-mail", "email", "adresa de e-mail"), 120),
     # ---------------------------------------------------------------- independent activity (PFI)
-    _f("profession", "Profession / independent activity (profesia)", "text", "person", (), 120),
+    _f("profession", "Profesia / activitatea independentă", "text", "person", (), 120),
     _f(
         "profession_document",
-        "Right to practise: document, number, date, issuer",
+        "Dreptul de exercitare a profesiei: documentul, numărul, data, emitentul",
         "text",
         "person",
         (),
         200,
     ),
-    _f("phone", "Phone", "phone", "person", ("telefon", "tel", "phone", "mobile"), 30),
+    _f("phone", "Telefon", "phone", "person", ("telefon", "tel", "phone", "mobile"), 30),
 ]
 
 # ---------------------------------------------------------------- roles of each person
@@ -819,30 +889,31 @@ CONTROL_OPTIONS = (
 BOARD_ROLES = ("președinte", "membru", "administrator unic", "administrator")
 
 _ROLE_SPECS = [
-    _f("associate", "associate / shareholder (asociat / acționar)", "checkbox", "roles"),
-    _f("shares", "shares subscribed (number of shares)", "short", "roles", (), 15),
-    _f("board_role", "board role", "text", "roles", (), 40, BOARD_ROLES),
-    _f("general_director", "appointed general director", "checkbox", "roles"),
+    _f("associate", "asociat / acționar", "checkbox", "roles"),
+    _f("shares", "părți sociale / acțiuni subscrise (număr)", "short", "roles", (), 15),
+    _f("board_role", "funcția în conducerea societății", "text", "roles", (), 40, BOARD_ROLES),
+    _f("general_director", "numit director general", "checkbox", "roles"),
     _f(
         "beneficial_owner",
-        "beneficial owner: how control is exercised (empty = not a beneficial owner)",
+        "beneficiar real: modul de exercitare a controlului (necompletat = nu este "
+        "beneficiar real)",
         "text",
         "roles",
         (),
         120,
         CONTROL_OPTIONS,
     ),
-    _f("control_description", "beneficial owner: description of the control", "text", "roles"),
+    _f("control_description", "beneficiar real: descrierea controlului", "text", "roles"),
 ]
 
 # ---------------------------------------------------------------- articles of incorporation (SA)
 _SPECS += [
     *_ROLE_SPECS,
-    _f("share_count", "Number of shares (părți sociale / acțiuni)", "short", "capital", (), 15),
-    _f("share_form", "Shares are", "text", "capital", (), 40, ("nominative", "la purtător")),
+    _f("share_count", "Numărul de părți sociale / acțiuni", "short", "capital", (), 15),
+    _f("share_form", "Acțiunile sunt", "text", "capital", (), 40, ("nominative", "la purtător")),
     _f(
         "company_duration",
-        "Duration in years (empty: nedeterminată, undetermined)",
+        "Durata de funcționare, în ani (necompletat: nedeterminată)",
         "short",
         "articles",
         (),
@@ -850,16 +921,23 @@ _SPECS += [
     ),
     _f(
         "name_reservation_number",
-        "Name availability proof (dovada disponibilității firmei): number",
+        "Dovada disponibilității denumirii firmei: numărul",
         "short",
         "articles",
         (),
         30,
     ),
-    _f("name_reservation_date", "Name availability proof: date", "date", "articles", (), 30),
+    _f(
+        "name_reservation_date",
+        "Dovada disponibilității denumirii firmei: data",
+        "date",
+        "articles",
+        (),
+        30,
+    ),
     _f(
         "activity_object",
-        "Object of activity (obiectul de activitate; proposed: the main CAEN activity)",
+        "Obiectul de activitate (propus: activitatea CAEN principală)",
         "text",
         "articles",
         (),
@@ -867,7 +945,7 @@ _SPECS += [
     ),
     _f(
         "main_activity_domain",
-        "Main field of activity (domeniul principal, name of the CAEN group)",
+        "Domeniul principal de activitate (denumirea grupei CAEN)",
         "text",
         "articles",
         (),
@@ -875,17 +953,17 @@ _SPECS += [
     ),
     _f(
         "administration",
-        "Administered by",
+        "Societatea este administrată de",
         "text",
         "articles",
         (),
         40,
         ("consiliu de administrație", "administrator unic"),
     ),
-    _f("board_term_years", "Term of office of the administrators (years)", "short", "articles"),
+    _f("board_term_years", "Durata mandatului administratorilor (ani)", "short", "articles"),
     _f(
         "control_body",
-        "Financial control by",
+        "Controlul financiar este exercitat de",
         "text",
         "articles",
         (),
@@ -894,7 +972,7 @@ _SPECS += [
     ),
     _f(
         "control_members",
-        "Censors / financial auditor (one per line: identification)",
+        "Cenzorii / auditorul financiar (câte unul pe rând: datele de identificare)",
         "list",
         "articles",
         (),
@@ -906,7 +984,7 @@ _SPECS += [
 _SPECS += [
     _f(
         "taxpayer_type",
-        "Registered as",
+        "Înregistrare ca",
         "text",
         "fiscal",
         (),
@@ -914,10 +992,17 @@ _SPECS += [
         ("persoană juridică", "persoană fizică"),
     ),
     _f("profit_tax", "1. Impozit pe profit", "checkbox", "fiscal"),
-    _f("profit_tax_start", "1.1 Profit tax from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f(
+        "profit_tax_start",
+        "1.1 Impozit pe profit datorat începând cu data de (zz.ll.aaaa)",
+        "date",
+        "fiscal",
+        (),
+        30,
+    ),
     _f(
         "profit_tax_period",
-        "1.2 Profit tax period",
+        "1.2 Perioada fiscală pentru impozitul pe profit",
         "text",
         "fiscal",
         (),
@@ -925,7 +1010,14 @@ _SPECS += [
         ("trimestrială", "anuală"),
     ),
     _f("micro_tax", "2. Impozit pe veniturile microîntreprinderilor", "checkbox", "fiscal"),
-    _f("micro_tax_start", "2.1 Micro-enterprise tax from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f(
+        "micro_tax_start",
+        "2.1 Impozit pe veniturile microîntreprinderilor datorat începând cu data de (zz.ll.aaaa)",
+        "date",
+        "fiscal",
+        (),
+        30,
+    ),
     _f(
         "payroll_taxes",
         "3. Impozit pe veniturile din salarii și contribuții sociale",
@@ -934,19 +1026,19 @@ _SPECS += [
     ),
     _f(
         "payroll_up_to_3_employees",
-        "3.1.1 Up to 3 employees on average (estimated)",
+        "3.1.1 Număr mediu de salariați estimat de până la 3 salariați exclusiv",
         "checkbox",
         "fiscal",
     ),
     _f(
         "payroll_revenue_under_100k",
-        "3.1.2 Total revenue up to 100.000 euro (estimated)",
+        "3.1.2 Venit total estimat de până la 100.000 euro",
         "checkbox",
         "fiscal",
     ),
     _f(
         "payroll_period",
-        "3.2 Payroll tax period",
+        "3.2 Perioada fiscală pentru impozitul pe salarii și contribuții",
         "text",
         "fiscal",
         (),
@@ -954,22 +1046,60 @@ _SPECS += [
         ("lunară", "trimestrială"),
     ),
     _f("salary_tax", "3.3 Impozit pe veniturile din salarii", "checkbox", "fiscal"),
-    _f("salary_tax_start", "3.3.1 Salary tax from (dd.mm.yyyy)", "date", "fiscal", (), 30),
-    _f("cas_employee", "3.4 Contribuție de asigurări sociale (angajat)", "checkbox", "fiscal"),
-    _f("cas_employee_start", "3.4.1 CAS from (dd.mm.yyyy)", "date", "fiscal", (), 30),
     _f(
-        "cass_employee",
-        "3.5 Contribuție de asigurări sociale de sănătate (angajat)",
+        "salary_tax_start",
+        "3.3.1 Impozit pe veniturile din salarii datorat începând cu data de (zz.ll.aaaa)",
+        "date",
+        "fiscal",
+        (),
+        30,
+    ),
+    _f(
+        "cas_employee",
+        "3.4 Contribuție de asigurări sociale (datorată de angajat)",
         "checkbox",
         "fiscal",
     ),
-    _f("cass_employee_start", "3.5.1 CASS from (dd.mm.yyyy)", "date", "fiscal", (), 30),
-    _f("cam_employer", "3.6 Contribuție asiguratorie pentru muncă", "checkbox", "fiscal"),
-    _f("cam_employer_start", "3.6.1 CAM from (dd.mm.yyyy)", "date", "fiscal", (), 30),
+    _f(
+        "cas_employee_start",
+        "3.4.1 CAS datorată începând cu data de (zz.ll.aaaa)",
+        "date",
+        "fiscal",
+        (),
+        30,
+    ),
+    _f(
+        "cass_employee",
+        "3.5 Contribuție de asigurări sociale de sănătate (datorată de angajat)",
+        "checkbox",
+        "fiscal",
+    ),
+    _f(
+        "cass_employee_start",
+        "3.5.1 CASS datorată începând cu data de (zz.ll.aaaa)",
+        "date",
+        "fiscal",
+        (),
+        30,
+    ),
+    _f(
+        "cam_employer",
+        "3.6 Contribuție asiguratorie pentru muncă (datorată de angajator)",
+        "checkbox",
+        "fiscal",
+    ),
+    _f(
+        "cam_employer_start",
+        "3.6.1 CAM datorată începând cu data de (zz.ll.aaaa)",
+        "date",
+        "fiscal",
+        (),
+        30,
+    ),
     _f("vat", "4. Taxa pe valoarea adăugată", "checkbox", "fiscal"),
     _f(
         "estimated_turnover",
-        "4.1 Estimated turnover (lei, up to 8 digits)",
+        "4.1 Cifra de afaceri estimată a se realiza (lei, cel mult 8 cifre)",
         "short",
         "fiscal",
         (),
@@ -977,7 +1107,7 @@ _SPECS += [
     ),
     _f(
         "vat_registration",
-        "VAT registration",
+        "Înregistrare în scopuri de TVA",
         "text",
         "fiscal",
         (),
@@ -987,7 +1117,15 @@ _SPECS += [
             "4.3 prin opțiune (art. 316 alin. (1) lit. a) pct. 2)",
         ),
     ),
-    _f("vat_period", "4.4 VAT period", "text", "fiscal", (), 20, ("lunară", "trimestrială")),
+    _f(
+        "vat_period",
+        "4.4 Perioada fiscală TVA",
+        "text",
+        "fiscal",
+        (),
+        20,
+        ("lunară", "trimestrială"),
+    ),
     _f("vat_cash_accounting", "4.5 TVA la încasare", "checkbox", "fiscal"),
 ]
 
@@ -996,7 +1134,7 @@ _SPECS += [
 _SPECS.append(
     _f(
         "bo_filed_by",
-        "Beneficial owner declaration filed by",
+        "Declarația privind beneficiarii reali este depusă de",
         "text",
         "filing",
         (),
@@ -1117,16 +1255,18 @@ def _person_specs() -> list[FieldSpec]:
     specs = []
     for name in PERSON_ROLES:  # person 1's roles
         spec = by_name[name]
-        specs.append(FieldSpec(**{**spec.__dict__, "label": f"Person 1 (applicant): {spec.label}"}))
+        specs.append(
+            FieldSpec(**{**spec.__dict__, "label": f"Persoana 1 (solicitantul): {spec.label}"})
+        )
     for index, prefix in enumerate(PERSON_PREFIXES[1:], start=2):
         for name in PERSON_FIELDS:
             spec = by_name[name]
             specs.append(
                 FieldSpec(
                     name=prefix + name,
-                    label=f"Person {index}: {spec.label[0].lower()}{spec.label[1:]}"
+                    label=f"Persoana {index}: {spec.label[0].lower()}{spec.label[1:]}"
                     if name in PERSON_ROLES
-                    else f"Person {index}: {spec.label}",
+                    else f"Persoana {index}: {spec.label}",
                     kind=spec.kind,
                     synonyms=(),  # never read from labels: identity cards fill them
                     group="roles" if name in PERSON_ROLES else f"person{index}",
