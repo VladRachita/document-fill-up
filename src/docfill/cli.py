@@ -622,7 +622,7 @@ def convert_command(
     ] = None,
     engine: Annotated[
         str,
-        typer.Option(help="auto, libreoffice or pdf2docx (see docfill convert-engines)."),
+        typer.Option(help="auto, libreoffice, pdf2docx or ocr (see docfill convert-engines)."),
     ] = "auto",
     reference: Annotated[
         Path | None,
@@ -642,10 +642,22 @@ def convert_command(
         ),
     ] = None,
     as_json: Annotated[bool, typer.Option("--json", help="Print the scores as JSON.")] = False,
+    marks: Annotated[
+        bool | None,
+        typer.Option(
+            "--marks/--no-marks",
+            help="A scan read with OCR: keep its stamps, signatures and handwriting as pictures "
+            "where they are on the page, or leave them out (a clean copy). Default: the "
+            "setting DOCFILL_OCR_KEEP_MARKS (on).",
+            show_default=False,
+        ),
+    ] = None,
 ) -> None:
     """Convert a Word document to PDF or a PDF to Word, and score how faithful the converted
     document is (0-100) against the original and the real document."""
     settings = _settings(ctx)
+    if marks is not None:
+        settings = settings.model_copy(update={"ocr_keep_marks": marks})
     if not source.is_file():
         _fail(f"{source}: file not found")
     real = (reference.name, reference.read_bytes()) if reference and reference.is_file() else None

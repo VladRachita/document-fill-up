@@ -200,16 +200,19 @@ def _ocr(data: bytes, suffix: str, settings: Settings) -> Produced:
             "read with little confidence: check them in the Word document (listed with the "
             "text score)"
         )
-    if result.dropped:
+    if result.marks:
         warnings.append(
-            f"{result.dropped} marks on the pages were left out as noise (stamps, signatures, "
-            "handwriting)"
+            f"{result.marks} stamp{'s' if result.marks != 1 else ''}, signatures or handwritten "
+            "notes kept as pictures where they are on the page (handwriting is not read as text)"
         )
+    elif not settings.ocr_keep_marks:
+        warnings.append("Stamps, signatures and handwriting were left out (a clean copy)")
     stats = {
         "words": result.words,
         "confidence": round(result.confidence, 1),
         "uncertain": result.uncertain,
         "dropped": result.dropped,
+        "marks": result.marks,
     }
     return Produced(result.data, warnings, stats)
 

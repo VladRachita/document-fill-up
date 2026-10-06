@@ -24,6 +24,9 @@ paragraphs    a line starts a paragraph after a blank line or a short line (the 
 alignment     justified when the lines reach the right margin, centred when they stand in the
               middle, right-aligned when they end at the margin far from the left
 columns       words far apart on one line (signatures side by side) are separated by tabs
+marks         what is not text (a stamp, a signature, handwriting) is kept as a picture laid where
+              it is on the page, its paper transparent: over the text, as on the scan; handwriting
+              is not read (Tesseract reads print)
 ============  ===================================================================================
 """
 
@@ -50,6 +53,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Emu, Pt
 from PIL import Image, ImageFilter
+from scipy import ndimage
 
 from docfill.config import Settings
 from docfill.errors import ConversionError, DocumentReadError
@@ -66,6 +70,9 @@ STAMP_CONFIDENCE = 75  # a word on a coloured stamp needs this much
 BOLD_SPREAD, BOLD_LEAST = 5, 0.15
 INK = 140  # grey level under which a pixel is ink (paper evened out to white)
 RULE = 215  # an underline is thin: on a scan of little resolution it is only grey
+# A mark (a stamp, a signature, handwriting): coloured ink, or ink darker than MARK_INK where no
+# word was read (show-through stays lighter); its strokes are taken down to MARK_LIGHT.
+MARK_INK, MARK_LIGHT = 170, 225
 PUNCTUATION = set("-–—•·,.;:!?\"'„”“’‘«»()[]/%&*+=§°")
 _TSV_FIELDS = ("left", "top", "width", "height")
 
@@ -150,6 +157,16 @@ class Line:
 
 
 @dataclass
+class Mark:
+    """What is not text on a page (a stamp, a signature, handwriting): its picture, the paper
+    transparent, and where it is on the page (pixels at DPI)."""
+
+    left: int
+    top: int
+    picture: Image.Image  # RGBA
+
+
+@dataclass
 class Page:
     number: int
     width: int  # in pixels at DPI
@@ -158,6 +175,7 @@ class Page:
     left: float = 0.0  # where the text starts and ends: the margins of the page
     right: float = 0.0
     dropped: int = 0  # words left out as noise
+    marks: list[Mark] = field(default_factory=list)
 
 
 @dataclass
@@ -174,7 +192,7 @@ class Paragraph:
 
     @property
     def size(self) -> float:
-        return median(line.size for line in self.lines)
+        return median(line.size for line in self.lines) if self.lines else 0.0
 
 
 @dataclass
@@ -187,18 +205,23 @@ class OcrResult:
     confidence: float  # mean confidence of the words, weighted by their letters
     uncertain: list[str]  # words read with less than 60% confidence
     dropped: int  # words left out as noise (stamps, signatures)
+    marks: int = 0  # stamps, signatures, handwriting kept as pictures
 
 
 # --------------------------------------------------------------------------- the picture
 
 
-def _even_out(gray: Image.Image) -> Image.Image:
-    """The paper evened out to white: each point divided by the shade of the paper around it
-    (the brightest within ~5 mm). A darker edge or the show-through of the other side fades; the
-    ink stays dark."""
+def _paper(gray: Image.Image) -> np.ndarray:
+    """The shade of the paper around each point: the brightest within ~5 mm."""
     small = gray.reduce(8).filter(ImageFilter.MaxFilter(9))
-    paper = np.asarray(small.resize(gray.size, Image.Resampling.BILINEAR), np.float32)
-    evened = np.asarray(gray, np.float32) / np.maximum(paper, 1) * 255
+    return np.maximum(np.asarray(small.resize(gray.size, Image.Resampling.BILINEAR), np.float32), 1)
+
+
+def _even_out(gray: Image.Image, paper: np.ndarray | None = None) -> Image.Image:
+    """The paper evened out to white: each point divided by the shade of the paper around it.
+    A darker edge or the show-through of the other side fades; the ink stays dark."""
+    paper = _paper(gray) if paper is None else paper
+    evened = np.asarray(gray, np.float32) / paper * 255
     return Image.fromarray(np.clip(evened, 0, 255).astype(np.uint8))
 
 
@@ -223,21 +246,29 @@ def _skew(gray: Image.Image) -> float:
     return angle
 
 
-def prepare(image: Image.Image) -> tuple[Image.Image, Image.Image]:
-    """The page to read (grey, evened out, straightened) and its coloured ink."""
+def prepare(image: Image.Image) -> tuple[Image.Image, Image.Image, Image.Image]:
+    """The page to read (grey, evened out, straightened), its coloured ink, and its colours
+    (evened out and straightened too: the pictures of its stamps and signatures)."""
     rgb = image.convert("RGB")
-    gray, colour = _even_out(rgb.convert("L")), _colour(rgb)
+    gray = rgb.convert("L")
+    paper = _paper(gray)
+    evened = np.asarray(rgb, np.float32) / paper[..., None] * 255
+    colours = Image.fromarray(np.clip(evened, 0, 255).astype(np.uint8))
+    gray, colour = _even_out(gray, paper), _colour(rgb)
     angle = _skew(gray)
     if abs(angle) >= 0.1:
         gray = gray.rotate(angle, Image.Resampling.BICUBIC, fillcolor=255)
         colour = colour.rotate(angle, Image.Resampling.NEAREST, fillcolor=0)
-    return gray, colour
+        colours = colours.rotate(angle, Image.Resampling.BICUBIC, fillcolor=(255, 255, 255))
+    return gray, colour, colours
 
 
-def clean_page(image: Image.Image) -> Image.Image:
+def clean_page(image: Image.Image, stamps: bool = False) -> Image.Image:
     """A scanned page as it is compared with the document read from it: the paper evened out,
-    the stamps taken off, the page straightened."""
-    gray, colour = prepare(image)
+    the page straightened and, unless they were kept (``stamps``), the stamps taken off."""
+    gray, colour, _ = prepare(image)
+    if stamps:
+        return gray
     pixels = np.where(np.asarray(colour) > 0, 255, np.asarray(gray))
     return Image.fromarray(pixels.astype(np.uint8))
 
@@ -301,15 +332,21 @@ def _stroke(gray: np.ndarray, word: Word) -> float:
 
 
 def read_page(number: int, image: Image.Image, settings: Settings, timeout: int) -> Page:
-    """Read one page: its lines of words, noise left out."""
-    gray, colour = prepare(image)
+    """Read one page: its lines of words, noise left out, and (``ocr_keep_marks``) the marks
+    that are not text."""
+    gray, colour, colours = prepare(image)
     gray_pixels, colour_pixels = np.asarray(gray), np.asarray(colour) > 0
     grouped: dict[tuple[str, str, str], list[Word]] = {}
     dropped = 0
     # the stamps are taken off the page (the black text over them stays): Tesseract would take
     # the part of the page they cover for a picture
     destamped = np.where(colour_pixels, 255, gray_pixels).astype(np.uint8)
-    for row in _tesseract(Image.fromarray(destamped), settings, timeout):
+    rows = _tesseract(Image.fromarray(destamped), settings, timeout)
+    missed = _missed(gray_pixels, colour_pixels, rows)
+    if missed is not None:  # read again, alone on the page: the print Tesseract passed over
+        again = _tesseract(missed, settings, timeout)
+        rows += [{**row, "block_num": f"again {row['block_num']}"} for row in again]
+    for row in rows:
         left, top, width, height = (int(row[name]) for name in _TSV_FIELDS)
         word = Word(row["text"].strip(), left, top, left + width, top + height, float(row["conf"]))
         stamped = colour_pixels[word.top : word.bottom, word.left : word.right].mean() > 0.25
@@ -332,8 +369,7 @@ def read_page(number: int, image: Image.Image, settings: Settings, timeout: int)
         # of text, a word read with little confidence is kept, to be corrected
         sure = (
             line.confidence >= 70
-            or (line.confidence >= 60 and letters >= 20)
-            or (line.confidence >= 45 and letters >= 40)
+            or (line.confidence >= 45 and letters >= 20)  # a long line: one word misread
         )
         if on_stamp and line.confidence < 85:
             dropped += len(line.words)
@@ -353,7 +389,228 @@ def read_page(number: int, image: Image.Image, settings: Settings, timeout: int)
         small = [line for line in page.lines if line.bottom - line.top < 0.45 * typical]
         page.lines = [line for line in page.lines if line not in small]
         page.dropped += sum(len(line.words) for line in small)
+    if settings.ocr_keep_marks:
+        page.marks = marks(gray_pixels, np.asarray(colours), page.lines)
     return page
+
+
+def _missed(gray: np.ndarray, stamps: np.ndarray, rows: list[dict[str, str]]) -> Image.Image | None:
+    """The print no word was read from, alone on a white page; None when there is little.
+    Tesseract takes a part of a page for a picture at times (the remains of a stamp, the other
+    side showing through, next to a heading) and reads nothing in it."""
+    covered = np.zeros(gray.shape, bool)
+    for row in rows:  # and next to a word: the end of a word cut short (a bent line), no line
+        left, top, width, height = (int(row[name]) for name in _TSV_FIELDS)
+        reach = 6 + int(1.5 * height)
+        covered[max(0, top - 6) : top + height + 6, max(0, left - reach) : left + width + reach] = (
+            True
+        )
+    ink = (gray < 140) & ~covered & ~stamps
+    if ink.sum() < 1500:
+        return None
+    alone = ndimage.binary_dilation(ink, iterations=8) & ~covered
+    return Image.fromarray(np.where(alone, gray, 255).astype(np.uint8))
+
+
+def marks(gray: np.ndarray, colours: np.ndarray, lines: list[Line]) -> list[Mark]:
+    """What is not text on a page: a stamp or a coloured pen (blue, violet, red ink), a signature
+    or handwriting (dark ink where no word was read). Strokes ~2 mm apart are one mark; the two
+    kinds are found apart, so that print never rides along with a stamp. Left out: specks, the
+    print the OCR did not take into a word (dark ink along the lines of text: a word missed, the
+    end of a line bent on a warped page), the coloured fringe a camera leaves on print, a punched
+    hole or the edge of the paper (grey ink at the edge of the page)."""
+    height, width = gray.shape
+    pixels = colours.astype(np.int16)
+    red, green, blue = pixels[..., 0], pixels[..., 1], pixels[..., 2]
+    bluish = blue - np.maximum(red, green)
+    reddish = red - np.maximum(green, blue)
+    tall = median(line.bottom - line.top for line in lines) if lines else 60
+    words = np.zeros(gray.shape, bool)
+    bands = np.zeros(gray.shape, bool)  # the lines of text, half a line above and below
+    for line in lines:
+        reach = int(tall / 2)
+        bands[max(0, line.top - reach) : line.bottom + reach, :width] = True
+        for word in line.words:  # a little round each word: its ink a box can cut on a bent page
+            words[
+                max(0, word.top - 6) : word.bottom + 6, max(0, word.left - 6) : word.right + 6
+            ] = True
+    # coloured ink, not the coloured edge of a black stroke (a camera's fringe)
+    print_ink = ndimage.binary_dilation((gray < 150) & (bluish < 15) & (reddish < 15), iterations=2)
+    coloured = ((bluish > 28) | (reddish > 40)) & (gray < 235) & ~print_ink
+    coloured = _off_words(coloured, words, bluish - reddish)
+    pale = ((bluish > 10) | (reddish > 18)) & (gray < 245)  # the lighter parts of a stamp
+    dark = _off_print((gray < MARK_INK) & ~words & ~coloured, bands, tall)
+    edge = 0.04 * width
+    found, taken = [], np.zeros(gray.shape, bool)
+    for box in _groups(coloured):
+        region = (slice(box[1], box[3]), slice(box[0], box[2]))
+        ink = int(coloured[region].sum())
+        on_words = (coloured[region] & words[region]).sum() > 0.6 * max(ink, 1)
+        if ink < 300 or (on_words and box[3] - box[1] < 2.2 * tall):
+            continue  # a speck, or the fringe of print: a stamp spreads off the words
+        if box[2] < edge or box[0] > width - edge:
+            continue  # the coloured edge of the paper
+        # the pale parts of a stamp lie next to its strong colour (show-through lies apart); over
+        # a word, only the clearly coloured ink: the paler is the fringe of the print
+        near = ndimage.binary_dilation(coloured[region], iterations=8)
+        lighter = np.zeros_like(pale)
+        lighter[region] = pale[region] & ~words[region] & near
+        mark = _picture(gray, colours, coloured, lighter, box, taken)
+        if mark:
+            found.append(_take(mark, taken))
+    light = (gray < MARK_LIGHT) & ~words  # the strokes of a pen, however lightly pressed
+    for box in _groups(dark):
+        left, top, right, bottom = box
+        region = (slice(top, bottom), slice(left, right))
+        ink = int(dark[region].sum())
+        if ink < 150 or max(right - left, bottom - top) < 0.8 * tall:
+            continue  # a speck
+        on_lines = (dark[region] & bands[region]).sum() / ink
+        if on_lines > 0.8 or (on_lines > 0.6 and bottom - top < 2.2 * tall):
+            continue  # print the OCR did not take into a word: no mark
+        if right < edge or left > width - edge:
+            continue  # a punched hole, the edge of the paper
+        mark = _picture(gray, colours, dark, light, box, taken, least=800)  # not a speck
+        if mark:
+            found.append(_take(mark, taken))
+    return found
+
+
+def _take(mark: Mark, taken: np.ndarray) -> Mark:
+    """The strokes of ``mark`` marked as taken."""
+    width, height = mark.picture.size
+    taken[mark.top : mark.top + height, mark.left : mark.left + width] |= (
+        np.asarray(mark.picture)[..., 3] > 0
+    )
+    return mark
+
+
+def _off_words(coloured: np.ndarray, words: np.ndarray, bluish: np.ndarray) -> np.ndarray:
+    """Coloured ink without the tint or the fringe of printed letters (a camera's): what lies on
+    the words is kept where it goes on from ink of the same hue off the words (a blue stamp over
+    the text; not the red tint of the print it crosses)."""
+    blue = bluish > 0
+    kept = np.zeros_like(coloured)
+    for hue in (coloured & blue, coloured & ~blue):
+        off = hue & ~words
+        labels, count = ndimage.label(off, structure=np.ones((3, 3)))
+        if not count:
+            continue
+        size = ndimage.sum(off, labels, np.arange(1, count + 1))
+        strong = np.concatenate([[False], size >= 20])[labels]  # not a speck
+        kept |= ndimage.binary_propagation(strong, structure=np.ones((3, 3)), mask=hue)
+    return kept
+
+
+def _off_print(dark: np.ndarray, bands: np.ndarray, tall: float) -> np.ndarray:
+    """Dark ink without the bits of print the words did not take in: strokes smaller than a
+    line, lying on a line of text (a dot, the end of a bent line). A signature's strokes are
+    larger, or lie off the lines."""
+    labels, count = ndimage.label(dark)
+    if not count:
+        return dark
+    index = np.arange(1, count + 1)
+    size = ndimage.sum(dark, labels, index)
+    on_lines = ndimage.sum(bands, labels, index) / np.maximum(size, 1)
+    heights = np.array([found[0].stop - found[0].start for found in ndimage.find_objects(labels)])
+    keep = np.concatenate([[False], (heights >= 0.8 * tall) | (on_lines < 0.5)])
+    return keep[labels]
+
+
+def _groups(ink: np.ndarray) -> list[tuple[int, int, int, int]]:
+    """The boxes of the groups of ink: strokes ~2 mm apart are one group (found on a coarser grid:
+    quicker)."""
+    step = 4
+    height, width = ink.shape
+    rows, columns = height // step, width // step
+    grid = ink[: rows * step, : columns * step].reshape(rows, step, columns, step).any(axis=(1, 3))
+    labels, _ = ndimage.label(ndimage.binary_dilation(grid, iterations=6))
+    return _merged(
+        [
+            (
+                found[1].start * step,
+                found[0].start * step,
+                found[1].stop * step,
+                found[0].stop * step,
+            )
+            for found in ndimage.find_objects(labels)
+        ]
+    )
+
+
+def _merged(boxes: list[tuple[int, int, int, int]]) -> list[tuple[int, int, int, int]]:
+    """Boxes that overlap joined into one (the parts of a stamp, a signature over a stamp)."""
+    boxes = list(boxes)
+    joined = True
+    while joined:
+        joined, result = False, []
+        for box in boxes:
+            for index, other in enumerate(result):
+                if (
+                    box[0] < other[2]
+                    and other[0] < box[2]
+                    and box[1] < other[3]
+                    and other[1] < box[3]
+                ):
+                    result[index] = (
+                        min(box[0], other[0]),
+                        min(box[1], other[1]),
+                        max(box[2], other[2]),
+                        max(box[3], other[3]),
+                    )
+                    joined = True
+                    break
+            else:
+                result.append(box)
+        boxes = result
+    return boxes
+
+
+def _picture(
+    gray: np.ndarray,
+    colours: np.ndarray,
+    seeds: np.ndarray,
+    strokes: np.ndarray,
+    box: tuple[int, int, int, int],
+    taken: np.ndarray,
+    least: int = 1,
+) -> Mark | None:
+    """The picture of a mark: every stroke that reaches its ink (``seeds``), however light (a pen
+    pressed lightly, the pale part of a stamp), in its colour, the paper transparent. The strokes
+    another mark took (``taken``) are left to it. None when less than ``least`` pixels of ink
+    (all its strokes counted) or nothing is left."""
+    height, width = gray.shape
+    reach = 100  # ~1 cm: a light stroke leads on past the dark ones (the tail of a signature)
+    left, top = max(0, box[0] - reach), max(0, box[1] - reach)
+    right, bottom = min(width, box[2] + reach), min(height, box[3] + reach)
+    region = (slice(top, bottom), slice(left, right))
+    ink = strokes[region] | seeds[region]
+    pieces, _ = ndimage.label(ink, structure=np.ones((3, 3)))
+    inside = np.zeros(ink.shape, bool)
+    inside[box[1] - top : box[3] - top, box[0] - left : box[2] - left] = True
+    touched = np.unique(pieces[seeds[region] & inside])
+    kept = np.isin(pieces, touched[touched > 0])
+    rows, columns = np.nonzero(kept)
+    if not rows.size:
+        return None
+    # the picture as large as the strokes, a little paper round them
+    first, last = max(0, rows.min() - 4), rows.max() + 5
+    start, stop = max(0, columns.min() - 4), columns.max() + 5
+    kept = kept[first:last, start:stop]
+    top, left = top + first, left + start
+    region = (slice(top, top + kept.shape[0]), slice(left, left + kept.shape[1]))
+    shade = gray[region].astype(np.float32)
+    alpha = np.clip((250 - shade) / 190, 0, 1) * kept
+    if (alpha > 0.25).sum() < least:
+        return None
+    alpha *= ~taken[region]
+    if not alpha.any():
+        return None
+    opaque = alpha[..., None]
+    # the colour of the ink itself: a light stroke is the ink, half transparent over the paper
+    pure = (colours[region].astype(np.float32) - (1 - opaque) * 255) / np.maximum(opaque, 1e-3)
+    picture = np.dstack([np.clip(pure, 0, 255), alpha * 255]).astype(np.uint8)
+    return Mark(left, top, Image.fromarray(picture, "RGBA"))
 
 
 def _apart(words: list[Word]) -> list[Word]:
@@ -418,26 +675,45 @@ def _inside(lines: list[Line], width: int) -> tuple[list[Line], int]:
 
 def _rows(lines: list[Line]) -> list[Line]:
     """Lines top to bottom; the lines Tesseract read apart side by side on the same row (two
-    columns, a signature on each side) joined into one, a column break between them."""
+    columns, a signature on each side) joined into one, a column break between them. A line it
+    cut in two (the end of a line bent on a warped page) is joined as one, a word it cut in two
+    as one word."""
     rows: list[Line] = []
     for line in sorted(lines, key=lambda line: line.top):
         if rows:
             last = rows[-1]
-            overlap = min(last.bottom, line.bottom) - max(last.top, line.top)
-            height = max(last.bottom - last.top, line.bottom - line.top)
+            # the nearest words of the two: a bent line is taller than its words
+            gap, word, other = min(
+                (
+                    (max(word.left - other.right, other.left - word.right), word, other)
+                    for word in last.words
+                    for other in line.words
+                ),
+                key=lambda pair: pair[0],
+            )
+            overlap = min(word.bottom, other.bottom) - max(word.top, other.top)
+            height = max(word.height, other.height)
             # side by side: the line lies between the words of the row, over none of them
             apart = all(line.left >= w.right or line.right <= w.left for w in last.words)
             if apart and overlap > 0.6 * height:
                 column, columns = 0, {}  # the column of every word, the new line's last
-                for index, word in enumerate(last.words):
-                    columns[id(word)] = column
+                for index, found in enumerate(last.words):
+                    columns[id(found)] = column
                     column += index in last.breaks
-                columns.update({id(word): column + 1 for word in line.words})
-                words = sorted(last.words + line.words, key=lambda word: word.left)
+                joined = columns[id(word)] if gap < height else column + 1
+                columns.update({id(found): joined for found in line.words})
+                words = sorted(last.words + line.words, key=lambda found: found.left)
+                if 0 <= gap < 0.2 * height:  # closer than a space: one word
+                    first, second = sorted((word, other), key=lambda found: found.left)
+                    first.text += second.text
+                    first.right, first.top = second.right, min(first.top, second.top)
+                    first.bottom = max(first.bottom, second.bottom)
+                    first.confidence = min(first.confidence, second.confidence)
+                    words.remove(second)
                 last.breaks = {
                     index
-                    for index, (word, after) in enumerate(zip(words, words[1:], strict=False))
-                    if columns[id(word)] != columns[id(after)]
+                    for index, (found, after) in enumerate(zip(words, words[1:], strict=False))
+                    if columns[id(found)] != columns[id(after)]
                 }
                 last.words = words
                 continue
@@ -727,7 +1003,9 @@ _PAGE_NUMBER = re.compile(r"^(pag(ina|e)?\.?\s*)?\d{1,3}(\s*(/|din|of|-)\s*\d{1,
 
 def layout(pages: list[Page]) -> tuple[list[Paragraph], dict[str, float]]:
     """The paragraphs of the document, and its page: size of the text (pt), line pitch and
-    margins (px)."""
+    margins (px). A page with marks but no text (a page of signatures) is an empty paragraph,
+    to keep its page and its marks."""
+    every = pages
     pages = [page for page in pages if page.lines]
     if not pages:
         return [], {}
@@ -762,13 +1040,15 @@ def layout(pages: list[Page]) -> tuple[list[Paragraph], dict[str, float]]:
     bottom = max(bottoms) + 0.3 * pitch if bottoms else pages[0].height - left
     wide = 4 * pitch  # a jump this long within a line is a column (a tab)
     paragraphs: list[Paragraph] = []
-    for page in pages:
+    for page in every:
         if not page.lines:
+            if page.marks:
+                paragraphs.append(Paragraph([], page, page_break=bool(paragraphs)))
             continue
         found = _paragraphs(page, pitch, wide)
         if paragraphs:  # a page of the scan is a page of the document (1:1)
             last = paragraphs[-1]
-            if _continues(last, found[0]):  # unless a paragraph goes on from one to the next
+            if last.lines and _continues(last, found[0]):  # unless a paragraph goes on
                 last.lines += found.pop(0).lines
             else:
                 found[0].page_break = True
@@ -838,7 +1118,14 @@ def _join(paragraph: Paragraph, wide: float) -> Iterator[tuple[str, Word]]:
             yield before, word
 
 
-def write_docx(paragraphs: list[Paragraph], page: dict[str, float], title: str = "") -> bytes:
+def write_docx(
+    paragraphs: list[Paragraph],
+    page: dict[str, float],
+    title: str = "",
+    pages: list[Page] | None = None,
+) -> bytes:
+    """The Word document: its paragraphs and, laid where they are, the marks of ``pages``."""
+    pages = pages or []
     document = Document()
     section = document.sections[0]
     section.start_type = WD_SECTION.NEW_PAGE
@@ -864,8 +1151,10 @@ def write_docx(paragraphs: list[Paragraph], page: dict[str, float], title: str =
         "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
     }
     wide = 4 * page["pitch"]
+    written_for: dict[int, object] = {}  # id of a Paragraph -> the paragraph written for it
     for paragraph in paragraphs:
         written = document.add_paragraph()
+        written_for[id(paragraph)] = written
         layout_ = written.paragraph_format
         layout_.alignment = alignments[paragraph.alignment]
         if paragraph.left_indent:
@@ -899,6 +1188,7 @@ def write_docx(paragraphs: list[Paragraph], page: dict[str, float], title: str =
             if size != body:
                 run.font.size = Pt(size)
 
+    _lay_marks(paragraphs, pages, written_for)
     if page.get("page_numbers"):  # the page number, centred at the bottom, as Word writes it
         footer = section.footer.paragraphs[0]
         footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -910,6 +1200,81 @@ def write_docx(paragraphs: list[Paragraph], page: dict[str, float], title: str =
     buffer = io.BytesIO()
     document.save(buffer)
     return buffer.getvalue()
+
+
+def _lay_marks(
+    paragraphs: list[Paragraph], pages: list[Page], written_for: dict[int, object]
+) -> None:
+    """Lay the marks of every page (stamps, signatures) where they are on it: pictures floating
+    over the text, held by the first paragraph that starts on that page (or, when all its text
+    goes on from the page before, by that paragraph)."""
+    number = 0
+    for page in pages:
+        if not page.marks:
+            continue
+        lines = {id(line) for line in page.lines}
+        holder = next((p for p in paragraphs if p.page is page), None) or next(
+            (p for p in paragraphs if any(id(line) in lines for line in p.lines)), None
+        )
+        if holder is None:
+            continue
+        for mark in page.marks:
+            number += 1
+            _float(written_for[id(holder)], mark, number)
+
+
+def _float(paragraph: object, mark: Mark, number: int) -> None:
+    """A picture laid at a place of the page, over the text (Word: in front of text)."""
+    emu = lambda pixels: str(round(pixels / DPI * 914400))  # noqa: E731
+    buffer = io.BytesIO()
+    mark.picture.save(buffer, format="PNG", optimize=True)
+    buffer.seek(0)
+    run = paragraph.add_run()  # type: ignore[attr-defined]
+    run.add_picture(
+        buffer,
+        width=Emu(int(emu(mark.picture.width))),
+        height=Emu(int(emu(mark.picture.height))),
+    )
+    inline = run._r.find(".//" + qn("wp:inline"))
+    anchor = OxmlElement("wp:anchor")
+    for name, value in {
+        "distT": "0",
+        "distB": "0",
+        "distL": "0",
+        "distR": "0",
+        "simplePos": "0",
+        "relativeHeight": str(251658240 + number),
+        "behindDoc": "0",
+        "locked": "0",
+        "layoutInCell": "1",
+        "allowOverlap": "1",
+    }.items():
+        anchor.set(name, value)
+    simple = OxmlElement("wp:simplePos")
+    simple.set("x", "0")
+    simple.set("y", "0")
+    anchor.append(simple)
+    for axis, pixels in (("H", mark.left), ("V", mark.top)):
+        position = OxmlElement(f"wp:position{axis}")
+        position.set("relativeFrom", "page")
+        offset = OxmlElement("wp:posOffset")
+        offset.text = emu(pixels)
+        position.append(offset)
+        anchor.append(position)
+    anchor.append(inline.find(qn("wp:extent")))
+    effect = OxmlElement("wp:effectExtent")
+    for side in "ltrb":
+        effect.set(side, "0")
+    anchor.append(effect)
+    anchor.append(OxmlElement("wp:wrapNone"))
+    for tag in ("wp:docPr", "wp:cNvGraphicFramePr", "a:graphic"):
+        anchor.append(inline.find(qn(tag)))
+    inline.getparent().replace(inline, anchor)
+    # at the start of the paragraph: a paragraph going on to the next page holds it on its first
+    element = paragraph._p  # type: ignore[attr-defined]
+    element.remove(run._r)
+    properties = element.find(qn("w:pPr"))
+    element.insert(0 if properties is None else 1, run._r)
 
 
 def ocr_missing(settings: Settings) -> str | None:
@@ -930,10 +1295,11 @@ def scan_to_word(data: bytes, settings: Settings) -> OcrResult:
     confidence = sum(word.confidence * max(word.letters, 1) for word in words) / letters
     uncertain = [word.text for word in words if word.confidence < 60 and word.letters]
     return OcrResult(
-        write_docx(paragraphs, page, title),
+        write_docx(paragraphs, page, title, pages),
         len(pages),
         len(words),
         confidence,
         uncertain,
         sum(page.dropped for page in pages),
+        sum(len(page.marks) for page in pages),
     )

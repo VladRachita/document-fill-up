@@ -45,7 +45,7 @@ checks that could be made.
 |---|---|---|
 | Word → PDF | text (every word of the Word file in the PDF; page headers and numbers printed on every page are not held against it), pages (as Word counted them), fonts, pictures. **Not the layout**: LibreOffice made the PDF, so it would be compared with its own layout | the PDF Word saves of the same document: **everything, page by page**. This is the true 1:1 score |
 | PDF → Word | everything: the Word document is laid out by LibreOffice and compared page by page with the PDF | the Word document the PDF was made from: both laid out the same way and compared |
-| scanned PDF → Word | the pages within 2 mm (the lines and paragraphs; a scan typed again breaks its lines a little differently than its printer did; stamps left out), the number of pages; **text: the confidence of the OCR** (the scan has no text to compare with), with the words read with little confidence listed to check | as for any PDF |
+| scanned PDF → Word | the pages within 2 mm (the lines and paragraphs; a scan typed again breaks its lines a little differently than its printer did; its stamps and signatures compared as the pictures laid over the text, or left out of the scan too when the clean copy is asked for), the number of pages; **text: the confidence of the OCR** (the scan has no text to compare with), with the words read with little confidence listed to check | as for any PDF |
 
 A Word document is laid out by LibreOffice to be compared. When a font it uses is not installed
 on the server, the comparison says so: the layout score is then lower than it would be in Word.
@@ -60,9 +60,10 @@ own, or with only the invisible text a scanner app laid over them) and uses the 
 | Step | How |
 |---|---|
 | picture | each page drawn at 300 dpi; the paper evened out to white (a darker edge, the show-through of the other side fade, the ink stays); the page straightened |
-| stamps | blue and red ink is taken off before reading (the black text over a stamp stays); words still read on a stamp with little confidence are left out |
-| reading | Tesseract (Romanian and English), one process per page, four pages side by side: 8 pages in about 14 s |
-| noise | a signature, handwriting, a punched hole, a speck: lines read with little confidence, too small, or outside the text; a short last line of a paragraph read with little confidence is kept when it lines up under the text |
+| stamps | blue and red ink is taken off before reading (the black text over a stamp stays); words still read on a stamp with little confidence are left out of the text |
+| reading | Tesseract (Romanian and English), one process per page, four pages side by side: 8 pages in about 20 s. The print it passed over (it takes a part of a page for a picture at times: the remains of a stamp and the other side showing through, next to a heading) is read again, alone on the page; a word it cut in two on a warped line is joined |
+| noise | a signature, handwriting, a punched hole, a speck: lines read with little confidence, too small, or outside the text are not text; a short last line of a paragraph read with little confidence is kept when it lines up under the text |
+| stamps, signatures, handwriting | kept as **pictures laid where they are on the page**, over the text (Word: "in front of text", anchored to the page; they can be moved or deleted), the paper transparent, in the colour of their ink: coloured ink (a stamp, a blue or violet pen), and dark ink where no word was read (a signature, a date written by hand), with the light strokes that lead on from it. Left out: the tint or the coloured fringe of the print (a camera's), the print the OCR did not take into a word, specks, a punched hole, the edge of the paper. `--no-marks` (or unticking the box on the page, `marks=false` in the API, `DOCFILL_OCR_KEEP_MARKS=false`) makes a clean copy, to be signed again |
 | paragraphs | a line starts a paragraph after a blank line or a short line, when it is indented or centred, or starts with a dash; the lines of a paragraph flow (no line breaks), a word cut by a hyphen is joined; a paragraph that goes on to the next page stays one paragraph |
 | alignment, indents, spacing | justified, centred, right or left; the first-line indent; list items with a hanging indent and a tab after the dash; the space before a paragraph; the indents of the whole document evened out (a page photographed a little warped) |
 | letters | the size from the line pitch (12 pt for Word's single spacing of 14.2 pt) and, for a title, from the height of its capitals; **bold** from the thickness of the strokes, measured against the text of the same page; **underline** from the rule under a word |
@@ -75,11 +76,12 @@ text, signatures, punched holes, show-through):
 | Engine | Result | Score |
 |---|---|---|
 | pdf2docx | a Word document of 8 pictures: no word can be edited | – (no text) |
-| **ocr** | 2,853 words in paragraphs, titles, lists, bold and underlined words; 92% OCR confidence, 60 words listed to check; 13 s | **90.3**: layout 87.8 (pages 78-95), text 91.8, pages 8 for 8 |
+| **ocr** | 2,847 words in paragraphs, titles, lists, bold and underlined words; 92% OCR confidence, 51 words listed to check; its stamps, signatures and the handwritten date as 20 pictures where they are on the pages; 20 s | **90.8**: layout 88.3 (pages 78-98), text 92.4, pages 8 for 8 |
 
 What it does not do: a table of a scan becomes lines with tabs, not a Word table; italics are not
-detected; the font is Times New Roman (that of almost every Romanian act); a stamp, a signature
-or a picture is left out (the document is to be signed again); handwriting is not read. A scan of
+detected; the font is Times New Roman (that of almost every Romanian act); handwriting is kept
+as a picture, not read as text; a stamp of grey ink as faint as the other side showing through is
+not told from it and is left out (one on the last page of the act measured). A scan of
 little resolution (under 200 dpi) is read with more mistakes: **scan at 300 dpi** where possible,
 and check the words listed.
 

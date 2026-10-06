@@ -113,6 +113,7 @@ class Rendition:
     pages_source: str = ""
     warnings: list[str] = field(default_factory=list)
     scan: bool = False  # a scanned PDF: pictures of pages (compared once cleaned, see ocr.py)
+    stamps: bool = False  # a scan whose stamps and signatures the converted document kept
 
 
 def words(text: str) -> list[str]:
@@ -543,7 +544,9 @@ def page_similarity(
     return 0.0 if kept + exact == 0 else 2 * kept * exact / (kept + exact)
 
 
-def _page(document: pdfium.PdfDocument, index: int, scan: bool = False) -> Image.Image | None:
+def _page(
+    document: pdfium.PdfDocument, index: int, scan: bool = False, stamps: bool = False
+) -> Image.Image | None:
     """A page drawn to be compared; a scanned page cleaned the way OCR reads it (stamps off,
     paper evened out, straightened)."""
     if index >= len(document):
@@ -555,7 +558,7 @@ def _page(document: pdfium.PdfDocument, index: int, scan: bool = False) -> Image
         image = page.render(scale=150 / 72).to_pil()
         width, height = page.get_size()
         size = (round(width * SCALE), round(height * SCALE))
-        return clean_page(image).resize(size, Image.Resampling.LANCZOS)
+        return clean_page(image, stamps).resize(size, Image.Resampling.LANCZOS)
     finally:
         page.close()
 
@@ -599,7 +602,8 @@ def _layout(expected: Rendition, actual: Rendition, previews: int) -> tuple[Chec
         count = max(len(left), len(right))
         pages = []
         for index in range(min(count, MAX_PAGES)):
-            original, converted = _page(left, index, expected.scan), _page(right, index)
+            original = _page(left, index, expected.scan, expected.stamps)
+            converted = _page(right, index)
             present = [image for image in (original, converted) if image is not None]
             size = (max(i.width for i in present), max(i.height for i in present))
             a, b = _ink(_canvas(original, size)), _ink(_canvas(converted, size))
@@ -618,7 +622,8 @@ def _layout(expected: Rendition, actual: Rendition, previews: int) -> tuple[Chec
     worst = min(pages, key=lambda page: page.score)
     detail = f"{len(pages)} page{'s' if len(pages) != 1 else ''} compared"
     if expected.scan:
-        detail += " (a scan: its lines within 2 mm, as typed again; stamps left out)"
+        kept = "stamps and signatures as pictures" if expected.stamps else "stamps left out"
+        detail += f" (a scan: its lines within 2 mm, as typed again; {kept})"
     if count > MAX_PAGES:
         detail += f" (the first {MAX_PAGES} of {count})"
     if len(pages) > 1:
@@ -728,6 +733,8 @@ def _fonts_check(expected: Rendition, actual: Rendition) -> Check:
 
 
 def _images(expected: Rendition, actual: Rendition) -> Check:
+    if expected.scan:
+        return Check("images", None, "A scan: its pages are pictures, not counted.")
     if not expected.images and not actual.images:
         return Check("images", None, "No pictures.")
     score = 100 * min(expected.images, actual.images) / max(expected.images, actual.images)
